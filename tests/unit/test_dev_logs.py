@@ -125,3 +125,21 @@ async def test_logs_never_contain_message_text(client):
     for entry in res.json()["data"]:
         entry_str = json.dumps(entry)
         assert secret not in entry_str
+
+
+@pytest.mark.asyncio
+async def test_logs_stream_stalled_client_no_flood():
+    from app.core.logging import subscribe_logs, unsubscribe_logs
+
+    # Stalled subscriber that never reads
+    queue, sub = subscribe_logs()
+    try:
+        # Emit more than the queue maxsize (1000)
+        for i in range(1200):
+            log_step("stalled.client.event", index=i)
+        # Yield to event loop to allow callbacks to execute
+        await asyncio.sleep(0.05)
+        # Ensure queue is at max capacity (1000) without crashing or flooding
+        assert queue.qsize() == 1000
+    finally:
+        unsubscribe_logs(sub)

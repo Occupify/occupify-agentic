@@ -1,11 +1,12 @@
 import asyncio
+import logging
 import time
 import uuid
 from collections.abc import AsyncIterator
 from dataclasses import dataclass
 from typing import Any
 
-from pydantic_ai import Agent
+from pydantic_ai import Agent, capture_run_messages
 from pydantic_ai.exceptions import (
     ContentFilterError,
     ModelContextWindowExceededError,
@@ -17,7 +18,7 @@ from pydantic_ai.exceptions import (
 )
 from pydantic_ai.messages import ModelMessagesTypeAdapter
 from pydantic_ai.settings import ModelSettings
-from pydantic_ai.usage import UsageLimits
+from pydantic_ai.usage import RunUsage, UsageLimits
 
 from app.agents.deps import AgentDeps
 from app.core.config import get_settings
@@ -79,10 +80,27 @@ class _RunContext:
     model_settings: ModelSettings
     start_time: float
 
-    def record_step(self, event: str, **fields: Any) -> None:
-        step_entry = {"event": event, "ts": time.time(), **fields}
+    def record_step(self, event: str, level: int = logging.INFO, **fields: Any) -> None:
+        step_entry = {
+            "event": event,
+            "ts": time.time(),
+            "level": logging.getLevelName(level),
+            **fields,
+        }
         self.steps_log.append(step_entry)
-        log_step(event, **fields)
+        log_step(event, level=level, **fields)
+
+
+def _extract_usage_from_messages(messages: list[Any]) -> RunUsage | None:
+    run_usage = RunUsage()
+    found = False
+    for m in messages:
+        req_usage = getattr(m, "usage", None)
+        if req_usage is not None:
+            found = True
+            run_usage.incr(req_usage)
+            run_usage.requests += 1
+    return run_usage if found else None
 
 
 def _extract_usage_fields(usage: Any, model_name: str) -> dict[str, Any]:
@@ -288,7 +306,7 @@ async def _finish_run_failed(
     duration_ms = int((time.perf_counter() - ctx.start_time) * 1000)
     safe_err = type(exc).__name__
     u = _extract_usage_fields(usage, ctx.model_name)
-    ctx.record_step("run.error", ms=duration_ms, error_type=safe_err, **u)
+    ctx.record_step("run.error", level=logging.WARNING, ms=duration_ms, error_type=safe_err, **u)
 
     if deps.db:
         repo = RunRepository(deps.db)
@@ -308,90 +326,26 @@ async def run_agent(
     history: list[Any] | None = None,
 ) -> AgentRunOutput:
     ctx = await _setup_run(deps, use_case, prompt, history)
-
-    try:
-        ctx.record_step(
-            "llm.request",
-            model=ctx.model_name,
-            message_count=len(ctx.validated_history) + 1,
-        )
-        res = await agent.run(
-            prompt,
-            message_history=ctx.validated_history,
-            deps=deps,
-            usage_limits=ctx.usage_limits,
-            model_settings=ctx.model_settings,
-        )
-        all_new = res.new_messages()
-        _check_context_window(all_new)
-
-        usage = getattr(res, "usage", None)
-        u = _extract_usage_fields(usage, ctx.model_name)
-        ctx.record_step("llm.response", **u)
-
-        user_msgs = [m for m in all_new if getattr(m, "kind", None) == "request"]
-        asst_msgs = [m for m in all_new if getattr(m, "kind", None) == "response"]
-
-        user_json = (
-            ModelMessagesTypeAdapter.dump_python(user_msgs, mode="json") if user_msgs else []
-        )
-        asst_json = (
-            ModelMessagesTypeAdapter.dump_python(asst_msgs, mode="json") if asst_msgs else []
-        )
-
-        duration_ms, u = await _finish_run_success(deps, ctx, usage)
-
-        return AgentRunOutput(
-            output=res.output if isinstance(res.output, str) else str(res.output),
-            user_model_messages=user_json,
-            assistant_model_messages=asst_json,
-            tokens_in=u["tokens_in"],
-            tokens_out=u["tokens_out"],
-            run_id=ctx.run_id,
-            model=ctx.model_name,
-            latency_ms=duration_ms,
-        )
-
-    except Exception as exc:
-        await _finish_run_failed(deps, ctx, exc)
-        if isinstance(exc, AppError):
-            raise exc
-        raise _map_llm_exception(exc) from exc
-
-
-async def stream_agent(
-    agent: Agent,
-    prompt: str,
-    deps: AgentDeps,
-    use_case: str,
-    history: list[Any] | None = None,
-) -> AsyncIterator[AgentStreamMeta | AgentStreamDelta | AgentStreamDone]:
-    ctx = await _setup_run(deps, use_case, prompt, history)
-    yield AgentStreamMeta(run_id=ctx.run_id, model=ctx.model_name, trace_id=ctx.trace_id)
-
-    try:
-        ctx.record_step(
-            "llm.request",
-            model=ctx.model_name,
-            message_count=len(ctx.validated_history) + 1,
-        )
-        full_output_chunks: list[str] = []
-
-        async with agent.run_stream(
-            prompt,
-            message_history=ctx.validated_history,
-            deps=deps,
-            usage_limits=ctx.usage_limits,
-            model_settings=ctx.model_settings,
-        ) as res:
-            async for chunk in res.stream_text(delta=True, debounce_by=None):
-                full_output_chunks.append(chunk)
-                yield AgentStreamDelta(content=chunk)
-
+    last_usage = None
+    with capture_run_messages() as captured_messages:
+        try:
+            ctx.record_step(
+                "llm.request",
+                model=ctx.model_name,
+                message_count=len(ctx.validated_history) + 1,
+            )
+            res = await agent.run(
+                prompt,
+                message_history=ctx.validated_history,
+                deps=deps,
+                usage_limits=ctx.usage_limits,
+                model_settings=ctx.model_settings,
+            )
+            last_usage = getattr(res, "usage", None)
             all_new = res.new_messages()
             _check_context_window(all_new)
 
-            usage = getattr(res, "usage", None)
+            usage = last_usage
             u = _extract_usage_fields(usage, ctx.model_name)
             ctx.record_step("llm.response", **u)
 
@@ -407,36 +361,111 @@ async def stream_agent(
 
             duration_ms, u = await _finish_run_success(deps, ctx, usage)
 
-            yield AgentStreamDone(
-                output="".join(full_output_chunks),
+            return AgentRunOutput(
+                output=res.output if isinstance(res.output, str) else str(res.output),
                 user_model_messages=user_json,
                 assistant_model_messages=asst_json,
                 tokens_in=u["tokens_in"],
                 tokens_out=u["tokens_out"],
-                latency_ms=duration_ms,
                 run_id=ctx.run_id,
                 model=ctx.model_name,
+                latency_ms=duration_ms,
             )
 
-    except asyncio.CancelledError:
-        import anyio
+        except Exception as exc:
+            usage_to_log = last_usage or _extract_usage_from_messages(captured_messages)
+            await _finish_run_failed(deps, ctx, exc, usage=usage_to_log)
+            if isinstance(exc, AppError):
+                raise exc
+            raise _map_llm_exception(exc) from exc
 
-        duration_ms = int((time.perf_counter() - ctx.start_time) * 1000)
-        u = _extract_usage_fields(None, ctx.model_name)
-        ctx.record_step("run.interrupted", ms=duration_ms, **u)
-        if deps.db:
-            with anyio.CancelScope(shield=True):
-                repo = RunRepository(deps.db)
-                await repo.finish_failed(
-                    run_id=ctx.run_id,
-                    error_message="Client disconnected (interrupted)",
-                    latency_ms=duration_ms,
-                    steps=ctx.steps_log,
+
+async def stream_agent(
+    agent: Agent,
+    prompt: str,
+    deps: AgentDeps,
+    use_case: str,
+    history: list[Any] | None = None,
+) -> AsyncIterator[AgentStreamMeta | AgentStreamDelta | AgentStreamDone]:
+    ctx = await _setup_run(deps, use_case, prompt, history)
+    yield AgentStreamMeta(run_id=ctx.run_id, model=ctx.model_name, trace_id=ctx.trace_id)
+    last_usage = None
+    with capture_run_messages() as captured_messages:
+        try:
+            ctx.record_step(
+                "llm.request",
+                model=ctx.model_name,
+                message_count=len(ctx.validated_history) + 1,
+            )
+            full_output_chunks: list[str] = []
+
+            async with agent.run_stream(
+                prompt,
+                message_history=ctx.validated_history,
+                deps=deps,
+                usage_limits=ctx.usage_limits,
+                model_settings=ctx.model_settings,
+            ) as res:
+                async for chunk in res.stream_text(delta=True, debounce_by=None):
+                    full_output_chunks.append(chunk)
+                    yield AgentStreamDelta(content=chunk)
+
+                all_new = res.new_messages()
+                last_usage = getattr(res, "usage", None)
+                _check_context_window(all_new)
+
+                usage = last_usage
+                u = _extract_usage_fields(usage, ctx.model_name)
+                ctx.record_step("llm.response", **u)
+
+                user_msgs = [m for m in all_new if getattr(m, "kind", None) == "request"]
+                asst_msgs = [m for m in all_new if getattr(m, "kind", None) == "response"]
+
+                user_json = (
+                    ModelMessagesTypeAdapter.dump_python(user_msgs, mode="json")
+                    if user_msgs
+                    else []
                 )
-        raise
+                asst_json = (
+                    ModelMessagesTypeAdapter.dump_python(asst_msgs, mode="json")
+                    if asst_msgs
+                    else []
+                )
 
-    except Exception as exc:
-        await _finish_run_failed(deps, ctx, exc)
-        if isinstance(exc, AppError):
-            raise exc
-        raise _map_llm_exception(exc) from exc
+                duration_ms, u = await _finish_run_success(deps, ctx, usage)
+
+                yield AgentStreamDone(
+                    output="".join(full_output_chunks),
+                    user_model_messages=user_json,
+                    assistant_model_messages=asst_json,
+                    tokens_in=u["tokens_in"],
+                    tokens_out=u["tokens_out"],
+                    latency_ms=duration_ms,
+                    run_id=ctx.run_id,
+                    model=ctx.model_name,
+                )
+
+        except asyncio.CancelledError:
+            import anyio
+
+            duration_ms = int((time.perf_counter() - ctx.start_time) * 1000)
+            usage_to_log = last_usage or _extract_usage_from_messages(captured_messages)
+            u = _extract_usage_fields(usage_to_log, ctx.model_name)
+            ctx.record_step("run.interrupted", ms=duration_ms, **u)
+            if deps.db:
+                with anyio.CancelScope(shield=True):
+                    repo = RunRepository(deps.db)
+                    await repo.finish_failed(
+                        run_id=ctx.run_id,
+                        error_message="Client disconnected (interrupted)",
+                        latency_ms=duration_ms,
+                        steps=ctx.steps_log,
+                    )
+            raise
+
+        except Exception as exc:
+            usage_to_log = last_usage or _extract_usage_from_messages(captured_messages)
+            await _finish_run_failed(deps, ctx, exc, usage=usage_to_log)
+            if isinstance(exc, AppError):
+                raise exc
+            raise _map_llm_exception(exc) from exc

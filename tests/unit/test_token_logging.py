@@ -193,3 +193,76 @@ async def test_tokens_in_run_steps(test_db):
     assert step_dict["run.end"]["tokens_cached"] == 10
     assert step_dict["run.end"]["tokens_reasoning"] == 20
     assert step_dict["run.end"]["tokens_total"] == 150
+
+
+@pytest.mark.asyncio
+async def test_tokens_logged_on_content_filter_error_normal(test_db):
+    user = CurrentUser(user_id="user-tok-sens-1", role="ROLE_USER")
+    deps = AgentDeps(user=user, session_id="sess-tok-sens-1", db=test_db)
+
+    async def fn_sens(messages, info):
+        return ModelResponse(
+            parts=[TextPart("blocked output")],
+            usage=RequestUsage(input_tokens=300, output_tokens=40),
+            provider_details={"finish_reason": "sensitive"},
+        )
+
+    agent = Agent(model=FunctionModel(function=fn_sens), deps_type=AgentDeps)
+    with pytest.raises(Exception):
+        await run_agent(agent, "sensitive prompt", deps, use_case="chat")
+
+    runs = (
+        await test_db.execute(
+            AgentRun.__table__.select().where(AgentRun.session_id == "sess-tok-sens-1")
+        )
+    ).fetchall()
+    assert len(runs) >= 1
+    run_row = runs[0]
+    steps = run_row.steps
+    error_step = next(s for s in steps if s["event"] == "run.error")
+    assert error_step["tokens_known"] is True
+    assert error_step["tokens_in"] == 300
+    assert error_step["tokens_out"] == 40
+    assert error_step["tokens_total"] == 340
+
+
+@pytest.mark.asyncio
+async def test_tokens_logged_on_content_filter_error_stream(test_db):
+    from contextlib import asynccontextmanager
+
+    class MockSensitiveStreamModel(FunctionModel):
+        def request_stream(self, *args, **kwargs):
+            cm = super().request_stream(*args, **kwargs)
+
+            async def _wrapped():
+                async with cm as resp:
+                    resp._usage = RequestUsage(input_tokens=300, output_tokens=40)
+                    resp.provider_details = {"finish_reason": "sensitive"}
+                    yield resp
+
+            return asynccontextmanager(_wrapped)()
+
+    user = CurrentUser(user_id="user-tok-sens-2", role="ROLE_USER")
+    deps = AgentDeps(user=user, session_id="sess-tok-sens-2", db=test_db)
+
+    async def stream_sens(messages, info):
+        yield "chunk1"
+
+    agent = Agent(model=MockSensitiveStreamModel(stream_function=stream_sens), deps_type=AgentDeps)
+    with pytest.raises(Exception):
+        async for _ in stream_agent(agent, "stream sens", deps, use_case="chat"):
+            pass
+
+    runs = (
+        await test_db.execute(
+            AgentRun.__table__.select().where(AgentRun.session_id == "sess-tok-sens-2")
+        )
+    ).fetchall()
+    assert len(runs) >= 1
+    run_row = runs[0]
+    steps = run_row.steps
+    error_step = next(s for s in steps if s["event"] == "run.error")
+    assert error_step["tokens_known"] is True
+    assert error_step["tokens_in"] == 300
+    assert error_step["tokens_out"] in (40, 41)
+    assert error_step["tokens_total"] in (340, 341)

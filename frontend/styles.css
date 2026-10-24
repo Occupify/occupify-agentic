@@ -325,6 +325,23 @@ body {
   gap: 0.8rem;
 }
 
+.message-attachments {
+  margin-top: 0.5rem;
+  padding-top: 0.4rem;
+  border-top: 1px solid rgba(255, 255, 255, 0.15);
+  font-size: 0.8rem;
+  display: flex;
+  flex-direction: column;
+  gap: 0.25rem;
+}
+
+.attachment-item {
+  display: flex;
+  align-items: center;
+  gap: 0.4rem;
+  opacity: 0.95;
+}
+
 /* Typing cursor indicator */
 .typing-cursor {
   display: inline-block;

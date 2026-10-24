@@ -32,8 +32,13 @@ def get_current_context() -> dict[str, Any]:
     return dict(_context.get())
 
 
-_subscribers: set["LogSubscriber"] = set()
-_log_lock = threading.Lock()
+def _safe_put(queue: asyncio.Queue[dict[str, Any]], entry: dict[str, Any]) -> None:
+    try:
+        queue.put_nowait(entry)
+    except asyncio.QueueFull:
+        pass
+    except Exception:
+        pass
 
 
 class LogSubscriber:
@@ -42,8 +47,10 @@ class LogSubscriber:
         self.loop = loop
 
     def push(self, entry: dict[str, Any]) -> None:
+        if self.loop.is_closed():
+            return
         try:
-            self.loop.call_soon_threadsafe(self.queue.put_nowait, entry)
+            self.loop.call_soon_threadsafe(_safe_put, self.queue, entry)
         except Exception:
             pass
 

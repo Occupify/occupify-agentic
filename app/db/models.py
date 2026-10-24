@@ -43,14 +43,6 @@ class AgentRun(Base):
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=utc_now)
     finished_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
 
-    @property
-    def error_message(self) -> str | None:
-        return self.error
-
-    @error_message.setter
-    def error_message(self, val: str | None) -> None:
-        self.error = val
-
 
 class Document(Base):
     __tablename__ = "documents"
@@ -111,14 +103,6 @@ class ChatMessage(Base):
     tokens_in: Mapped[int] = mapped_column(Integer, default=0)
     tokens_out: Mapped[int] = mapped_column(Integer, default=0)
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=utc_now)
-
-    @property
-    def content(self) -> str:
-        return self.display_text
-
-    @content.setter
-    def content(self, val: str) -> None:
-        self.display_text = val
 
     session: Mapped["ChatSession"] = relationship("ChatSession", back_populates="messages")
 
