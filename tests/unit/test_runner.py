@@ -40,7 +40,7 @@ async def test_runner_with_test_model(test_db):
         )
 
         assert res.output == "Test response"
-        assert res.model == "glm-4.7-flashx"
+        assert res.model == "glm-4.5-air"
         assert res.run_id is not None
 
         run_record = await test_db.get(AgentRun, res.run_id)
