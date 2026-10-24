@@ -7,7 +7,7 @@ from faststream.rabbit import RabbitBroker
 from app.core.config import get_settings
 from app.core.logging import get_current_context, log_step
 from app.messaging.broker import get_broker
-from app.messaging.topology import queue_name_for
+from app.messaging.topology import RPC_EXCHANGE, queue_name_for
 
 
 class RpcClient:
@@ -35,19 +35,40 @@ class RpcClient:
             "x-run-id": ctx.get("run_id", ""),
         }
 
+        # Log IDs and argument keys only to prevent payload/PII leakage (F-18)
+        log_ids = {
+            k: v
+            for k, v in args.items()
+            if "id" in k.lower() or k in ("id", "userId", "jobId", "projectId")
+        }
         start_time = time.perf_counter()
-        log_step("tool.call", tool=routing_key, args=args)
+        log_step(
+            "tool.call",
+            tool=routing_key,
+            ids=log_ids,
+            arg_keys=list(args.keys()),
+        )
+
+        target_queue = queue_name_for(routing_key)
+        exchange_name = settings.RABBITMQ_RPC_EXCHANGE or RPC_EXCHANGE
 
         try:
-            # We can request against queue or exchange
-            # By default FastStream supports routing via queue or exchange/routing_key
-            target_queue = queue_name_for(routing_key)
-            reply = await self.broker.request(
-                message=args,
-                queue=target_queue,
-                timeout=timeout,
-                headers=headers,
-            )
+            # Primary routing via occupify.agent.rpc exchange with fallback to direct queue
+            try:
+                reply = await self.broker.request(
+                    message=args,
+                    exchange=exchange_name,
+                    routing_key=routing_key,
+                    timeout=timeout,
+                    headers=headers,
+                )
+            except Exception:
+                reply = await self.broker.request(
+                    message=args,
+                    queue=target_queue,
+                    timeout=timeout,
+                    headers=headers,
+                )
 
             duration_ms = int((time.perf_counter() - start_time) * 1000)
 
@@ -79,7 +100,7 @@ class RpcClient:
                     "message": f"RPC call to `{routing_key}` timed out after {timeout} seconds.",
                 },
             }
-        except Exception as e:
+        except Exception:
             duration_ms = int((time.perf_counter() - start_time) * 1000)
             log_step(
                 "tool.result", tool=routing_key, ms=duration_ms, ok=False, error_code="RPC_ERROR"
@@ -88,6 +109,6 @@ class RpcClient:
                 "ok": False,
                 "error": {
                     "code": "RPC_ERROR",
-                    "message": str(e),
+                    "message": "Failed to communicate with downstream service.",
                 },
             }

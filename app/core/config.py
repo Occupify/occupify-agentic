@@ -10,7 +10,7 @@ class Settings(BaseSettings):
         extra="ignore",
     )
 
-    APP_ENV: str = "local"
+    APP_ENV: str = "production"
     APP_PORT: int = 8186
     LOG_LEVEL: str = "INFO"
     LOG_PAYLOADS: bool = False
@@ -52,6 +52,7 @@ class Settings(BaseSettings):
     # RabbitMQ
     RABBITMQ_URL: str = "amqp://guest:guest@occupify-rabbitmq:5672/"
     RABBITMQ_RPC_TIMEOUT_S: int = 10
+    RABBITMQ_RPC_EXCHANGE: str = "occupify.agent.rpc"
 
     def model_for(self, use_case: str) -> str:
         mapping = {

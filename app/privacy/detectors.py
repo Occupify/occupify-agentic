@@ -7,16 +7,21 @@ EMAIL_REGEX = re.compile(
 )
 
 # Phone regex (Vietnamese +84, 0..., international with spaces/dots/dashes)
-# Matches numbers like +84 912 345 678, (028) 3822 1234, 0901234567, +1-555-0199
+# Matches 2-4 digit groupings: 091 234 56 78, +84 91 234 56 78, (028) 3822 1234, 0901234567, +1-555-0199
 PHONE_REGEX = re.compile(
-    r"(?:(?:\+84|0|\(\+84\))[\s.-]?\(?\d{2,4}\)?[\s.-]?\d{3,4}[\s.-]?\d{3,4}|\b\+?[1-9]\d{0,2}[\s.-]?\(?\d{2,4}\)?[\s.-]?\d{3,4}[\s.-]?\d{3,4}\b)",
+    r"(?:(?:\+84|\(\+84\)|0|\+\d{1,3})[\s.-]?(?:\(?\d{1,4}\)?[\s.-]?){2,5}\d{2,4}\b|\b\+?[1-9]\d{0,2}[\s.-]?(?:\(?\d{2,4}\)?[\s.-]?){1,4}\d{2,4}\b)",
     re.IGNORECASE,
 )
 
-# ID / Passport / Citizen Identity / Tax / Bank numbers
-# Vietnam CCCD (12 digits), CMND (9 digits), bank accounts, tax codes
+# ID / Citizen Identity / Tax / Bank numbers
+# Vietnam CCCD (12 digits), CMND (9 digits), tax codes
 ID_NUMBER_REGEX = re.compile(
     r"\b(?:\d{12}|\d{9})\b",
+)
+
+# Passport numbers: 1-2 uppercase letters followed by 7-9 digits (e.g. C1234567, UK987654321)
+PASSPORT_REGEX = re.compile(
+    r"\b[A-Z]{1,2}\d{7,9}\b",
 )
 
 # Social links & portfolio links
@@ -35,19 +40,18 @@ GENERIC_URL_REGEX = re.compile(
     re.IGNORECASE,
 )
 
-# Labelled lines (EN + VI)
-# DOB, Address, Gender, Marital Status, Nationality, Religion, Salary
+# Labelled lines (EN + VI) supporting markdown lists (- * +), bold (**), and table rows (|)
 LABELLED_LINE_REGEX = re.compile(
-    r"(?im)^\s*(?:"
-    r"date of birth|dob|ngày sinh|năm sinh|"
-    r"address|địa chỉ|permanent address|current address|nơi ở|"
+    r"(?im)^\s*(?:[-*+•]\s+)?(?:\|\s*)?(?:\*{1,3}|_{1,3})?(?:"
+    r"date of birth|dob|ngày sinh|năm sinh|birth\s*date|"
+    r"address|địa chỉ|permanent address|current address|nơi ở|quê quán|"
     r"gender|sex|giới tính|"
     r"marital status|tình trạng hôn nhân|hôn nhân|"
     r"nationality|quốc tịch|dân tộc|"
     r"religion|tôn giáo|"
-    r"id number|số cmnd|số cccd|hộ chiếu|passport no|tax id|mã số thuế|"
+    r"id number|số cmnd|số cccd|hộ chiếu|passport(?:\s*no\.?|\s*number)?|tax id|mã số thuế|"
     r"current salary|expected salary|mức lương|thu nhập"
-    r")\s*[:\-\—][^\n\r]*$",
+    r")(?:\*{1,3}|_{1,3})?\s*(?:[:\-\—|]|\s*\|\s*)[^\r\n]*$",
 )
 
 
@@ -56,13 +60,14 @@ def remove_patterns(text: str) -> tuple[str, dict[str, int]]:
         "email": 0,
         "phone": 0,
         "id_number": 0,
+        "passport": 0,
         "social_link": 0,
         "portfolio_link": 0,
         "labelled_line": 0,
         "url": 0,
     }
 
-    # 1. Labelled personal lines
+    # 1. Labelled personal lines (including table rows, lists, bold)
     def _lbl_sub(m: re.Match) -> str:
         counts["labelled_line"] += 1
         return ""
@@ -78,16 +83,22 @@ def remove_patterns(text: str) -> tuple[str, dict[str, int]]:
 
     # 3. Phones
     def _phone_sub(m: re.Match) -> str:
-        # Check if matched text looks like a valid phone (at least 7 digits)
         digits = re.sub(r"\D", "", m.group(0))
-        if len(digits) >= 8:
+        if 8 <= len(digits) <= 13:
             counts["phone"] += 1
             return "[PHONE]"
         return m.group(0)
 
     text = PHONE_REGEX.sub(_phone_sub, text)
 
-    # 4. Social links & Portfolios
+    # 4. Passports
+    def _passport_sub(m: re.Match) -> str:
+        counts["passport"] += 1
+        return "[ID_NUMBER]"
+
+    text = PASSPORT_REGEX.sub(_passport_sub, text)
+
+    # 5. Social links & Portfolios
     def _social_sub(m: re.Match) -> str:
         counts["social_link"] += 1
         return "[SOCIAL_LINK]"
@@ -100,14 +111,14 @@ def remove_patterns(text: str) -> tuple[str, dict[str, int]]:
 
     text = PORTFOLIO_LINK_REGEX.sub(_portfolio_sub, text)
 
-    # 5. Generic URLs
+    # 6. Generic URLs
     def _url_sub(m: re.Match) -> str:
         counts["url"] += 1
         return "[LINK]"
 
     text = GENERIC_URL_REGEX.sub(_url_sub, text)
 
-    # 6. ID Numbers (only match if not part of normal date like 2024 or year range)
+    # 7. ID Numbers (Vietnam CCCD 12 digits, CMND 9 digits)
     def _id_sub(m: re.Match) -> str:
         counts["id_number"] += 1
         return "[ID_NUMBER]"
@@ -124,10 +135,13 @@ def has_pii_remnants(text: str) -> bool:
 
     for m in PHONE_REGEX.finditer(text):
         digits = re.sub(r"\D", "", m.group(0))
-        if len(digits) >= 8:
+        if 8 <= len(digits) <= 13:
             return True
 
     if ID_NUMBER_REGEX.search(text):
+        return True
+
+    if PASSPORT_REGEX.search(text):
         return True
 
     if LABELLED_LINE_REGEX.search(text):

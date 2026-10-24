@@ -1,3 +1,5 @@
+import asyncio
+
 from fastapi import APIRouter, File, UploadFile
 
 from app.core.config import get_settings
@@ -13,13 +15,13 @@ router = APIRouter(prefix="/ai/dev", tags=["dev"])
 @router.post("/cv-preview")
 async def cv_preview(file: UploadFile = File(...)):
     settings = get_settings()
-    if settings.APP_ENV != "local":
+    if settings.APP_ENV not in ("local", "test"):
         raise AppError(404, "Endpoint not found.", "NOT_FOUND")
 
     filename = file.filename or "cv.pdf"
     content, page_count = await validate_upload_file(file)
-    raw_text, pages, extractor_used, _ = extract_pdf_text(content, filename)
-    cleaned_text, removed = clean(raw_text, source=f"file `{filename}`")
+    raw_text, pages, extractor_used, _ = await asyncio.to_thread(extract_pdf_text, content)
+    cleaned_text, removed = clean(raw_text, source="cv_preview")
 
     return success_response(
         {

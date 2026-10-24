@@ -216,3 +216,99 @@ async def test_chat_context_full_error(client):
         data = res.json()
         assert data["errorCode"] == "CHAT_CONTEXT_FULL"
         assert "too long for the model" in data["message"]
+
+
+@pytest.mark.asyncio
+async def test_chat_attachment_filename_masked_in_prompt(client):
+    received_prompts = []
+
+    async def mock_fn(messages: list[ModelMessage], info: AgentInfo) -> ModelResponse:
+        for m in messages:
+            for part in getattr(m, "parts", []):
+                if hasattr(part, "content"):
+                    received_prompts.append(str(part.content))
+        return ModelResponse(parts=[TextPart("Reviewed your document.")])
+
+    content = generate_sample_pdf(pages=1, text="Experience: Senior Software Engineer at Tech Corp")
+    with chat_agent.override(model=FunctionModel(mock_fn)):
+        files = {"files": ("CV_Nguyen_Van_An_Confidential.pdf", content, "application/pdf")}
+        res = await client.post(
+            "/ai/chat/messages",
+            data={"message": "Please review my attached CV."},
+            files=files,
+        )
+        assert res.status_code == 200
+        # Assert the real filename is in the API response
+        assert (
+            res.json()["data"]["attachments"][0]["fileName"] == "CV_Nguyen_Van_An_Confidential.pdf"
+        )
+
+        # Assert the real filename NEVER went to the model prompt (F-02)
+        joined_prompt = " ".join(received_prompts)
+        assert "CV_Nguyen_Van_An_Confidential.pdf" not in joined_prompt
+        assert "Attachment 1" in joined_prompt
+
+
+@pytest.mark.asyncio
+async def test_chat_session_checked_before_file_read(client):
+    content = generate_sample_pdf(pages=1, text="Confidential CV")
+    files = {"files": ("my_cv.pdf", content, "application/pdf")}
+    res = await client.post(
+        "/ai/chat/messages",
+        data={
+            "sessionId": "00000000-0000-0000-0000-000000000000",
+            "message": "Review this on non-existent session",
+        },
+        files=files,
+    )
+    assert res.status_code == 404
+    assert res.json()["errorCode"] == "CHAT_SESSION_NOT_FOUND"
+
+
+@pytest.mark.asyncio
+async def test_document_upsert_on_conflict(test_db):
+    from app.db.repositories.documents import DocumentRepository
+
+    repo = DocumentRepository(test_db)
+    sha = "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+
+    doc1 = await repo.save_document(
+        sha256_hash=sha,
+        extractor="pdfium",
+        page_count=1,
+        cleaned_text="Version 1",
+        removed_counts={},
+        ttl_days=-1,  # Expired immediately
+    )
+    assert doc1.cleaned_text == "Version 1"
+
+    # Save again with same sha256 - must UPSERT rather than fail with IntegrityError (F-07)
+    doc2 = await repo.save_document(
+        sha256_hash=sha,
+        extractor="pdfium",
+        page_count=1,
+        cleaned_text="Version 2 Updated",
+        removed_counts={"email": 1},
+        ttl_days=30,
+    )
+    assert doc2.id == doc1.id
+    assert doc2.cleaned_text == "Version 2 Updated"
+
+
+@pytest.mark.asyncio
+async def test_readiness_probe_broker_status(client):
+    from app.messaging import broker as broker_mod
+
+    # 1. When broker is not connected, /ready returns 503 (F-10)
+    broker_mod._broker_connected = False
+    res_down = await client.get("/ready")
+    assert res_down.status_code == 503
+    assert res_down.json()["checks"]["broker"] == "DOWN"
+    assert res_down.json()["status"] == "DOWN"
+
+    # 2. When broker is connected, /ready returns 200 UP
+    broker_mod._broker_connected = True
+    res_up = await client.get("/ready")
+    assert res_up.status_code == 200
+    assert res_up.json()["checks"]["broker"] == "UP"
+    assert res_up.json()["status"] == "UP"

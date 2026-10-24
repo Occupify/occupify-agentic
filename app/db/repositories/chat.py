@@ -1,8 +1,8 @@
 import uuid
-from datetime import UTC, datetime
+from datetime import UTC, datetime, timedelta
 from typing import Any
 
-from sqlalchemy import desc, func, select
+from sqlalchemy import desc, func, or_, select, update
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.db.models import ChatMessage, ChatSession
@@ -70,24 +70,25 @@ class ChatRepository:
         await self.session.commit()
         return True
 
-    async def mark_busy(self, session_id: str) -> bool:
-        sess = await self.session.get(ChatSession, session_id)
-        if not sess:
-            return False
-        if sess.busy_since is not None:
-            # Check if stale (e.g. > 120s)
-            elapsed = (datetime.now(UTC) - sess.busy_since).total_seconds()
-            if elapsed < 120:
-                return False  # Still busy
-        sess.busy_since = datetime.now(UTC)
+    async def mark_busy(self, session_id: str, stale_timeout_s: int = 300) -> bool:
+        now = datetime.now(UTC)
+        stale_cutoff = now - timedelta(seconds=stale_timeout_s)
+        stmt = (
+            update(ChatSession)
+            .where(ChatSession.id == session_id)
+            .where(or_(ChatSession.busy_since.is_(None), ChatSession.busy_since < stale_cutoff))
+            .values(busy_since=now)
+            .returning(ChatSession.id)
+        )
+        res = await self.session.execute(stmt)
         await self.session.commit()
-        return True
+        updated_id = res.scalar_one_or_none()
+        return updated_id is not None
 
     async def clear_busy(self, session_id: str) -> None:
-        sess = await self.session.get(ChatSession, session_id)
-        if sess:
-            sess.busy_since = None
-            await self.session.commit()
+        stmt = update(ChatSession).where(ChatSession.id == session_id).values(busy_since=None)
+        await self.session.execute(stmt)
+        await self.session.commit()
 
     async def get_messages(
         self,
