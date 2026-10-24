@@ -20,8 +20,8 @@ async def cv_preview(file: UploadFile = File(...)):
 
     filename = file.filename or "cv.pdf"
     content, page_count = await validate_upload_file(file)
-    raw_text, pages, extractor_used, _ = await asyncio.to_thread(extract_pdf_text, content)
-    cleaned_text, removed = clean(raw_text, source="cv_preview")
+    raw_text, pages, extractor_used = await asyncio.to_thread(extract_pdf_text, content)
+    cleaned_text, removed = clean(raw_text, source="cv_preview", is_file=True)
 
     return success_response(
         {

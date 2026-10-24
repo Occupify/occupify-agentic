@@ -12,7 +12,10 @@ def generate_sample_pdf(pages: int = 1, text: str = "Hello World") -> bytes:
     buf = BytesIO()
     c = canvas.Canvas(buf)
     for i in range(pages):
-        c.drawString(100, 750, f"{text} - Page {i + 1}")
+        y = 750
+        for line in text.split("\n"):
+            c.drawString(100, y, line)
+            y -= 20
         c.showPage()
     c.save()
     return buf.getvalue()
@@ -43,15 +46,30 @@ def test_pdf_validation_too_many_pages():
 
 def test_pdf_extraction():
     content = generate_sample_pdf(pages=2, text="Senior Python Developer with PostgreSQL")
-    text, pages, extractor, ocr_pages = extract_pdf_text(content, "cv.pdf")
+    text, pages, extractor = extract_pdf_text(content)
     assert pages == 2
     assert "Senior Python Developer" in text
     assert extractor in ["docling", "pdfium"]
 
 
+@pytest.mark.docling
+def test_docling_pdf_extraction(monkeypatch):
+    import app.documents.extract as extract_mod
+
+    monkeypatch.setattr(extract_mod.get_settings(), "PDF_EXTRACTOR", "docling")
+    content = generate_sample_pdf(
+        pages=1, text="Nguyen Van A\n## Experience\nSenior Backend Engineer"
+    )
+    text, pages, extractor = extract_mod.extract_pdf_text(content)
+    assert extractor == "docling"
+    assert "Senior Backend Engineer" in text
+
+
 @pytest.mark.asyncio
 async def test_cv_preview_endpoint(client):
-    content = generate_sample_pdf(pages=1, text="Nguyen Van A - Email: a@test.com - Python, Docker")
+    content = generate_sample_pdf(
+        pages=1, text="Nguyen Van A\n## Skills\na@test.com\nPython, Docker"
+    )
     files = {"file": ("my_cv.pdf", content, "application/pdf")}
     res = await client.post("/ai/dev/cv-preview", files=files)
     assert res.status_code == 200

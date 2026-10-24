@@ -165,7 +165,9 @@ async def test_chat_list_and_delete_session(client):
 
 @pytest.mark.asyncio
 async def test_chat_pdf_attachment(client):
-    content = generate_sample_pdf(pages=1, text="Nguyen Van B - Email: b@test.com - Python Senior")
+    content = generate_sample_pdf(
+        pages=1, text="Nguyen Van B - Email: b@test.com\n## Experience\nPython Senior"
+    )
 
     async def mock_fn(messages: list[ModelMessage], info: AgentInfo) -> ModelResponse:
         return ModelResponse(parts=[TextPart("Analyzed your CV.")])
@@ -200,6 +202,77 @@ async def test_chat_streaming(client):
         assert "event: meta" in text
         assert "event: delta" in text
         assert "event: done" in text
+        # Verify plan §6.9 SSE contract (F-25)
+        assert '"sessionId":' in text
+        assert '"newSession":' in text
+        assert '"messageId":' in text
+        assert '"attachments":' in text
+        assert '"text":' in text
+        assert '"model":' in text
+        assert '"usage":' in text
+        assert '"tokensIn":' in text
+
+
+@pytest.mark.asyncio
+async def test_chat_streaming_heartbeat_survives_model_pause(client, monkeypatch):
+    import asyncio
+
+    from app.core.config import get_settings
+
+    # Set heartbeat to 0.1s so we can test ping without slowing tests down (F-21)
+    monkeypatch.setattr(get_settings(), "CHAT_STREAM_HEARTBEAT_S", 0.1)
+
+    async def stream_fn(messages: list[ModelMessage], info: AgentInfo):
+        yield "First chunk. "
+        await asyncio.sleep(0.25)  # Pause longer than 0.1s heartbeat!
+        yield "Second chunk after quiet pause."
+
+    with chat_agent.override(model=FunctionModel(stream_function=stream_fn)):
+        res = await client.post(
+            "/ai/chat/messages?stream=true",
+            data={"message": "Model pauses for heartbeat"},
+        )
+        assert res.status_code == 200
+        text = res.text
+        assert ": ping" in text
+        assert "First chunk." in text
+        assert "Second chunk after quiet pause." in text
+        assert "event: done" in text
+
+
+@pytest.mark.asyncio
+async def test_no_new_session_created_on_validation_failure(client, test_db):
+    from sqlalchemy import func, select
+
+    from app.db.models import ChatSession
+
+    # Count sessions before
+    count_before = (await test_db.execute(select(func.count(ChatSession.id)))).scalar() or 0
+
+    # 1. Reject invalid file (>20 pages)
+    large_pdf = generate_sample_pdf(pages=25, text="Too big")
+    files = {"files": ("big.pdf", large_pdf, "application/pdf")}
+    res = await client.post(
+        "/ai/chat/messages",
+        data={"message": "Analyze my giant PDF"},
+        files=files,
+    )
+    assert res.status_code == 400
+    assert res.json()["errorCode"] == "FILE_INVALID"
+
+    # Count sessions after - must NOT have created an empty session! (F-24)
+    count_after = (await test_db.execute(select(func.count(ChatSession.id)))).scalar() or 0
+    assert count_after == count_before
+
+
+@pytest.mark.asyncio
+async def test_empty_message_raises_400(client):
+    res = await client.post(
+        "/ai/chat/messages",
+        data={"message": "   "},
+    )
+    assert res.status_code == 400
+    assert res.json()["errorCode"] == "MESSAGE_EMPTY"
 
 
 @pytest.mark.asyncio
@@ -229,7 +302,9 @@ async def test_chat_attachment_filename_masked_in_prompt(client):
                     received_prompts.append(str(part.content))
         return ModelResponse(parts=[TextPart("Reviewed your document.")])
 
-    content = generate_sample_pdf(pages=1, text="Experience: Senior Software Engineer at Tech Corp")
+    content = generate_sample_pdf(
+        pages=1, text="Nguyen Van An\n## Experience\nSenior Software Engineer at Tech Corp"
+    )
     with chat_agent.override(model=FunctionModel(mock_fn)):
         files = {"files": ("CV_Nguyen_Van_An_Confidential.pdf", content, "application/pdf")}
         res = await client.post(

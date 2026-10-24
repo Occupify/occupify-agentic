@@ -7,7 +7,7 @@ from faststream.rabbit import RabbitBroker
 from app.core.config import get_settings
 from app.core.logging import get_current_context, log_step
 from app.messaging.broker import get_broker
-from app.messaging.topology import RPC_EXCHANGE, queue_name_for
+from app.messaging.topology import RPC_EXCHANGE
 
 
 class RpcClient:
@@ -24,10 +24,9 @@ class RpcClient:
         self,
         routing_key: str,
         args: dict[str, Any],
-        timeout_s: float | None = None,
     ) -> dict[str, Any]:
         settings = get_settings()
-        timeout = timeout_s if timeout_s is not None else float(settings.RABBITMQ_RPC_TIMEOUT_S)
+        timeout = float(settings.RABBITMQ_RPC_TIMEOUT_S)
         ctx = get_current_context()
 
         headers = {
@@ -49,26 +48,14 @@ class RpcClient:
             arg_keys=list(args.keys()),
         )
 
-        target_queue = queue_name_for(routing_key)
-        exchange_name = settings.RABBITMQ_RPC_EXCHANGE or RPC_EXCHANGE
-
         try:
-            # Primary routing via occupify.agent.rpc exchange with fallback to direct queue
-            try:
-                reply = await self.broker.request(
-                    message=args,
-                    exchange=exchange_name,
-                    routing_key=routing_key,
-                    timeout=timeout,
-                    headers=headers,
-                )
-            except Exception:
-                reply = await self.broker.request(
-                    message=args,
-                    queue=target_queue,
-                    timeout=timeout,
-                    headers=headers,
-                )
+            reply = await self.broker.request(
+                message=args,
+                exchange=RPC_EXCHANGE,
+                routing_key=routing_key,
+                timeout=timeout,
+                headers=headers,
+            )
 
             duration_ms = int((time.perf_counter() - start_time) * 1000)
 

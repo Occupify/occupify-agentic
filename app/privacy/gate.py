@@ -14,7 +14,7 @@ def strip_accents(s: str) -> str:
 def replace_known_identifiers(
     text: str,
     known_email: str = "",
-    known_name: str = "",
+    known_name: str | list[str] = "",
 ) -> tuple[str, dict[str, int]]:
     counts = {"known_email": 0, "known_name": 0}
 
@@ -24,20 +24,22 @@ def replace_known_identifiers(
         text, n = pattern.subn("[EMAIL]", text)
         counts["known_email"] += n
 
-    # Replace known full name (whole name only, with and without accents)
-    if known_name and len(known_name.strip().split()) >= 2:
-        name = known_name.strip()
-        # Direct match with accents
-        pattern1 = re.compile(r"\b" + re.escape(name) + r"\b", re.IGNORECASE)
-        text, n1 = pattern1.subn("[NAME]", text)
-        counts["known_name"] += n1
+    # Replace known names
+    names = [known_name] if isinstance(known_name, str) else (known_name or [])
+    for name_candidate in names:
+        if name_candidate and len(name_candidate.strip().split()) >= 2:
+            name = name_candidate.strip()
+            # Direct match with accents
+            pattern1 = re.compile(r"\b" + re.escape(name) + r"\b", re.IGNORECASE)
+            text, n1 = pattern1.subn("[NAME]", text)
+            counts["known_name"] += n1
 
-        # Match unaccented
-        name_no_accent = strip_accents(name)
-        if name_no_accent != name:
-            pattern2 = re.compile(r"\b" + re.escape(name_no_accent) + r"\b", re.IGNORECASE)
-            text, n2 = pattern2.subn("[NAME]", text)
-            counts["known_name"] += n2
+            # Match unaccented
+            name_no_accent = strip_accents(name)
+            if name_no_accent != name:
+                pattern2 = re.compile(r"\b" + re.escape(name_no_accent) + r"\b", re.IGNORECASE)
+                text, n2 = pattern2.subn("[NAME]", text)
+                counts["known_name"] += n2
 
     return text, counts
 
@@ -45,11 +47,12 @@ def replace_known_identifiers(
 def clean(
     text: str,
     source: str = "your message",
+    is_file: bool = False,
     known_email: str = "",
     known_name: str = "",
 ) -> tuple[str, dict[str, int]]:
     """
-    Cleans text by removing sections, contact headers, known identifiers,
+    Cleans text by removing sections, contact headers (for files), known identifiers,
     and PII pattern matches.
     If PII cannot be guaranteed clean, raises PiiRemovalFailedError.
     """
@@ -57,18 +60,33 @@ def clean(
         return text, {}
 
     total_counts: dict[str, int] = {}
+    names_to_clean: list[str] = [n.strip() for n in [known_name] if n and n.strip()]
 
-    # 1. Drop contact header block (top block of CV up to first section heading)
-    text, header_dropped = drop_contact_header(text)
-    if header_dropped:
-        total_counts["contact_header"] = header_dropped
+    # 1. Drop contact header block (files/attachments only, never typed message/context)
+    is_file_target = (
+        is_file
+        or "attachment" in source.lower()
+        or "file" in source.lower()
+        or "preview" in source.lower()
+        or "cv" in source.lower()
+    )
+
+    if is_file_target:
+        text, header_dropped, extracted_name, has_known_section = drop_contact_header(text)
+        if not has_known_section:
+            log_step("pii.blocked", source=source, reason="File has no recognized section headings")
+            raise PiiRemovalFailedError(source=source)
+        if header_dropped:
+            total_counts["contact_header"] = header_dropped
+        if extracted_name and extracted_name not in names_to_clean:
+            names_to_clean.append(extracted_name)
 
     # 2. Drop excluded sections (Education, Personal Info, Contact, References)
     text, sec_counts = drop_sections(text)
     total_counts.update(sec_counts)
 
-    # 3. Replace known identifiers (e.g. user email)
-    text, ident_counts = replace_known_identifiers(text, known_email, known_name)
+    # 3. Replace known identifiers (e.g. user email, candidate names)
+    text, ident_counts = replace_known_identifiers(text, known_email, names_to_clean)
     total_counts.update(ident_counts)
 
     # 4. Pattern detectors
@@ -82,7 +100,7 @@ def clean(
         total_counts[k] = total_counts.get(k, 0) + v
 
     # Verification: check if any unmasked PII remnants survive
-    if has_pii_remnants(text):
+    if has_pii_remnants(text, known_names=names_to_clean):
         log_step("pii.blocked", source=source, reason="PII remnants detected after cleaning")
         raise PiiRemovalFailedError(source=source)
 

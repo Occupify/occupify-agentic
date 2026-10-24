@@ -535,8 +535,94 @@ def test_pii_failure_blocking(monkeypatch):
     from app.core.errors import PiiRemovalFailedError
 
     # Strictly test that if has_pii_remnants flags an unmasked token, PiiRemovalFailedError is raised
-    monkeypatch.setattr(gate_mod, "has_pii_remnants", lambda text: True)
+    monkeypatch.setattr(gate_mod, "has_pii_remnants", lambda text, known_names=None: True)
     with pytest.raises(PiiRemovalFailedError) as exc_info:
         gate_mod.clean("Sample CV text", source="attachment_1")
     assert exc_info.value.status_code == 422
     assert exc_info.value.error_code == "PII_REMOVAL_FAILED"
+
+
+def test_f01_real_docling_flat_headings_removal():
+    docling_cv = """## Tran Van Minh
+## Senior Backend Developer
+## minh.tran@example.com | 091 234 56 78 | Ho Chi Minh City
+## WORK EXPERIENCE
+## Backend Developer, Acme Software (2020 - 2024)
+Built payment APIs with Spring Boot and PostgreSQL.
+## EDUCATION
+## Ho Chi Minh City University of Technology
+B.Eng. Computer Science, 2013 - 2018
+## REFERENCES
+## Le Thi Hoa
+Engineering Manager, Acme Software
+"""
+    cleaned, counts = clean(docling_cv, source="attachment_1")
+    assert "Tran Van Minh" not in cleaned
+    assert "minh.tran@example.com" not in cleaned
+    assert "091 234 56 78" not in cleaned
+    assert "Ho Chi Minh City University of Technology" not in cleaned
+    assert "Le Thi Hoa" not in cleaned
+    assert "2020 - 2024" in cleaned
+    assert "Built payment APIs with Spring Boot and PostgreSQL." in cleaned
+    assert counts.get("education", 0) > 0
+    assert counts.get("references", 0) > 0
+
+
+def test_f01_file_without_known_sections_fails_closed():
+    from app.core.errors import PiiRemovalFailedError
+
+    unstructured_cv = """# Nguyễn Văn An
+## Tech Stack
+Python, Django
+## Công việc đã làm
+Backend developer
+Signed: Nguyễn Văn An
+"""
+    with pytest.raises(PiiRemovalFailedError):
+        clean(unstructured_cv, source="attachment_1", is_file=True)
+
+
+def test_f01_candidate_name_repeated_in_body():
+    cv = """# Nguyễn Văn An
+## Summary
+Nguyễn Văn An is a backend developer with 5 years experience.
+## Work Experience
+Backend developer at Acme
+"""
+    cleaned, counts = clean(cv, source="attachment_1")
+    assert "Nguyễn Văn An" not in cleaned
+    assert "Nguyen Van An" not in cleaned
+    assert "[NAME] is a backend developer" in cleaned
+    assert "Backend developer at Acme" in cleaned
+
+
+def test_f22_typed_message_not_truncated_by_contact_header():
+    job_desc = """## Job Description
+We are looking for a Senior Python Developer with FastAPI experience.
+## Requirements
+- 5 years Python
+- PostgreSQL and Docker
+"""
+    cleaned, counts = clean(job_desc, source="your message", is_file=False)
+    assert "Job Description" in cleaned
+    assert "Senior Python Developer with FastAPI experience" in cleaned
+    assert "5 years Python" in cleaned
+    assert counts.get("contact_header", 0) == 0
+
+
+def test_f23_role_dates_and_currencies_survive_cleaning():
+    text = """## Work Experience
+Backend Developer at Acme Software (2020 - 2024)
+Software Engineer at OldCorp (2013-2018)
+Contractor period: 01/2020 - 05/2023
+Annual budget managed: 1.200.000.000 VND and 100.000.000 VND
+Call office for verification: 091 234 56 78
+"""
+    cleaned, counts = clean(text, source="attachment_1")
+    assert "2020 - 2024" in cleaned
+    assert "2013-2018" in cleaned
+    assert "01/2020 - 05/2023" in cleaned
+    assert "1.200.000.000 VND" in cleaned
+    assert "100.000.000 VND" in cleaned
+    assert "091 234 56 78" not in cleaned
+    assert "[PHONE]" in cleaned

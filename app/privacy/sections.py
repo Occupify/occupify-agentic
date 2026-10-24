@@ -92,9 +92,23 @@ INCLUDED_HEADING_PATTERN = re.compile(
 )
 
 
+def _categorize_excluded(title: str, counts: dict[str, int]) -> None:
+    lower = title.lower()
+    if any(
+        k in lower for k in ["education", "học vấn", "đào tạo", "bằng cấp", "học tập", "academic"]
+    ):
+        counts["education"] += 1
+    elif any(k in lower for k in ["reference", "referee", "tham chiếu", "giới thiệu"]):
+        counts["references"] += 1
+    elif any(k in lower for k in ["contact", "liên hệ", "liên lạc"]):
+        counts["contact_section"] += 1
+    else:
+        counts["personal_info"] += 1
+
+
 def parse_heading(line: str) -> tuple[bool, int, str]:
     """
-    Parses a markdown heading or emphasized all-caps heading.
+    Parses a markdown heading or emphasized heading.
     Returns (is_heading, level, clean_title).
     """
     stripped = line.strip()
@@ -108,13 +122,12 @@ def parse_heading(line: str) -> tuple[bool, int, str]:
         title = m.group(2).strip()
         return True, level, title
 
-    # Uppercase line or bold uppercase line without hash (e.g. **WORK EXPERIENCE** or HỌC VẤN:)
+    # Uppercase or bold title line without hash (e.g. **WORK EXPERIENCE** or **Education** or HỌC VẤN:)
     m2 = re.match(
-        r"^(?:\*{1,3}|_{1,3})?([A-ZÀ-Ỹ0-9\s&/\-]{3,60})(?:\*{1,3}|_{1,3})?\s*[:\-\—]?$", stripped
+        r"^(?:\*{1,3}|_{1,3})?([A-Za-zÀ-ỹ0-9\s&/\-]{3,60})(?:\*{1,3}|_{1,3})?\s*[:\-\—]?$", stripped
     )
     if m2:
         title = m2.group(1).strip()
-        # Verify it looks like a section name, not a regular sentence
         if INCLUDED_HEADING_PATTERN.search(title) or EXCLUDED_HEADING_PATTERN.search(title):
             return True, 2, title
 
@@ -132,79 +145,25 @@ def is_known_content_heading(title: str) -> bool:
 def drop_sections(text: str) -> tuple[str, dict[str, int]]:
     """
     Drops entire sections like Education, Personal Info, Contact, References.
-    Maintains skipping across sub-headings (e.g. ### inside ## Education)
-    until a heading of equal or higher level that is not excluded is encountered.
+    Vocabulary-based: once inside an excluded section, skipping continues across
+    subheadings and flat headings (like school names, degree titles, dates, referee names)
+    until a heading whose title matches INCLUDED_SECTION_KEYWORDS is encountered, or another
+    EXCLUDED_SECTION_KEYWORDS heading begins.
     """
     lines = text.split("\n")
     cleaned_lines: list[str] = []
     skipping = False
-    skip_level = 0
     counts = {"education": 0, "personal_info": 0, "contact_section": 0, "references": 0}
 
     for line in lines:
-        is_hd, level, title = parse_heading(line)
+        is_hd, _, title = parse_heading(line)
         if is_hd:
-            if skipping:
-                # If currently skipping an excluded section:
-                # Any subheading (level > skip_level) must also be skipped!
-                if level > skip_level:
-                    continue
-                # If equal or higher level (level <= skip_level):
-                # Check if this new heading is also excluded
-                if is_excluded_heading(title):
-                    skip_level = level
-                    lower = title.lower()
-                    if any(
-                        k in lower
-                        for k in [
-                            "education",
-                            "học vấn",
-                            "đào tạo",
-                            "bằng cấp",
-                            "học tập",
-                            "academic",
-                        ]
-                    ):
-                        counts["education"] += 1
-                    elif any(
-                        k in lower for k in ["reference", "referee", "tham chiếu", "giới thiệu"]
-                    ):
-                        counts["references"] += 1
-                    elif any(k in lower for k in ["contact", "liên hệ", "liên lạc"]):
-                        counts["contact_section"] += 1
-                    else:
-                        counts["personal_info"] += 1
-                    continue
-                else:
-                    # New valid content heading at equal or higher level
-                    skipping = False
-            else:
-                # Not currently skipping; check if entering an excluded section
-                if is_excluded_heading(title):
-                    skipping = True
-                    skip_level = level
-                    lower = title.lower()
-                    if any(
-                        k in lower
-                        for k in [
-                            "education",
-                            "học vấn",
-                            "đào tạo",
-                            "bằng cấp",
-                            "học tập",
-                            "academic",
-                        ]
-                    ):
-                        counts["education"] += 1
-                    elif any(
-                        k in lower for k in ["reference", "referee", "tham chiếu", "giới thiệu"]
-                    ):
-                        counts["references"] += 1
-                    elif any(k in lower for k in ["contact", "liên hệ", "liên lạc"]):
-                        counts["contact_section"] += 1
-                    else:
-                        counts["personal_info"] += 1
-                    continue
+            if is_excluded_heading(title):
+                skipping = True
+                _categorize_excluded(title, counts)
+                continue
+            elif is_known_content_heading(title):
+                skipping = False
 
         if not skipping:
             cleaned_lines.append(line)
@@ -212,11 +171,11 @@ def drop_sections(text: str) -> tuple[str, dict[str, int]]:
     return "\n".join(cleaned_lines), counts
 
 
-def drop_contact_header(text: str) -> tuple[str, int]:
+def drop_contact_header(text: str) -> tuple[str, int, str, bool]:
     """
     Drops the entire top block of a CV up to the first known content section heading
-    (e.g. Work Experience, Skills, Summary, Objective), treating any top heading
-    like '# Full Name' as part of the candidate header block to remove names and contact info.
+    or excluded section heading.
+    Returns (remaining_text, count_dropped, extracted_candidate_name, has_known_section).
     """
     lines = text.split("\n")
     first_known_section_idx = -1
@@ -227,26 +186,29 @@ def drop_contact_header(text: str) -> tuple[str, int]:
             first_known_section_idx = idx
             break
 
-    if first_known_section_idx > 0:
-        return "\n".join(lines[first_known_section_idx:]), 1
+    if first_known_section_idx == -1:
+        return text, 0, "", False
 
-    # Fallback if no known section heading was detected:
-    # check if lines before any heading contain contact info
-    first_any_heading_idx = -1
-    for idx, line in enumerate(lines):
-        is_hd, _, _ = parse_heading(line)
-        if is_hd:
-            first_any_heading_idx = idx
+    # Extract candidate name from top block (lines before first_known_section_idx)
+    extracted_name = ""
+    for line in lines[:first_known_section_idx]:
+        stripped = line.strip()
+        if not stripped:
+            continue
+        cleaned = re.sub(r"^[\s#*_\->|:]+", "", stripped)
+        cleaned = re.sub(r"[\s*_\->|:]+$", "", cleaned).strip()
+        if not cleaned:
+            continue
+        words = cleaned.split()
+        if (
+            2 <= len(words) <= 6
+            and "@" not in cleaned
+            and "http" not in cleaned.lower()
+            and not re.search(r"\d{4,}", cleaned)
+        ):
+            extracted_name = cleaned
             break
 
-    if first_any_heading_idx > 0:
-        top_text = "\n".join(lines[:first_any_heading_idx])
-        if (
-            "@" in top_text
-            or "[EMAIL]" in top_text
-            or "[PHONE]" in top_text
-            or re.search(r"\d{8,}", top_text)
-        ):
-            return "\n".join(lines[first_any_heading_idx:]), 1
-
-    return text, 0
+    remaining_lines = lines[first_known_section_idx:]
+    count = 1 if first_known_section_idx > 0 else 0
+    return "\n".join(remaining_lines), count, extracted_name, True

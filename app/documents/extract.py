@@ -1,4 +1,5 @@
 import hashlib
+import logging
 import os
 import time
 from io import BytesIO
@@ -11,8 +12,8 @@ from app.core.logging import log_step
 
 class PdfiumExtractor:
     @staticmethod
-    def extract(content: bytes) -> tuple[str, int, int]:
-        """Extracts text from PDF using pypdfium2. Returns (text, page_count, ocr_pages=0)."""
+    def extract(content: bytes) -> tuple[str, int]:
+        """Extracts text from PDF using pypdfium2. Returns (text, page_count)."""
         doc = pdfium.PdfDocument(BytesIO(content))
         page_count = len(doc)
         pages_text: list[str] = []
@@ -24,7 +25,7 @@ class PdfiumExtractor:
             if text and text.strip():
                 pages_text.append(text.strip())
 
-        return "\n\n".join(pages_text), page_count, 0
+        return "\n\n".join(pages_text), page_count
 
 
 class DoclingExtractor:
@@ -37,7 +38,7 @@ class DoclingExtractor:
                 from docling.datamodel.base_models import InputFormat
                 from docling.datamodel.pipeline_options import (
                     PdfPipelineOptions,
-                    TesseractOcrOptions,
+                    TesseractCliOcrOptions,
                 )
                 from docling.document_converter import DocumentConverter, PdfFormatOption
 
@@ -51,22 +52,30 @@ class DoclingExtractor:
                 ocr_langs = [
                     lang.strip() for lang in settings.OCR_LANGS.split(",") if lang.strip()
                 ] or ["vie", "eng"]
-                pipeline_options.ocr_options = TesseractOcrOptions(lang=ocr_langs)
+                pipeline_options.ocr_options = TesseractCliOcrOptions(lang=ocr_langs)
 
                 cls._converter = DocumentConverter(
                     format_options={
                         InputFormat.PDF: PdfFormatOption(pipeline_options=pipeline_options)
                     }
                 )
-            except Exception:
+            except Exception as e:
+                log_step(
+                    "docling.init_failed", level=logging.WARNING, error=str(e), fallback="pdfium"
+                )
                 cls._converter = False
         return cls._converter
 
     @classmethod
-    def extract(cls, content: bytes) -> tuple[str, int, int]:
+    def extract(cls, content: bytes) -> tuple[str, int]:
         converter = cls.get_converter()
         if not converter:
-            # Fallback to pdfium
+            log_step(
+                "docling.fallback",
+                level=logging.WARNING,
+                reason="converter_not_available",
+                fallback="pdfium",
+            )
             return PdfiumExtractor.extract(content)
 
         from docling.datamodel.document import DocumentStream
@@ -75,31 +84,29 @@ class DoclingExtractor:
         conv_res = converter.convert(stream)
         text = conv_res.document.export_to_markdown()
         pages = len(conv_res.document.pages) if hasattr(conv_res.document, "pages") else 1
-        return text, pages, 0
+        return text, pages
 
 
-def extract_pdf_text(content: bytes, filename: str | None = None) -> tuple[str, int, str, int]:
+def extract_pdf_text(content: bytes) -> tuple[str, int, str]:
     """
     Extracts text from PDF according to configured PDF_EXTRACTOR.
-    Returns (raw_text, page_count, extractor_used, ocr_pages).
-    Accepts optional filename for backwards compatibility, but never logs or exposes it.
+    Returns (raw_text, page_count, extractor_used).
     """
     settings = get_settings()
     start_time = time.perf_counter()
-    ocr_pages = 0
     extractor_used = settings.PDF_EXTRACTOR.lower()
     sha_prefix = hashlib.sha256(content).hexdigest()[:8]
 
     if extractor_used == "docling":
         try:
-            text, pages, ocr_pages = DoclingExtractor.extract(content)
-        except Exception:
-            # Fallback to pdfium
+            text, pages = DoclingExtractor.extract(content)
+        except Exception as e:
+            log_step("docling.fallback", level=logging.WARNING, reason=str(e), fallback="pdfium")
             extractor_used = "pdfium"
-            text, pages, ocr_pages = PdfiumExtractor.extract(content)
+            text, pages = PdfiumExtractor.extract(content)
     else:
         extractor_used = "pdfium"
-        text, pages, ocr_pages = PdfiumExtractor.extract(content)
+        text, pages = PdfiumExtractor.extract(content)
 
     duration_ms = int((time.perf_counter() - start_time) * 1000)
     log_step(
@@ -107,9 +114,8 @@ def extract_pdf_text(content: bytes, filename: str | None = None) -> tuple[str, 
         pages=pages,
         extractor=extractor_used,
         ms=duration_ms,
-        ocr_pages=ocr_pages,
         sha256_prefix=sha_prefix,
         bytes=len(content),
     )
 
-    return text, pages, extractor_used, ocr_pages
+    return text, pages, extractor_used

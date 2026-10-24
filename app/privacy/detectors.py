@@ -55,6 +55,38 @@ LABELLED_LINE_REGEX = re.compile(
 )
 
 
+YEAR_OR_DATE_RANGE_REGEX = re.compile(
+    r"^(?:(?:\d{1,2}[/-])?(?:19|20)\d{2})\s*[-–—/]\s*(?:(?:\d{1,2}[/-])?(?:19|20)\d{2})$"
+)
+THOUSANDS_SEPARATOR_REGEX = re.compile(r"^\d{1,3}(?:\.\d{3}){2,}$")
+CURRENCY_SUFFIX_REGEX = re.compile(r"^\s*(?:vnd|vnđ|usd|eur|\$|đ|đồng)\b", re.IGNORECASE)
+
+
+def strip_accents(s: str) -> str:
+    import unicodedata
+
+    return "".join(c for c in unicodedata.normalize("NFD", s) if unicodedata.category(c) != "Mn")
+
+
+def is_phone_number(match_str: str, full_text: str = "", start: int = 0, end: int = 0) -> bool:
+    s = match_str.strip()
+    digits = re.sub(r"\D", "", s)
+    if not (8 <= len(digits) <= 13):
+        return False
+    # Exclude year ranges, e.g. 2020-2024, 2013 - 2018, 01/2020 - 05/2023
+    if YEAR_OR_DATE_RANGE_REGEX.match(s):
+        return False
+    # Exclude dot-separated numbers/currencies (e.g. 1.200.000.000, 100.000.000)
+    if THOUSANDS_SEPARATOR_REGEX.match(s):
+        return False
+    # Check if followed by currency markers in full text
+    if full_text and end < len(full_text):
+        trailing = full_text[end : end + 10]
+        if CURRENCY_SUFFIX_REGEX.match(trailing):
+            return False
+    return True
+
+
 def remove_patterns(text: str) -> tuple[str, dict[str, int]]:
     counts = {
         "email": 0,
@@ -81,24 +113,30 @@ def remove_patterns(text: str) -> tuple[str, dict[str, int]]:
 
     text = EMAIL_REGEX.sub(_email_sub, text)
 
-    # 3. Phones
-    def _phone_sub(m: re.Match) -> str:
-        digits = re.sub(r"\D", "", m.group(0))
-        if 8 <= len(digits) <= 13:
-            counts["phone"] += 1
-            return "[PHONE]"
-        return m.group(0)
-
-    text = PHONE_REGEX.sub(_phone_sub, text)
-
-    # 4. Passports
+    # 3. Passports
     def _passport_sub(m: re.Match) -> str:
         counts["passport"] += 1
         return "[ID_NUMBER]"
 
     text = PASSPORT_REGEX.sub(_passport_sub, text)
 
-    # 5. Social links & Portfolios
+    # 4. ID Numbers (Vietnam CCCD 12 digits, CMND 9 digits) - run before phone (F-28)
+    def _id_sub(m: re.Match) -> str:
+        counts["id_number"] += 1
+        return "[ID_NUMBER]"
+
+    text = ID_NUMBER_REGEX.sub(_id_sub, text)
+
+    # 5. Phones (excluding year ranges, currencies)
+    def _phone_sub(m: re.Match) -> str:
+        if is_phone_number(m.group(0), text, m.start(), m.end()):
+            counts["phone"] += 1
+            return "[PHONE]"
+        return m.group(0)
+
+    text = PHONE_REGEX.sub(_phone_sub, text)
+
+    # 6. Social links & Portfolios
     def _social_sub(m: re.Match) -> str:
         counts["social_link"] += 1
         return "[SOCIAL_LINK]"
@@ -111,31 +149,23 @@ def remove_patterns(text: str) -> tuple[str, dict[str, int]]:
 
     text = PORTFOLIO_LINK_REGEX.sub(_portfolio_sub, text)
 
-    # 6. Generic URLs
+    # 7. Generic URLs
     def _url_sub(m: re.Match) -> str:
         counts["url"] += 1
         return "[LINK]"
 
     text = GENERIC_URL_REGEX.sub(_url_sub, text)
 
-    # 7. ID Numbers (Vietnam CCCD 12 digits, CMND 9 digits)
-    def _id_sub(m: re.Match) -> str:
-        counts["id_number"] += 1
-        return "[ID_NUMBER]"
-
-    text = ID_NUMBER_REGEX.sub(_id_sub, text)
-
     return text, counts
 
 
-def has_pii_remnants(text: str) -> bool:
+def has_pii_remnants(text: str, known_names: list[str] | None = None) -> bool:
     """Returns True if any unmasked personal identifier is still present."""
     if EMAIL_REGEX.search(text):
         return True
 
     for m in PHONE_REGEX.finditer(text):
-        digits = re.sub(r"\D", "", m.group(0))
-        if 8 <= len(digits) <= 13:
+        if is_phone_number(m.group(0), text, m.start(), m.end()):
             return True
 
     if ID_NUMBER_REGEX.search(text):
@@ -146,5 +176,19 @@ def has_pii_remnants(text: str) -> bool:
 
     if LABELLED_LINE_REGEX.search(text):
         return True
+
+    if known_names:
+        for name in known_names:
+            if not name or len(name.strip().split()) < 2:
+                continue
+            clean_n = name.strip()
+            pattern1 = re.compile(r"\b" + re.escape(clean_n) + r"\b", re.IGNORECASE)
+            if pattern1.search(text):
+                return True
+            clean_no_accent = strip_accents(clean_n)
+            if clean_no_accent != clean_n:
+                pattern2 = re.compile(r"\b" + re.escape(clean_no_accent) + r"\b", re.IGNORECASE)
+                if pattern2.search(text):
+                    return True
 
     return False

@@ -2,11 +2,11 @@ from pydantic_ai import Agent
 
 from app.agents.deps import AgentDeps
 from app.features.chat.prompts import CHAT_SYSTEM_PROMPT
-from app.llm.glm import model_for
+from app.llm.glm import get_model
 
 
 def get_chat_agent() -> Agent[AgentDeps, str]:
-    model = model_for("chat")
+    model = get_model()
     agent = Agent(
         model=model,
         system_prompt=CHAT_SYSTEM_PROMPT,
