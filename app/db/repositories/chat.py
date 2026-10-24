@@ -25,11 +25,10 @@ class ChatRepository:
         self,
         user_id: str,
         title: str,
-        session_id: str | None = None,
     ) -> ChatSession:
         now = datetime.now(UTC)
         chat_sess = ChatSession(
-            id=session_id or str(uuid.uuid4()),
+            id=str(uuid.uuid4()),
             user_id=user_id,
             title=title[:255],
             message_count=0,
@@ -160,6 +159,7 @@ class ChatRepository:
         tokens_in: int = 0,
         tokens_out: int = 0,
         status: str = "complete",
+        asst_message_id: str | None = None,
     ) -> tuple[ChatMessage, ChatMessage]:
         now = datetime.now(UTC)
         sess = await self.session.get(ChatSession, session_id)
@@ -186,7 +186,7 @@ class ChatRepository:
 
         # 2. Assistant message
         asst_msg = ChatMessage(
-            id=str(uuid.uuid4()),
+            id=asst_message_id or str(uuid.uuid4()),
             session_id=session_id,
             user_id=user_id,
             seq=next_seq + 1,

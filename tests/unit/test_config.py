@@ -1,24 +1,14 @@
 from app.core.config import Settings
 
 
-def test_model_fallback():
-    settings = Settings(
-        GLM_MODEL_DEFAULT="glm-4.7",
-        GLM_MODEL_CHAT="",
-        GLM_MODEL_ROADMAP="glm-5.3",
-    )
-    assert settings.model_for("chat") == "glm-4.7"
-    assert settings.model_for("cv_match") == "glm-4.7"
-    assert settings.model_for("roadmap") == "glm-5.3"
+def test_model_setting():
+    settings = Settings(GLM_MODEL="glm-5.3")
+    assert settings.GLM_MODEL == "glm-5.3"
 
 
-def test_custom_overrides():
-    settings = Settings(
-        GLM_MODEL_DEFAULT="glm-4.7",
-        GLM_MODEL_CHAT="glm-4.7-flash",
-    )
-    assert settings.model_for("chat") == "glm-4.7-flash"
-    assert settings.model_for("unknown") == "glm-4.7"
+def test_model_default():
+    settings = Settings()
+    assert settings.GLM_MODEL == "glm-4.7"
 
 
 def test_chat_and_pdf_defaults():

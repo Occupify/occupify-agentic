@@ -35,7 +35,7 @@ async def start_broker() -> None:
         log_step("broker.connected")
     except Exception as exc:
         _broker_connected = False
-        log_step("broker.connect_failed", error=str(exc))
+        log_step("broker.connect_failed", error_type=type(exc).__name__)
 
 
 async def close_broker() -> None:

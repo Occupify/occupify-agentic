@@ -13,20 +13,11 @@ class Settings(BaseSettings):
     APP_ENV: str = "production"
     APP_PORT: int = 8186
     LOG_LEVEL: str = "INFO"
-    LOG_PAYLOADS: bool = False
 
     # GLM (z.ai)
     ZAI_API_KEY: str = ""
     ZAI_BASE_URL: str = "https://api.z.ai/api/paas/v4"
-    GLM_MODEL_DEFAULT: str = "glm-4.7"
-    GLM_THINKING: bool = False
-
-    GLM_MODEL_CHAT: str = ""
-    GLM_MODEL_ROADMAP: str = ""
-    GLM_MODEL_CV_MATCH: str = ""
-    GLM_MODEL_APPLICANT_RANKING: str = ""
-    GLM_MODEL_JOB_RECOMMENDATION: str = ""
-    GLM_MODEL_PROJECT_DRAFT: str = ""
+    GLM_MODEL: str = "glm-4.7"
 
     GLM_TIMEOUT_S: int = 120
     GLM_MAX_REQUESTS_PER_RUN: int = 10
@@ -42,7 +33,6 @@ class Settings(BaseSettings):
     PDF_MAX_PAGES: int = 20
     PDF_EXTRACTOR: str = "docling"
     OCR_LANGS: str = "vie,eng"
-    PDF_ALLOWED_HOSTS: str = ""
 
     # Database
     DATABASE_URL: str = (
@@ -52,21 +42,6 @@ class Settings(BaseSettings):
     # RabbitMQ
     RABBITMQ_URL: str = "amqp://guest:guest@occupify-rabbitmq:5672/"
     RABBITMQ_RPC_TIMEOUT_S: int = 10
-    RABBITMQ_RPC_EXCHANGE: str = "occupify.agent.rpc"
-
-    def model_for(self, use_case: str) -> str:
-        mapping = {
-            "chat": self.GLM_MODEL_CHAT,
-            "roadmap": self.GLM_MODEL_ROADMAP,
-            "cv_match": self.GLM_MODEL_CV_MATCH,
-            "applicant_ranking": self.GLM_MODEL_APPLICANT_RANKING,
-            "job_recommendation": self.GLM_MODEL_JOB_RECOMMENDATION,
-            "project_draft": self.GLM_MODEL_PROJECT_DRAFT,
-        }
-        val = mapping.get(use_case)
-        if val and val.strip():
-            return val.strip()
-        return self.GLM_MODEL_DEFAULT.strip()
 
 
 @lru_cache

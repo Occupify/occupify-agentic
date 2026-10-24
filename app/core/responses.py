@@ -1,34 +1,4 @@
-from typing import Any, TypeVar
-
-from pydantic import BaseModel
-
-T = TypeVar("T")
-
-
-class PagingMeta(BaseModel):
-    page: int
-    limit: int
-    total: int
-    totalPages: int
-
-
-class SingleResponse[T](BaseModel):
-    statusCode: int = 200
-    message: str = "OK"
-    data: T
-
-
-class PageResponse[T](BaseModel):
-    statusCode: int = 200
-    message: str = "OK"
-    data: list[T]
-    paging: PagingMeta
-
-
-class ErrorResponse(BaseModel):
-    statusCode: int
-    message: str
-    errorCode: str
+from typing import Any
 
 
 def success_response(data: Any, message: str = "OK", status_code: int = 200) -> dict[str, Any]:

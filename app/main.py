@@ -22,15 +22,7 @@ async def lifespan(app: FastAPI):
     if settings.APP_ENV != "test" and not settings.ZAI_API_KEY:
         raise RuntimeError("ZAI_API_KEY environment variable is required in non-test environments.")
 
-    models_info = {
-        "chat": settings.model_for("chat"),
-        "roadmap": settings.model_for("roadmap"),
-        "cv_match": settings.model_for("cv_match"),
-        "applicant_ranking": settings.model_for("applicant_ranking"),
-        "job_recommendation": settings.model_for("job_recommendation"),
-        "project_draft": settings.model_for("project_draft"),
-    }
-    log_step("app.startup", env=settings.APP_ENV, port=settings.APP_PORT, models=models_info)
+    log_step("app.startup", env=settings.APP_ENV, port=settings.APP_PORT, model=settings.GLM_MODEL)
 
     # Initialize DB (tables + cleanup). Fail startup if tables cannot be initialized (F-20)
     await init_db()
