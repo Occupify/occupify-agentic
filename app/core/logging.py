@@ -1,11 +1,19 @@
+import asyncio
 import json
 import logging
 import sys
+import threading
+from collections import deque
 from contextvars import ContextVar
 from datetime import UTC, datetime
 from typing import Any
 
 from app.core.config import get_settings
+
+_LOG_BUFFER_MAX = 1000
+_log_buffer: deque[dict[str, Any]] = deque(maxlen=_LOG_BUFFER_MAX)
+_subscribers: set["LogSubscriber"] = set()
+_log_lock = threading.Lock()
 
 _context: ContextVar[dict[str, Any]] = ContextVar("log_context", default={})
 
@@ -22,6 +30,44 @@ def bind_context(**fields: Any) -> None:
 
 def get_current_context() -> dict[str, Any]:
     return dict(_context.get())
+
+
+_subscribers: set["LogSubscriber"] = set()
+_log_lock = threading.Lock()
+
+
+class LogSubscriber:
+    def __init__(self, queue: asyncio.Queue[dict[str, Any]], loop: asyncio.AbstractEventLoop):
+        self.queue = queue
+        self.loop = loop
+
+    def push(self, entry: dict[str, Any]) -> None:
+        try:
+            self.loop.call_soon_threadsafe(self.queue.put_nowait, entry)
+        except Exception:
+            pass
+
+
+def get_recent_logs(limit: int = 200, session_id: str | None = None) -> list[dict[str, Any]]:
+    with _log_lock:
+        entries = list(_log_buffer)
+    if session_id:
+        entries = [e for e in entries if e.get("session_id") == session_id]
+    return entries[-limit:]
+
+
+def subscribe_logs() -> tuple[asyncio.Queue[dict[str, Any]], LogSubscriber]:
+    loop = asyncio.get_running_loop()
+    q: asyncio.Queue[dict[str, Any]] = asyncio.Queue(maxsize=1000)
+    sub = LogSubscriber(q, loop)
+    with _log_lock:
+        _subscribers.add(sub)
+    return q, sub
+
+
+def unsubscribe_logs(sub: LogSubscriber) -> None:
+    with _log_lock:
+        _subscribers.discard(sub)
 
 
 class JSONFormatter(logging.Formatter):
@@ -54,6 +100,11 @@ class JSONFormatter(logging.Formatter):
 
         if record.exc_info:
             entry["exception"] = self.formatException(record.exc_info)
+
+        with _log_lock:
+            _log_buffer.append(entry)
+            for sub in list(_subscribers):
+                sub.push(entry)
 
         return json.dumps(entry, ensure_ascii=False)
 

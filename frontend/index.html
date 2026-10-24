@@ -1,0 +1,136 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Occupify AI Agent Console</title>
+  <link rel="stylesheet" href="/ui/styles.css">
+</head>
+<body>
+  <!-- Fixed Header -->
+  <header class="app-header">
+    <div class="header-brand">
+      <span class="logo-badge">AI</span>
+      <h1>Occupify Agentic Console</h1>
+    </div>
+    <div class="header-notice" role="alert">
+      ⚠️ <strong>Use synthetic data only — the privacy filter is still being fixed</strong>
+    </div>
+    <div class="header-user">
+      <label for="user-id-input">User ID:</label>
+      <input type="text" id="user-id-input" placeholder="e.g. dev-user-1">
+    </div>
+  </header>
+
+  <!-- Main Layout -->
+  <div class="app-container">
+    <!-- Sidebar: Sessions -->
+    <aside class="sidebar">
+      <div class="sidebar-header">
+        <h2>Chats</h2>
+        <button id="new-chat-btn" class="btn btn-primary" title="Start a new chat">+ New Chat</button>
+      </div>
+      <div id="session-list" class="session-list" role="navigation" aria-label="Chat sessions">
+        <!-- Sessions dynamically populated -->
+      </div>
+    </aside>
+
+    <!-- Center: Chat Conversation & Form -->
+    <main class="chat-main">
+      <div class="chat-header">
+        <h2 id="current-chat-title">New Conversation</h2>
+        <span id="chat-status" class="chat-status-badge">Ready</span>
+      </div>
+
+      <div id="chat-messages" class="chat-messages" role="log" aria-live="polite">
+        <div class="empty-state" id="empty-state">
+          <p>No messages yet. Send a message to start conversing with the Occupify agent.</p>
+        </div>
+      </div>
+
+      <div class="chat-composer">
+        <form id="chat-form" class="chat-form">
+          <div class="form-row">
+            <textarea
+              id="message-input"
+              class="form-control"
+              placeholder="Ask anything or request resume feedback... (Enter to send, Shift+Enter for newline)"
+              rows="3"
+              required
+            ></textarea>
+          </div>
+          <div class="form-details">
+            <details class="context-details">
+              <summary>Optional Context</summary>
+              <textarea
+                id="context-input"
+                class="form-control"
+                placeholder="Paste job description, target role, or background context here..."
+                rows="2"
+              ></textarea>
+            </details>
+            <div class="attachments-row">
+              <label for="files-input" class="file-label">
+                📎 Attach PDFs (up to 3):
+              </label>
+              <input type="file" id="files-input" accept=".pdf" multiple max="3">
+              <span id="files-selected-count" class="files-selected-text"></span>
+            </div>
+          </div>
+          <div class="form-actions">
+            <div id="form-error" class="form-error" style="display: none;"></div>
+            <button type="submit" id="send-btn" class="btn btn-send">Send</button>
+          </div>
+        </form>
+      </div>
+    </main>
+
+    <!-- Right: Live Log Panel -->
+    <aside id="log-panel" class="log-panel">
+      <div class="log-panel-header">
+        <div class="log-title-row">
+          <h2>Live Step Logs</h2>
+          <div class="log-controls">
+            <div class="filter-group">
+              <label><input type="radio" name="log-scope" id="log-filter-all" value="all" checked> All</label>
+              <label><input type="radio" name="log-scope" id="log-filter-session" value="session"> This chat</label>
+            </div>
+            <button id="log-pause-btn" class="btn btn-sm" title="Pause live updates">Pause</button>
+            <button id="log-clear-btn" class="btn btn-sm btn-outline" title="Clear log entries">Clear</button>
+          </div>
+        </div>
+        <div id="token-stats" class="token-stats-bar">
+          <span class="stat-item">In: <strong id="stat-tokens-in">0</strong></span>
+          <span class="stat-divider">·</span>
+          <span class="stat-item">Out: <strong id="stat-tokens-out">0</strong></span>
+          <span class="stat-divider">·</span>
+          <span class="stat-item">Reasoning: <strong id="stat-tokens-reasoning">0</strong></span>
+          <span class="stat-divider">·</span>
+          <span class="stat-item">Total: <strong id="stat-tokens-total">0</strong></span>
+        </div>
+      </div>
+
+      <div class="log-table-container">
+        <table class="log-table">
+          <thead>
+            <tr>
+              <th>Time</th>
+              <th>Level</th>
+              <th>Event</th>
+              <th>Model</th>
+              <th>Tokens (I/O/R)</th>
+              <th>Latency</th>
+              <th>Run ID</th>
+            </tr>
+          </thead>
+          <tbody id="log-table-body">
+            <!-- Dynamic rows -->
+          </tbody>
+        </table>
+      </div>
+    </aside>
+  </div>
+
+  <script src="/ui/app.js"></script>
+</body>
+</html>

@@ -69,23 +69,37 @@ class ChatRepository:
         await self.session.commit()
         return True
 
-    async def mark_busy(self, session_id: str, stale_timeout_s: int = 300) -> bool:
+    async def mark_busy(
+        self, session_id: str, user_id: str | None = None, stale_timeout_s: int = 300
+    ) -> datetime | None:
         now = datetime.now(UTC)
         stale_cutoff = now - timedelta(seconds=stale_timeout_s)
+        stmt = update(ChatSession).where(ChatSession.id == session_id)
+        if user_id is not None:
+            stmt = stmt.where(ChatSession.user_id == user_id)
         stmt = (
-            update(ChatSession)
-            .where(ChatSession.id == session_id)
-            .where(or_(ChatSession.busy_since.is_(None), ChatSession.busy_since < stale_cutoff))
+            stmt.where(or_(ChatSession.busy_since.is_(None), ChatSession.busy_since < stale_cutoff))
             .values(busy_since=now)
-            .returning(ChatSession.id)
+            .returning(ChatSession.busy_since)
         )
         res = await self.session.execute(stmt)
         await self.session.commit()
-        updated_id = res.scalar_one_or_none()
-        return updated_id is not None
+        token = res.scalar_one_or_none()
+        return token
 
-    async def clear_busy(self, session_id: str) -> None:
-        stmt = update(ChatSession).where(ChatSession.id == session_id).values(busy_since=None)
+    async def clear_busy(
+        self, session_id: str, user_id: str | None = None, token: datetime | None = None
+    ) -> None:
+        if token is None:
+            return
+        stmt = (
+            update(ChatSession)
+            .where(ChatSession.id == session_id)
+            .where(ChatSession.busy_since == token)
+        )
+        if user_id is not None:
+            stmt = stmt.where(ChatSession.user_id == user_id)
+        stmt = stmt.values(busy_since=None)
         await self.session.execute(stmt)
         await self.session.commit()
 

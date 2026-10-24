@@ -17,7 +17,8 @@ class Settings(BaseSettings):
     # GLM (z.ai)
     ZAI_API_KEY: str = ""
     ZAI_BASE_URL: str = "https://api.z.ai/api/paas/v4"
-    GLM_MODEL: str = "glm-4.7"
+    # Cheapest paid model; glm-4.7-flash is free and must not be used (INV-9)
+    GLM_MODEL: str = "glm-4.7-flashx"
 
     GLM_TIMEOUT_S: int = 120
     GLM_MAX_REQUESTS_PER_RUN: int = 10

@@ -8,7 +8,7 @@ def test_model_setting():
 
 def test_model_default():
     settings = Settings()
-    assert settings.GLM_MODEL == "glm-4.7"
+    assert settings.GLM_MODEL == "glm-4.7-flashx"
 
 
 def test_chat_and_pdf_defaults():

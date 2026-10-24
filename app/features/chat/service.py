@@ -3,6 +3,7 @@ import hashlib
 import json
 import uuid
 from collections.abc import AsyncIterator, Sequence
+from datetime import datetime
 from typing import Any
 
 from fastapi import UploadFile
@@ -71,17 +72,16 @@ class ChatService:
                 "files", f"cannot upload more than {self.settings.CHAT_MAX_FILES} files."
             )
 
-        # 2. Existing session: check and lock first (F-24)
+        # 2. Existing session: check and lock first (F-24, F-50)
         new_session = False
-        existing_session_locked = False
+        lock_token: datetime | None = None
         if session_id:
             chat_sess = await self.chat_repo.get_session(session_id, user.user_id)
             if not chat_sess:
                 raise SessionNotFoundError()
-            busy_ok = await self.chat_repo.mark_busy(session_id)
-            if not busy_ok:
+            lock_token = await self.chat_repo.mark_busy(session_id, user.user_id)
+            if not lock_token:
                 raise ChatBusyError()
-            existing_session_locked = True
 
         try:
             # 3. Process attachments: capped read & threadpool extraction
@@ -161,7 +161,7 @@ class ChatService:
                 chat_sess = await self.chat_repo.create_session(user.user_id, title)
                 session_id = chat_sess.id
                 new_session = True
-                await self.chat_repo.mark_busy(session_id)
+                lock_token = await self.chat_repo.mark_busy(session_id, user.user_id)
 
             # 6. Compose turn prompt
             prompt_parts = []
@@ -175,10 +175,10 @@ class ChatService:
             # 7. Load all previous model messages
             history = await self.chat_repo.get_all_model_messages(session_id)
 
-            return session_id, new_session, final_prompt, attachments_info, history
+            return session_id, new_session, final_prompt, attachments_info, history, lock_token
         except Exception:
-            if existing_session_locked and session_id:
-                await self.chat_repo.clear_busy(session_id)
+            if session_id and lock_token is not None:
+                await self.chat_repo.clear_busy(session_id, user.user_id, token=lock_token)
             raise
 
     async def send_message(
@@ -211,7 +211,8 @@ class ChatService:
                             usage=TokenUsage(tokensIn=msg.tokens_in, tokensOut=msg.tokens_out),
                         )
 
-        active_session_id = session_id
+        active_session_id = None
+        lock_token: datetime | None = None
         try:
             (
                 active_session_id,
@@ -219,6 +220,7 @@ class ChatService:
                 final_prompt,
                 attachments_info,
                 history,
+                lock_token,
             ) = await self._prepare_turn(
                 user=user,
                 message=message,
@@ -270,8 +272,8 @@ class ChatService:
             )
 
         finally:
-            if active_session_id:
-                await self.chat_repo.clear_busy(active_session_id)
+            if active_session_id and lock_token is not None:
+                await self.chat_repo.clear_busy(active_session_id, user.user_id, token=lock_token)
 
     async def stream_chat_turn(
         self,
@@ -296,7 +298,8 @@ class ChatService:
                         yield f"event: done\ndata: {json.dumps({'model': self.settings.GLM_MODEL, 'usage': {'tokensIn': msg.tokens_in, 'tokensOut': msg.tokens_out}})}\n\n"
                         return
 
-        active_session_id = session_id
+        active_session_id = None
+        lock_token: datetime | None = None
         full_output_chunks: list[str] = []
         last_run_id = ""
         tokens_in = 0
@@ -312,6 +315,7 @@ class ChatService:
                 final_prompt,
                 attachments_info,
                 history,
+                lock_token,
             ) = await self._prepare_turn(
                 user=user,
                 message=message,
@@ -406,24 +410,50 @@ class ChatService:
                     yield f"event: done\ndata: {json.dumps(done_payload)}\n\n"
 
         except asyncio.CancelledError:
-            # Client disconnected mid-stream; save partial output as interrupted (F-14)
-            if active_session_id and full_output_chunks:
-                partial_text = "".join(full_output_chunks)
-                await self.chat_repo.save_turn(
-                    session_id=active_session_id,
-                    user_id=user.user_id,
-                    user_display_text=message,
-                    assistant_display_text=partial_text,
-                    user_model_messages=[],
-                    assistant_model_messages=[],
-                    attachments=[a.model_dump(by_alias=True) for a in attachments_info],
-                    client_message_id=client_message_id,
-                    run_id=last_run_id,
-                    tokens_in=tokens_in,
-                    tokens_out=tokens_out,
-                    status="interrupted",
-                    asst_message_id=turn_message_id,
-                )
+            import anyio
+
+            with anyio.CancelScope(shield=True):
+                # Client disconnected mid-stream; cancel producer and await it first (F-52)
+                if producer_task and not producer_task.done():
+                    producer_task.cancel()
+                    try:
+                        await producer_task
+                    except (asyncio.CancelledError, Exception):
+                        pass
+
+                if active_session_id:
+                    partial_text = "".join(full_output_chunks)
+                    if partial_text:
+                        await self.chat_repo.save_turn(
+                            session_id=active_session_id,
+                            user_id=user.user_id,
+                            user_display_text=message,
+                            assistant_display_text=partial_text,
+                            user_model_messages=[],
+                            assistant_model_messages=[],
+                            attachments=[a.model_dump(by_alias=True) for a in attachments_info],
+                            client_message_id=client_message_id,
+                            run_id=last_run_id,
+                            tokens_in=tokens_in,
+                            tokens_out=tokens_out,
+                            status="interrupted",
+                            asst_message_id=turn_message_id,
+                        )
+                    if last_run_id:
+                        from app.db.repositories.runs import RunRepository
+
+                        run_repo = RunRepository(self.db)
+                        await run_repo.finish_failed(
+                            run_id=last_run_id,
+                            error_message="Client disconnected (interrupted)",
+                            latency_ms=0,
+                            steps=[{"event": "run.interrupted", "tokens_known": False}],
+                        )
+                    if lock_token is not None:
+                        await self.chat_repo.clear_busy(
+                            active_session_id, user.user_id, token=lock_token
+                        )
+                        lock_token = None
             raise
 
         except Exception as exc:
@@ -432,11 +462,17 @@ class ChatService:
             yield f"event: error\ndata: {json.dumps(err_payload)}\n\n"
 
         finally:
-            if producer_task and not producer_task.done():
-                producer_task.cancel()
-                try:
-                    await producer_task
-                except (asyncio.CancelledError, Exception):
-                    pass
-            if active_session_id:
-                await self.chat_repo.clear_busy(active_session_id)
+            import anyio
+
+            with anyio.CancelScope(shield=True):
+                if producer_task and not producer_task.done():
+                    producer_task.cancel()
+                    try:
+                        await producer_task
+                    except (asyncio.CancelledError, Exception):
+                        pass
+
+                if active_session_id and lock_token is not None:
+                    await self.chat_repo.clear_busy(
+                        active_session_id, user.user_id, token=lock_token
+                    )

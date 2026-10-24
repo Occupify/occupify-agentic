@@ -1,3 +1,10 @@
+import os
+
+# Quiet environment defaults before importing AI/ML libraries (F-70, F-75)
+os.environ.setdefault("PYDANTIC_AI_NO_BANNER", "1")
+os.environ.setdefault("TQDM_DISABLE", "1")
+os.environ.setdefault("HF_HUB_DISABLE_PROGRESS_BARS", "1")
+
 from contextlib import asynccontextmanager
 
 from fastapi import FastAPI, Request
@@ -81,6 +88,35 @@ def create_app() -> FastAPI:
 
     if settings.APP_ENV in ("local", "test"):
         app.include_router(dev.router)
+
+        frontend_dir = os.path.join(os.path.dirname(os.path.dirname(__file__)), "frontend")
+        if os.path.isdir(frontend_dir):
+            from fastapi.responses import FileResponse, Response
+            from fastapi.staticfiles import StaticFiles
+            from starlette.types import Scope
+
+            index_path = os.path.join(frontend_dir, "index.html")
+
+            @app.get("/ui", include_in_schema=False)
+            async def get_ui():
+                if get_settings().APP_ENV not in ("local", "test"):
+                    raise AppError(404, "Endpoint not found.", "NOT_FOUND")
+                return FileResponse(index_path)
+
+            class LocalOnlyStaticFiles(StaticFiles):
+                async def get_response(self, path: str, scope: Scope) -> Response:
+                    if get_settings().APP_ENV not in ("local", "test"):
+                        return JSONResponse(
+                            status_code=404,
+                            content={
+                                "statusCode": 404,
+                                "message": "Endpoint not found.",
+                                "errorCode": "NOT_FOUND",
+                            },
+                        )
+                    return await super().get_response(path, scope)
+
+            app.mount("/ui", LocalOnlyStaticFiles(directory=frontend_dir, html=True), name="ui")
 
     return app
 
