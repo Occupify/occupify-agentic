@@ -44,5 +44,11 @@ def get_sessionmaker():
 
 async def get_db_session() -> AsyncGenerator[AsyncSession]:
     maker = get_sessionmaker()
-    async with maker() as session:
+    session = maker()
+    try:
         yield session
+    finally:
+        import anyio
+
+        with anyio.CancelScope(shield=True):
+            await session.close()

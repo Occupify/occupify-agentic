@@ -1,7 +1,16 @@
 from pydantic_ai.models.zai import ZaiModel
 from pydantic_ai.providers.zai import ZaiProvider
+from pydantic_ai.settings import ModelSettings
 
 from app.core.config import get_settings
+
+
+def get_model_settings() -> ModelSettings:
+    settings = get_settings()
+    return ModelSettings(
+        timeout=float(settings.GLM_TIMEOUT_S),
+        thinking=False,
+    )
 
 
 def get_model() -> ZaiModel:

@@ -12,8 +12,9 @@ os.environ["ZAI_API_KEY"] = "mock-key-never-used"
 os.environ["PDF_EXTRACTOR"] = "pdfium"
 os.environ["DATABASE_URL"] = "sqlite+aiosqlite:///:memory:"
 
-from app.core.config import get_settings  # noqa: E402
+from app.core.config import Settings, get_settings  # noqa: E402
 
+Settings.model_config["env_file"] = None
 get_settings.cache_clear()
 
 from app.core.security import CurrentUser, get_current_user  # noqa: E402
@@ -29,8 +30,15 @@ def anyio_backend():
 
 @pytest.fixture
 async def test_db():
-    # Use SQLite in-memory for fast unit testing
-    engine = create_async_engine("sqlite+aiosqlite:///:memory:", echo=False)
+    # Use SQLite in-memory for fast unit testing with shared StaticPool
+    from sqlalchemy.pool import StaticPool
+
+    engine = create_async_engine(
+        "sqlite+aiosqlite:///:memory:",
+        echo=False,
+        connect_args={"check_same_thread": False},
+        poolclass=StaticPool,
+    )
     set_engine(engine)
     async with engine.begin() as conn:
         await conn.run_sync(Base.metadata.create_all)

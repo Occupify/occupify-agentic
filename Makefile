@@ -23,7 +23,7 @@ infra:
 	$(COMPOSE) up -d postgres-agentic
 
 up:
-	$(COMPOSE) up -d
+	$(COMPOSE) up -d --build
 
 down:
 	$(COMPOSE) down
@@ -36,4 +36,4 @@ logs:
 	$(COMPOSE) logs -f agentic
 
 run:
-	uv run uvicorn app.main:app --host 0.0.0.0 --port 8186 --reload
+	DATABASE_URL="postgresql+asyncpg://postgres:postgres@localhost:5535/occupify_agentic" RABBITMQ_URL="amqp://guest:guest@localhost:5672/" uv run uvicorn app.main:app --host 0.0.0.0 --port 8186 --reload

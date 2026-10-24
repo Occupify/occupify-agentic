@@ -29,6 +29,7 @@ from app.core.errors import (
 )
 from app.core.logging import bind_context, log_step
 from app.db.repositories.runs import RunRepository
+from app.llm.glm import get_model_settings
 
 
 @dataclass
@@ -84,6 +85,36 @@ class _RunContext:
         log_step(event, **fields)
 
 
+def _extract_usage_fields(usage: Any, model_name: str) -> dict[str, Any]:
+    if usage is None:
+        return {
+            "model": model_name,
+            "tokens_in": 0,
+            "tokens_out": 0,
+            "tokens_cached": 0,
+            "tokens_reasoning": 0,
+            "tokens_total": 0,
+            "requests": 0,
+            "tokens_known": False,
+        }
+    tokens_in = getattr(usage, "input_tokens", 0) or 0
+    tokens_cached = getattr(usage, "cache_read_tokens", 0) or 0
+    tokens_out = getattr(usage, "output_tokens", 0) or 0
+    tokens_reasoning = getattr(usage, "output_reasoning_tokens", 0) or 0
+    tokens_total = tokens_in + tokens_out
+    requests = getattr(usage, "requests", 0) or 0
+    return {
+        "model": model_name,
+        "tokens_in": tokens_in,
+        "tokens_out": tokens_out,
+        "tokens_cached": tokens_cached,
+        "tokens_reasoning": tokens_reasoning,
+        "tokens_total": tokens_total,
+        "requests": requests,
+        "tokens_known": True,
+    }
+
+
 def _map_llm_exception(exc: Exception) -> AppError:
     if isinstance(exc, ModelContextWindowExceededError):
         return ChatContextFullError()
@@ -98,30 +129,48 @@ def _map_llm_exception(exc: Exception) -> AppError:
         if (
             "context_window" in msg
             or "model_context_window_exceeded" in msg
-            or "token limit exceeded before response" in msg
+            or "exceeded before any response was generated" in msg
+            or ("token limit" in msg and "exceeded before" in msg)
             or "finish reason length" in msg
         ):
             return ChatContextFullError()
     if isinstance(exc, ModelHTTPError):
-        body = (getattr(exc, "body", None) or str(exc)).lower()
+        code_str = ""
+        msg_str = ""
+        if isinstance(exc.body, dict):
+            code_str = str(exc.body.get("code", "")).strip()
+            msg_str = str(exc.body.get("message", "")).lower()
+        elif isinstance(exc.body, str):
+            msg_str = exc.body.lower()
+
         if exc.status_code == 400 and (
-            "context_window" in body or "model_context_window_exceeded" in body
+            code_str == "1261"
+            or "context_window" in msg_str
+            or "model_context_window_exceeded" in msg_str
         ):
             return ChatContextFullError()
-    if isinstance(exc, (ModelTimeoutError, ModelRequestTimeout)):
-        return LlmUnavailableError("Request to AI model timed out. Please try again.")
+        if exc.status_code == 400 and (code_str == "1301" or "sensitive" in msg_str):
+            return ContentFilteredError()
+        return LlmUnavailableError("Failed to reach the AI model. Please try again.")
+
+    if isinstance(
+        exc, (ModelTimeoutError, ModelRequestTimeout, TimeoutError, asyncio.TimeoutError)
+    ):
+        return LlmUnavailableError(
+            "Failed to reach the AI model: request timed out. Please try again."
+        )
 
     err_str = str(exc).lower()
     if (
         "context_window" in err_str
         or "context window" in err_str
         or "model_context_window_exceeded" in err_str
-        or "token limit exceeded before response" in err_str
+        or ("token limit" in err_str and "exceeded before" in err_str)
     ):
         return ChatContextFullError()
-    if "sensitive" in err_str or "content filter" in err_str or "policy" in err_str:
+    if "sensitive" in err_str or "content filter" in err_str:
         return ContentFilteredError()
-    return LlmUnavailableError()
+    return LlmUnavailableError("Failed to reach the AI model. Please try again.")
 
 
 async def _setup_run(
@@ -155,7 +204,7 @@ async def _setup_run(
     )
 
     usage_limits = UsageLimits(request_limit=settings.GLM_MAX_REQUESTS_PER_RUN)
-    model_settings = ModelSettings(timeout=float(settings.GLM_TIMEOUT_S))
+    model_settings = get_model_settings()
     start_time = time.perf_counter()
 
     ctx = _RunContext(
@@ -200,42 +249,46 @@ def _check_context_window(all_messages: list[Any]) -> None:
             ).lower()
         if "context_window" in raw_reason or "model_context_window_exceeded" in raw_reason:
             raise ChatContextFullError()
+        if "sensitive" in raw_reason:
+            raise ContentFilteredError()
 
 
 async def _finish_run_success(
     deps: AgentDeps,
     ctx: _RunContext,
-    tokens_in: int,
-    tokens_out: int,
-) -> int:
+    usage: Any,
+) -> tuple[int, dict[str, Any]]:
     duration_ms = int((time.perf_counter() - ctx.start_time) * 1000)
+    u = _extract_usage_fields(usage, ctx.model_name)
     ctx.record_step(
         "run.end",
         ms=duration_ms,
-        tokens_total=tokens_in + tokens_out,
         steps=len(ctx.steps_log) + 1,
+        **u,
     )
 
     if deps.db:
         repo = RunRepository(deps.db)
         await repo.finish_success(
             run_id=ctx.run_id,
-            tokens_in=tokens_in,
-            tokens_out=tokens_out,
+            tokens_in=u["tokens_in"],
+            tokens_out=u["tokens_out"],
             latency_ms=duration_ms,
             steps=ctx.steps_log,
         )
-    return duration_ms
+    return duration_ms, u
 
 
 async def _finish_run_failed(
     deps: AgentDeps,
     ctx: _RunContext,
     exc: Exception,
+    usage: Any = None,
 ) -> None:
     duration_ms = int((time.perf_counter() - ctx.start_time) * 1000)
     safe_err = type(exc).__name__
-    ctx.record_step("run.error", ms=duration_ms, error_type=safe_err)
+    u = _extract_usage_fields(usage, ctx.model_name)
+    ctx.record_step("run.error", ms=duration_ms, error_type=safe_err, **u)
 
     if deps.db:
         repo = RunRepository(deps.db)
@@ -272,10 +325,9 @@ async def run_agent(
         all_new = res.new_messages()
         _check_context_window(all_new)
 
-        usage = res.usage
-        tokens_in = getattr(usage, "input_tokens", 0) or 0
-        tokens_out = getattr(usage, "output_tokens", 0) or 0
-        ctx.record_step("llm.response", tokens_in=tokens_in, tokens_out=tokens_out)
+        usage = getattr(res, "usage", None)
+        u = _extract_usage_fields(usage, ctx.model_name)
+        ctx.record_step("llm.response", **u)
 
         user_msgs = [m for m in all_new if getattr(m, "kind", None) == "request"]
         asst_msgs = [m for m in all_new if getattr(m, "kind", None) == "response"]
@@ -287,14 +339,14 @@ async def run_agent(
             ModelMessagesTypeAdapter.dump_python(asst_msgs, mode="json") if asst_msgs else []
         )
 
-        duration_ms = await _finish_run_success(deps, ctx, tokens_in, tokens_out)
+        duration_ms, u = await _finish_run_success(deps, ctx, usage)
 
         return AgentRunOutput(
             output=res.output if isinstance(res.output, str) else str(res.output),
             user_model_messages=user_json,
             assistant_model_messages=asst_json,
-            tokens_in=tokens_in,
-            tokens_out=tokens_out,
+            tokens_in=u["tokens_in"],
+            tokens_out=u["tokens_out"],
             run_id=ctx.run_id,
             model=ctx.model_name,
             latency_ms=duration_ms,
@@ -332,17 +384,16 @@ async def stream_agent(
             usage_limits=ctx.usage_limits,
             model_settings=ctx.model_settings,
         ) as res:
-            async for chunk in res.stream_text(delta=True):
+            async for chunk in res.stream_text(delta=True, debounce_by=None):
                 full_output_chunks.append(chunk)
                 yield AgentStreamDelta(content=chunk)
 
             all_new = res.new_messages()
             _check_context_window(all_new)
 
-            usage = res.usage
-            tokens_in = getattr(usage, "input_tokens", 0) or 0
-            tokens_out = getattr(usage, "output_tokens", 0) or 0
-            ctx.record_step("llm.response", tokens_in=tokens_in, tokens_out=tokens_out)
+            usage = getattr(res, "usage", None)
+            u = _extract_usage_fields(usage, ctx.model_name)
+            ctx.record_step("llm.response", **u)
 
             user_msgs = [m for m in all_new if getattr(m, "kind", None) == "request"]
             asst_msgs = [m for m in all_new if getattr(m, "kind", None) == "response"]
@@ -354,30 +405,34 @@ async def stream_agent(
                 ModelMessagesTypeAdapter.dump_python(asst_msgs, mode="json") if asst_msgs else []
             )
 
-            duration_ms = await _finish_run_success(deps, ctx, tokens_in, tokens_out)
+            duration_ms, u = await _finish_run_success(deps, ctx, usage)
 
             yield AgentStreamDone(
                 output="".join(full_output_chunks),
                 user_model_messages=user_json,
                 assistant_model_messages=asst_json,
-                tokens_in=tokens_in,
-                tokens_out=tokens_out,
+                tokens_in=u["tokens_in"],
+                tokens_out=u["tokens_out"],
                 latency_ms=duration_ms,
                 run_id=ctx.run_id,
                 model=ctx.model_name,
             )
 
     except asyncio.CancelledError:
+        import anyio
+
         duration_ms = int((time.perf_counter() - ctx.start_time) * 1000)
-        ctx.record_step("run.interrupted", ms=duration_ms)
+        u = _extract_usage_fields(None, ctx.model_name)
+        ctx.record_step("run.interrupted", ms=duration_ms, **u)
         if deps.db:
-            repo = RunRepository(deps.db)
-            await repo.finish_failed(
-                run_id=ctx.run_id,
-                error_message="Client disconnected (interrupted)",
-                latency_ms=duration_ms,
-                steps=ctx.steps_log,
-            )
+            with anyio.CancelScope(shield=True):
+                repo = RunRepository(deps.db)
+                await repo.finish_failed(
+                    run_id=ctx.run_id,
+                    error_message="Client disconnected (interrupted)",
+                    latency_ms=duration_ms,
+                    steps=ctx.steps_log,
+                )
         raise
 
     except Exception as exc:

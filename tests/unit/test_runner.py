@@ -40,7 +40,7 @@ async def test_runner_with_test_model(test_db):
         )
 
         assert res.output == "Test response"
-        assert res.model == "glm-4.7"
+        assert res.model == "glm-4.7-flashx"
         assert res.run_id is not None
 
         run_record = await test_db.get(AgentRun, res.run_id)
@@ -100,7 +100,9 @@ async def test_context_window_exceeded_error_mapping(test_db):
 
     # 1. Pydantic AI ModelContextWindowExceededError
     async def overflow_fn(messages, info):
-        raise ModelContextWindowExceededError(model_name="glm-4.7", message="Context limit reached")
+        raise ModelContextWindowExceededError(
+            model_name="glm-4.7-flashx", message="Context limit reached"
+        )
 
     overflow_agent = Agent(model=FunctionModel(function=overflow_fn), deps_type=AgentDeps)
     with pytest.raises(ChatContextFullError) as exc_info:
