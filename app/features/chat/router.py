@@ -11,7 +11,6 @@ from app.features.chat.schemas import (
     ChatSessionItem,
 )
 from app.features.chat.service import ChatService
-from app.pydantic_ai_helpers import stream_chat_turn
 
 router = APIRouter(prefix="/ai/chat", tags=["chat"])
 
@@ -42,8 +41,7 @@ async def send_chat_message(
 
     # Streaming mode
     return StreamingResponse(
-        stream_chat_turn(
-            service=service,
+        service.stream_chat_turn(
             user=user,
             message=message,
             session_id=sessionId,

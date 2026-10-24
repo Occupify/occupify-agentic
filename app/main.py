@@ -18,6 +18,10 @@ async def lifespan(app: FastAPI):
     settings = get_settings()
     setup_logging()
 
+    # Fail fast if ZAI_API_KEY is not set in non-test environment (F-09)
+    if settings.APP_ENV != "test" and not settings.ZAI_API_KEY:
+        raise RuntimeError("ZAI_API_KEY environment variable is required in non-test environments.")
+
     models_info = {
         "chat": settings.model_for("chat"),
         "roadmap": settings.model_for("roadmap"),
@@ -28,11 +32,8 @@ async def lifespan(app: FastAPI):
     }
     log_step("app.startup", env=settings.APP_ENV, port=settings.APP_PORT, models=models_info)
 
-    # Initialize DB (tables + cleanup)
-    try:
-        await init_db()
-    except Exception as e:
-        log_step("db.init_error", error=str(e))
+    # Initialize DB (tables + cleanup). Fail startup if tables cannot be initialized (F-20)
+    await init_db()
 
     # Initialize messaging broker
     await start_broker()
@@ -77,7 +78,7 @@ def create_app() -> FastAPI:
             status_code=500,
             content={
                 "statusCode": 500,
-                "message": "Internal server error.",
+                "message": "An unexpected error occurred. Please try again later.",
                 "errorCode": "INTERNAL_SERVER_ERROR",
             },
         )
@@ -86,7 +87,7 @@ def create_app() -> FastAPI:
     app.include_router(health.router)
     app.include_router(chat_router.router)
 
-    if settings.APP_ENV == "local":
+    if settings.APP_ENV in ("local", "test"):
         app.include_router(dev.router)
 
     return app

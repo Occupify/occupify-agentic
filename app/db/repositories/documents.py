@@ -32,21 +32,31 @@ class DocumentRepository:
         now = datetime.now(UTC)
         expires_at = now + timedelta(days=ttl_days)
 
-        existing = await self.get_by_sha256(sha256_hash)
-        if existing:
-            return existing
+        # Check if record exists (even if expired) to perform UPSERT and avoid UniqueConstraint violation
+        stmt = select(Document).where(Document.sha256 == sha256_hash)
+        res = await self.session.execute(stmt)
+        existing = res.scalar_one_or_none()
 
-        doc = Document(
-            id=str(uuid.uuid4()),
-            sha256=sha256_hash,
-            extractor=extractor,
-            page_count=page_count,
-            cleaned_text=cleaned_text,
-            removed_counts=removed_counts,
-            created_at=now,
-            expires_at=expires_at,
-        )
-        self.session.add(doc)
+        if existing:
+            existing.extractor = extractor
+            existing.page_count = page_count
+            existing.cleaned_text = cleaned_text
+            existing.removed_counts = removed_counts
+            existing.expires_at = expires_at
+            doc = existing
+        else:
+            doc = Document(
+                id=str(uuid.uuid4()),
+                sha256=sha256_hash,
+                extractor=extractor,
+                page_count=page_count,
+                cleaned_text=cleaned_text,
+                removed_counts=removed_counts,
+                created_at=now,
+                expires_at=expires_at,
+            )
+            self.session.add(doc)
+
         await self.session.commit()
         await self.session.refresh(doc)
         return doc

@@ -12,6 +12,12 @@ _engine = None
 _sessionmaker = None
 
 
+def set_engine(engine) -> None:
+    global _engine, _sessionmaker
+    _engine = engine
+    _sessionmaker = None
+
+
 def get_engine():
     global _engine
     if _engine is None:

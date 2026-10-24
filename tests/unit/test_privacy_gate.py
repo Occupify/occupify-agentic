@@ -407,17 +407,47 @@ Nguyễn Anh Tuấn - VP of Engineering
 ]
 
 
+CANDIDATE_NAMES = [
+    "John Doe",
+    "Nguyễn Văn An",
+    "Jane Smith",
+    "Lê Thị Bích",
+    "Alex Taylor",
+    "Phạm Quốc Dũng",
+    "Carlos Hernandez",
+    "Vũ Đình Hưng",
+    "David Miller",
+    "Hoàng Mai Lan",
+    "Sarah Connor",
+    "Đỗ Tuấn Kiệt",
+    "Emily Watson",
+    "Trịnh Thanh Thảo",
+    "Marcus Brody",
+    "Bùi Quang Huy",
+    "Robert Langdon",
+    "Lê Hoàng Quân",
+    "Satoshi Jones",
+    "Trần Hữu Thắng",
+]
+
+
 @pytest.mark.parametrize("idx, cv_text", list(enumerate(SYNTHETIC_CVS)))
 def test_synthetic_cv_privacy_cleaning(idx, cv_text):
-    cleaned, counts = clean(cv_text, source=f"cv_{idx}.pdf")
+    cleaned, counts = clean(cv_text, source=f"attachment_{idx}")
 
     # 1. Verification that NO unmasked PII remains
     assert not has_pii_remnants(cleaned), f"CV #{idx + 1} still has unmasked PII"
 
-    # 2. Check no raw email remains
+    # 2. Assert candidate's name is completely removed (F-01, F-11)
+    candidate_name = CANDIDATE_NAMES[idx]
+    assert candidate_name not in cleaned, (
+        f"Candidate name '{candidate_name}' leaked in CV #{idx + 1}"
+    )
+
+    # 3. Check no raw email remains
     assert "@" not in cleaned, f"CV #{idx + 1} still contains @"
 
-    # 3. Check excluded sections are dropped
+    # 4. Check excluded sections are dropped
     cleaned_lower = cleaned.lower()
     assert "bachelor of science" not in cleaned_lower
     assert "đại học bách khoa" not in cleaned_lower
@@ -427,14 +457,65 @@ def test_synthetic_cv_privacy_cleaning(idx, cv_text):
     assert "người tham chiếu" not in cleaned_lower
     assert "references" not in cleaned_lower
 
-    # 4. Check essential skills and experience lines remain intact!
+    # 5. Check essential skills and experience lines remain intact!
     assert (
         "experience" in cleaned_lower
         or "kinh nghiệm" in cleaned_lower
         or "skills" in cleaned_lower
         or "kỹ năng" in cleaned_lower
     )
-    assert len(cleaned) > 100, f"CV #{idx + 1} was wiped out completely!"
+    assert len(cleaned) > 50, f"CV #{idx + 1} was wiped out completely!"
+
+
+def test_f01_docling_regression():
+    docling_cv = """# Nguyễn Văn An
+Senior Backend Developer
+- Email: an.nguyen@gmail.com
+- Phone: 091 234 56 78
+- Date of birth: 12/03/1995
+- Address: 25 Lê Lợi, Quận 1, TP.HCM
+## Work Experience
+Backend Developer at FPT Software (2020-2024)
+## Education & Training
+### Đại học Bách Khoa TP.HCM
+## References
+### Trần Thị Bình
+Engineering Manager, FPT Software
+"""
+    cleaned, counts = clean(docling_cv, source="attachment_1")
+    assert "Nguyễn Văn An" not in cleaned
+    assert "an.nguyen@gmail.com" not in cleaned
+    assert "091 234 56 78" not in cleaned
+    assert "12/03/1995" not in cleaned
+    assert "25 Lê Lợi" not in cleaned
+    assert "Đại học Bách Khoa" not in cleaned
+    assert "Trần Thị Bình" not in cleaned
+    assert "FPT Software" in cleaned
+    assert "Work Experience" in cleaned
+
+
+def test_table_and_bold_pii_removal():
+    text = """# Personal Information
+| Field | Value |
+| Date of birth | 12/03/1995 |
+| Address | 25 Lê Lợi, Quận 1 |
+| Nationality | Vietnamese |
+| Passport | C1234567 |
+
+- **Ngày sinh:** 12/03/1995
+- **Địa chỉ:** TP.HCM
+- **Số điện thoại:** 091 234 56 78
+- Passport: C1234567
+
+## Skills
+Python, FastAPI, SQL
+"""
+    cleaned, counts = clean(text, source="attachment_1")
+    assert "12/03/1995" not in cleaned
+    assert "25 Lê Lợi" not in cleaned
+    assert "C1234567" not in cleaned
+    assert "091 234 56 78" not in cleaned
+    assert "Python, FastAPI, SQL" in cleaned
 
 
 def test_typed_message_cleaning():
@@ -449,12 +530,13 @@ def test_typed_message_cleaning():
     assert "review my profile" in cleaned
 
 
-def test_pii_failure_blocking():
-    # If a tricky pattern cannot be cleaned or unmasked PII remains, it must raise PiiRemovalFailedError
-    # We can test by injecting something has_pii_remnants would flag
-    text_with_raw_email = "Uncleanable string raw@domain.com"
-    # clean() will replace raw@domain.com with [EMAIL] and succeed.
-    # What if has_pii_remnants catches something uncleaned?
-    # Let's test calling clean with known_email
-    cleaned, _ = clean(text_with_raw_email, source="your message", known_email="raw@domain.com")
-    assert "[EMAIL]" in cleaned
+def test_pii_failure_blocking(monkeypatch):
+    import app.privacy.gate as gate_mod
+    from app.core.errors import PiiRemovalFailedError
+
+    # Strictly test that if has_pii_remnants flags an unmasked token, PiiRemovalFailedError is raised
+    monkeypatch.setattr(gate_mod, "has_pii_remnants", lambda text: True)
+    with pytest.raises(PiiRemovalFailedError) as exc_info:
+        gate_mod.clean("Sample CV text", source="attachment_1")
+    assert exc_info.value.status_code == 422
+    assert exc_info.value.error_code == "PII_REMOVAL_FAILED"

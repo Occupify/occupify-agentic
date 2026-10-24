@@ -1,3 +1,4 @@
+import hashlib
 import os
 import time
 from io import BytesIO
@@ -34,14 +35,23 @@ class DoclingExtractor:
         if cls._converter is None:
             try:
                 from docling.datamodel.base_models import InputFormat
-                from docling.datamodel.pipeline_options import PdfPipelineOptions
+                from docling.datamodel.pipeline_options import (
+                    PdfPipelineOptions,
+                    TesseractOcrOptions,
+                )
                 from docling.document_converter import DocumentConverter, PdfFormatOption
 
+                settings = get_settings()
                 artifacts_path = os.getenv("DOCLING_ARTIFACTS_PATH")
                 pipeline_options = PdfPipelineOptions()
                 if artifacts_path and os.path.exists(artifacts_path):
                     pipeline_options.artifacts_path = artifacts_path
                 pipeline_options.do_ocr = True
+
+                ocr_langs = [
+                    lang.strip() for lang in settings.OCR_LANGS.split(",") if lang.strip()
+                ] or ["vie", "eng"]
+                pipeline_options.ocr_options = TesseractOcrOptions(lang=ocr_langs)
 
                 cls._converter = DocumentConverter(
                     format_options={
@@ -61,22 +71,24 @@ class DoclingExtractor:
 
         from docling.datamodel.document import DocumentStream
 
-        stream = DocumentStream(name="upload.pdf", stream=BytesIO(content))
+        stream = DocumentStream(name="document.pdf", stream=BytesIO(content))
         conv_res = converter.convert(stream)
         text = conv_res.document.export_to_markdown()
         pages = len(conv_res.document.pages) if hasattr(conv_res.document, "pages") else 1
         return text, pages, 0
 
 
-def extract_pdf_text(content: bytes, filename: str = "document.pdf") -> tuple[str, int, str, int]:
+def extract_pdf_text(content: bytes, filename: str | None = None) -> tuple[str, int, str, int]:
     """
     Extracts text from PDF according to configured PDF_EXTRACTOR.
     Returns (raw_text, page_count, extractor_used, ocr_pages).
+    Accepts optional filename for backwards compatibility, but never logs or exposes it.
     """
     settings = get_settings()
     start_time = time.perf_counter()
     ocr_pages = 0
     extractor_used = settings.PDF_EXTRACTOR.lower()
+    sha_prefix = hashlib.sha256(content).hexdigest()[:8]
 
     if extractor_used == "docling":
         try:
@@ -96,7 +108,8 @@ def extract_pdf_text(content: bytes, filename: str = "document.pdf") -> tuple[st
         extractor=extractor_used,
         ms=duration_ms,
         ocr_pages=ocr_pages,
-        filename=filename,
+        sha256_prefix=sha_prefix,
+        bytes=len(content),
     )
 
     return text, pages, extractor_used, ocr_pages

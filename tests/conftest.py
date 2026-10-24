@@ -7,13 +7,18 @@ from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker, create_asyn
 
 # Ensure no real model requests ever leave test runs
 models.ALLOW_MODEL_REQUESTS = False
-os.environ["APP_ENV"] = "local"
+os.environ["APP_ENV"] = "test"
 os.environ["ZAI_API_KEY"] = "mock-key-never-used"
 os.environ["PDF_EXTRACTOR"] = "pdfium"
+os.environ["DATABASE_URL"] = "sqlite+aiosqlite:///:memory:"
+
+from app.core.config import get_settings  # noqa: E402
+
+get_settings.cache_clear()
 
 from app.core.security import CurrentUser, get_current_user  # noqa: E402
 from app.db.models import Base  # noqa: E402
-from app.db.session import get_db_session  # noqa: E402
+from app.db.session import get_db_session, set_engine  # noqa: E402
 from app.main import app  # noqa: E402
 
 
@@ -26,6 +31,7 @@ def anyio_backend():
 async def test_db():
     # Use SQLite in-memory for fast unit testing
     engine = create_async_engine("sqlite+aiosqlite:///:memory:", echo=False)
+    set_engine(engine)
     async with engine.begin() as conn:
         await conn.run_sync(Base.metadata.create_all)
 

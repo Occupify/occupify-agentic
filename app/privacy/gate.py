@@ -58,14 +58,14 @@ def clean(
 
     total_counts: dict[str, int] = {}
 
-    # 1. Drop excluded sections
+    # 1. Drop contact header block (top block of CV up to first section heading)
+    text, header_dropped = drop_contact_header(text)
+    if header_dropped:
+        total_counts["contact_header"] = header_dropped
+
+    # 2. Drop excluded sections (Education, Personal Info, Contact, References)
     text, sec_counts = drop_sections(text)
     total_counts.update(sec_counts)
-
-    # 2. Drop contact header block (typically for CV files)
-    if "file" in source.lower() or "cv" in source.lower() or "pdf" in source.lower():
-        text, header_dropped = drop_contact_header(text)
-        total_counts["contact_header"] = header_dropped
 
     # 3. Replace known identifiers (e.g. user email)
     text, ident_counts = replace_known_identifiers(text, known_email, known_name)
