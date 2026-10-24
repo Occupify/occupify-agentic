@@ -9,10 +9,10 @@ from app.core.config import Settings
 from app.core.security import CurrentUser
 
 
-def test_default_model_is_flashx():
+def test_default_model_is_air():
     settings = Settings(_env_file=None)
-    assert settings.GLM_MODEL == "glm-4.7-flashx"
-    assert settings.GLM_MODEL != "glm-4.7-flash"
+    assert settings.GLM_MODEL == "glm-4.5-air"
+    assert settings.GLM_MODEL not in ("glm-4.7-flash", "glm-4.5-flash")
 
 
 @pytest.mark.asyncio
