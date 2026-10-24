@@ -184,7 +184,7 @@
         chatMessagesEl.appendChild(emptyStateEl);
       } else {
         messages.forEach((m) => {
-          appendMessageCard(m.role, m.displayText || m.content || "", m.status, m.model, m.tokensIn, m.tokensOut);
+          appendMessageCard(m.role, m.displayText || m.content || "", m.status, m.model, m.tokensIn, m.tokensOut, m.attachments);
         });
       }
       chatMessagesEl.scrollTop = chatMessagesEl.scrollHeight;
@@ -196,17 +196,21 @@
   async function deleteSession(sessionId) {
     if (!confirm("Delete this chat?")) return;
     try {
-      await fetch(`/ai/chat/sessions/${sessionId}`, {
+      const res = await fetch(`/ai/chat/sessions/${sessionId}`, {
         method: "DELETE",
         headers: getHeaders(),
       });
+      if (!res.ok) {
+        showError("Failed to delete session.");
+        return;
+      }
       if (currentSessionId === sessionId) {
         startNewChat();
-      } else {
-        loadSessions();
       }
+      await loadSessions();
     } catch (err) {
       console.error("Failed to delete session:", err);
+      showError("Failed to delete session.");
     }
   }
 
@@ -226,8 +230,37 @@
 
   newChatBtn.addEventListener("click", startNewChat);
 
+  // Render Attachment Summary with textContent (F-02)
+  function renderAttachments(card, attachments) {
+    if (!attachments || !attachments.length) return;
+    let container = card.querySelector(".message-attachments");
+    if (!container) {
+      container = document.createElement("div");
+      container.className = "message-attachments";
+      card.appendChild(container);
+    }
+    container.textContent = "";
+    attachments.forEach((att) => {
+      const item = document.createElement("div");
+      item.className = "attachment-item";
+      const fileName = att.fileName || att.file_name || "Attachment";
+      const pages = att.pages ?? 0;
+      let removedDesc = "none";
+      if (att.removed && typeof att.removed === "object") {
+        const parts = Object.entries(att.removed)
+          .filter(([_, count]) => count > 0)
+          .map(([type, count]) => `${type}: ${count}`);
+        if (parts.length > 0) {
+          removedDesc = parts.join(", ");
+        }
+      }
+      item.textContent = `📎 ${fileName} (${pages} page${pages === 1 ? "" : "s"}, removed: ${removedDesc})`;
+      container.appendChild(item);
+    });
+  }
+
   // Append Message Card to UI
-  function appendMessageCard(role, text, status, model, tokensIn, tokensOut) {
+  function appendMessageCard(role, text, status, model, tokensIn, tokensOut, attachments) {
     if (emptyStateEl.parentNode === chatMessagesEl) {
       chatMessagesEl.removeChild(emptyStateEl);
     }
@@ -264,6 +297,10 @@
       card.appendChild(footer);
     }
 
+    if (attachments && attachments.length > 0) {
+      renderAttachments(card, attachments);
+    }
+
     chatMessagesEl.appendChild(card);
     chatMessagesEl.scrollTop = chatMessagesEl.scrollHeight;
     return { card, bodyText };
@@ -292,7 +329,7 @@
     chatStatusEl.className = "chat-status-badge streaming";
 
     // 1. Append user bubble
-    appendMessageCard("user", messageText);
+    const userElements = appendMessageCard("user", messageText);
     messageInputEl.value = "";
 
     // 2. Prepare assistant bubble with live streaming cursor
@@ -372,6 +409,9 @@
                 currentSessionId = meta.sessionId;
                 currentChatTitleEl.textContent = messageText.slice(0, 40);
                 loadSessions();
+              }
+              if (meta.attachments && meta.attachments.length > 0) {
+                renderAttachments(userElements.card, meta.attachments);
               }
             } catch (_) {}
           } else if (eventName === "delta" && dataStr) {
@@ -484,6 +524,9 @@
       isLogPaused = !isLogPaused;
       logPauseBtn.textContent = isLogPaused ? "Resume" : "Pause";
       logPauseBtn.classList.toggle("btn-primary", isLogPaused);
+      if (!isLogPaused) {
+        renderLogs();
+      }
     });
 
     // Clear logs

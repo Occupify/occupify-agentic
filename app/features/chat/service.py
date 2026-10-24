@@ -439,16 +439,6 @@ class ChatService:
                             status="interrupted",
                             asst_message_id=turn_message_id,
                         )
-                    if last_run_id:
-                        from app.db.repositories.runs import RunRepository
-
-                        run_repo = RunRepository(self.db)
-                        await run_repo.finish_failed(
-                            run_id=last_run_id,
-                            error_message="Client disconnected (interrupted)",
-                            latency_ms=0,
-                            steps=[{"event": "run.interrupted", "tokens_known": False}],
-                        )
                     if lock_token is not None:
                         await self.chat_repo.clear_busy(
                             active_session_id, user.user_id, token=lock_token

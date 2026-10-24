@@ -23,7 +23,7 @@ infra:
 	$(COMPOSE) up -d postgres-agentic
 
 up:
-	$(COMPOSE) up -d --build
+	$(COMPOSE) up -d --build --force-recreate
 
 down:
 	$(COMPOSE) down

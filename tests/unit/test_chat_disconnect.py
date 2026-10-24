@@ -114,7 +114,7 @@ async def test_disconnect_saves_interrupted_and_frees_session(test_db, monkeypat
     asst_msg = msgs[-1]
     assert asst_msg.role == "assistant"
     assert asst_msg.status == "interrupted"
-    assert "Chunk 1" in asst_msg.content
+    assert "Chunk 1" in asst_msg.display_text
 
     # 3. Assert run is marked failed with error containing interrupted
     runs = (
@@ -130,4 +130,4 @@ async def test_disconnect_saves_interrupted_and_frees_session(test_db, monkeypat
     )
     assert len(runs) >= 1
     assert runs[0].status == "failed"
-    assert "interrupted" in (runs[0].error_message or "").lower()
+    assert "interrupted" in (runs[0].error or "").lower()
