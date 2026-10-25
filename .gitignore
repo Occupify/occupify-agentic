@@ -1,0 +1,39 @@
+# Environments & Secrets
+.env
+.env.*
+!.env.example
+
+# Python & UV
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+.venv/
+.uv/
+
+# Testing & Coverage
+.pytest_cache/
+.coverage
+htmlcov/
+reports/
+
+# Linting & Formatting
+.ruff_cache/
+
+# Builds & Distribution
+build/
+dist/
+*.egg-info/
+
+# IDE & OS
+.idea/
+.vscode/
+*.swp
+*.swo
+.DS_Store
+
+# Models Cache (local dev)
+models_cache/
+
+note.md
+docs/
