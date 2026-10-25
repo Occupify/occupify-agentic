@@ -15,7 +15,7 @@ dependencies = [
   "sqlalchemy[asyncio]",
   "asyncpg",
   "httpx",
-  "docling",
+  "python-doctr",
   "pypdfium2",
 ]
 
@@ -52,5 +52,5 @@ asyncio_mode = "auto"
 pythonpath = ["."]
 markers = [
   "integration: needs Postgres + RabbitMQ",
-  "docling: loads Docling models",
+  "doctr: loads docTR models",
 ]

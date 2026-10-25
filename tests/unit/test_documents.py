@@ -1,11 +1,11 @@
 from io import BytesIO
+from pathlib import Path
 
 import pytest
 from reportlab.pdfgen import canvas
 
 from app.core.errors import FileInvalidError
-from app.documents.extract import extract_pdf_text
-from app.documents.fetch import validate_pdf_bytes
+from app.documents.extract import extract_cv, extract_pdf_text, validate_pdf_bytes
 
 
 def generate_sample_pdf(pages: int = 1, text: str = "Hello World") -> bytes:
@@ -49,20 +49,36 @@ def test_pdf_extraction():
     text, pages, extractor = extract_pdf_text(content)
     assert pages == 2
     assert "Senior Python Developer" in text
-    assert extractor in ["docling", "pdfium"]
+    assert extractor in ["doctr", "pdfium"]
 
 
-@pytest.mark.docling
-def test_docling_pdf_extraction(monkeypatch):
+@pytest.mark.doctr
+def test_doctr_pdf_extraction(monkeypatch):
     import app.documents.extract as extract_mod
 
-    monkeypatch.setattr(extract_mod.get_settings(), "PDF_EXTRACTOR", "docling")
+    monkeypatch.setattr(extract_mod.get_settings(), "PDF_EXTRACTOR", "doctr")
     content = generate_sample_pdf(
         pages=1, text="Nguyen Van A\n## Experience\nSenior Backend Engineer"
     )
     text, pages, extractor = extract_mod.extract_pdf_text(content)
-    assert extractor == "docling"
+    assert extractor == "doctr"
     assert "Senior Backend Engineer" in text
+
+
+@pytest.mark.doctr
+def test_user_cv_extraction():
+    fixture_path = Path(__file__).parent.parent / "fixtures" / "VoMinhTien_UIT_CV.pdf"
+    if not fixture_path.exists():
+        pytest.skip("User CV fixture not found")
+
+    cv_data, lines, page_count = extract_cv(str(fixture_path))
+    assert page_count == 1
+    assert len(lines) > 20
+    assert cv_data["personal_info"]["name"] == "Minh Tien Vo"
+    assert cv_data["personal_info"]["email"] == "tienvm886@gmail.com"
+    assert len(cv_data["skills"]) >= 20
+    assert len(cv_data["education"]) >= 1
+    assert len(cv_data["experience"]) >= 1
 
 
 @pytest.mark.asyncio

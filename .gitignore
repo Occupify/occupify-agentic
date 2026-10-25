@@ -16,6 +16,7 @@ __pycache__/
 .coverage
 htmlcov/
 reports/
+tests/fixtures/
 
 # Linting & Formatting
 .ruff_cache/

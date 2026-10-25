@@ -8,8 +8,7 @@ from app.core.config import get_settings
 from app.core.errors import AppError
 from app.core.logging import get_recent_logs, subscribe_logs, unsubscribe_logs
 from app.core.responses import success_response
-from app.documents.extract import extract_pdf_text
-from app.documents.fetch import validate_upload_file
+from app.documents.extract import extract_pdf_text, validate_upload_file
 from app.privacy.gate import clean
 
 router = APIRouter(prefix="/ai/dev", tags=["dev"])
