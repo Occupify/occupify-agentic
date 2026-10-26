@@ -1,9 +1,10 @@
 from pathlib import Path
-import pytest
 
+import pytest
 from app.features.job_match.pipeline import run_pipeline
-from app.features.job_match.ports import PipelineOptions, RunState
 from app.messaging.mock_core import MockCoreRpc
+
+from app.features.job_match.ports import PipelineOptions, RunState
 
 
 @pytest.mark.asyncio
@@ -12,6 +13,7 @@ async def test_each_stage_uses_its_library_skill(mock_user):
     used_skills: list[str] = []
 
     from app.agents import subagent
+
     orig_create = subagent.create_skill_agent
 
     def tracking_create(name: str, *args, **kwargs):

@@ -1,5 +1,3 @@
-import pytest
-
 from app.features.job_match.scoring import compute_job_score, compute_project_scores
 
 
@@ -35,13 +33,23 @@ def test_no_match_returns_top_missing_skills():
         {
             "project_id": "p1",
             "jobs": [
-                {"job_id": "j1", "match_score": 30, "fits": False, "missing_skills": ["Rust", "Go", "Docker"]}
+                {
+                    "job_id": "j1",
+                    "match_score": 30,
+                    "fits": False,
+                    "missing_skills": ["Rust", "Go", "Docker"],
+                }
             ],
         },
         {
             "project_id": "p2",
             "jobs": [
-                {"job_id": "j2", "match_score": 20, "fits": False, "missing_skills": ["Rust", "Kubernetes", "Go"]}
+                {
+                    "job_id": "j2",
+                    "match_score": 20,
+                    "fits": False,
+                    "missing_skills": ["Rust", "Kubernetes", "Go"],
+                }
             ],
         },
     ]

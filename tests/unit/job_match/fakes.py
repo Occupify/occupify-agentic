@@ -1,13 +1,12 @@
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 from typing import Any
-from pydantic import BaseModel
 
 from app.features.job_match.criteria import matches as criteria_matches
+
 from app.features.job_match.ports import (
     IndexHit,
     IndexMeta,
     IndexRow,
-    JobIndex,
     MatchCriteria,
     UpsertStats,
 )
@@ -56,19 +55,24 @@ class FakeJobIndex:
         criteria: MatchCriteria,
         top: int = 50,
     ) -> tuple[list[list[IndexHit]], list[IndexHit]]:
-        self.search_calls.append({
-            "dense_queries": dense_queries,
-            "lexical": lexical,
-            "criteria": criteria,
-            "top": top,
-        })
+        self.search_calls.append(
+            {
+                "dense_queries": dense_queries,
+                "lexical": lexical,
+                "criteria": criteria,
+                "top": top,
+            }
+        )
         if self._hits_override is not None:
             return self._hits_override
 
         # Filter by criteria and active status
         eligible_rows = [
-            r for r in self._rows.values()
-            if r.project_status == "OPEN" and r.job_status == "RECRUITING" and criteria_matches(criteria, r)
+            r
+            for r in self._rows.values()
+            if r.project_status == "OPEN"
+            and r.job_status == "RECRUITING"
+            and criteria_matches(criteria, r)
         ]
 
         # Lexical matching: simple keyword check on doc_text
@@ -78,12 +82,14 @@ class FakeJobIndex:
             doc_lower = r.doc_text.lower()
             score = sum(1.0 for t in lex_tokens if t in doc_lower) / max(len(lex_tokens), 1)
             if score > 0 or not lex_tokens:
-                lex_hits.append(IndexHit(
-                    job_id=r.job_id,
-                    project_id=r.project_id,
-                    rank=rank + 1,
-                    score=float(score),
-                ))
+                lex_hits.append(
+                    IndexHit(
+                        job_id=r.job_id,
+                        project_id=r.project_id,
+                        rank=rank + 1,
+                        score=float(score),
+                    )
+                )
 
         # Sort and take top
         lex_hits.sort(key=lambda h: h.score, reverse=True)
@@ -118,7 +124,7 @@ class FakeJobIndex:
             embed_model="BAAI/bge-m3",
             dim=1024,
             source="mock",
-            built_at=datetime.now(timezone.utc),
+            built_at=datetime.now(UTC),
             jobs_n=len(self._rows),
         )
 

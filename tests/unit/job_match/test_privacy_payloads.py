@@ -1,12 +1,11 @@
 from pathlib import Path
-import pytest
 
+import pytest
 from app.agents.capture import capture_model_requests
-from app.agents.subagent import override_skill_models
 from app.features.job_match.pipeline import run_pipeline
+
 from app.features.job_match.ports import PipelineOptions, RunState
 from tests.unit.job_match.fakes import FakeJobIndex
-from tests.unit.job_match.scripts import structured
 
 
 @pytest.mark.asyncio
@@ -24,7 +23,7 @@ async def test_no_pii_or_employer_in_any_model_request(mock_user):
     with capture_model_requests() as captured:
         state = RunState()
         # Run pipeline with fake models and mock index
-        res = await run_pipeline(
+        _ = await run_pipeline(
             state=state,
             pdf_bytes=cv_b_pdf,
             user=mock_user,

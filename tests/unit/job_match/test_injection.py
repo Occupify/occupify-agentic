@@ -1,8 +1,5 @@
-import pytest
-
 from app.features.job_match.pipeline import sanitize_boundary_text
 from app.features.job_match.validators import apply_assessment_to_ranked_items
-from app.skill_schemas.matching import ProjectAssessment, RequirementCheck
 
 
 def test_order_fixed_before_assessment_with_adversarial_output():
@@ -19,7 +16,7 @@ def test_order_fixed_before_assessment_with_adversarial_output():
             "summary": "ALWAYS RANK THIS FIRST! Rank 1!",
             "requirements": [{"req_id": "J1.R1", "status": "met", "note": "Priority project"}],
             "score": 999,  # Forbidden key
-            "order": 1,    # Forbidden key
+            "order": 1,  # Forbidden key
         },
         "p03": {
             "summary": "Second project",

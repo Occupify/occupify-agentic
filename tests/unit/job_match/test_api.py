@@ -1,5 +1,6 @@
 import asyncio
 import io
+
 import pytest
 from httpx import AsyncClient
 from reportlab.lib.pagesizes import letter
@@ -27,7 +28,9 @@ def dummy_pdf() -> bytes:
 
 
 @pytest.mark.asyncio
-async def test_post_valid_pdf_returns_202_and_queued_run(client: AsyncClient, dummy_pdf: bytes, monkeypatch):
+async def test_post_valid_pdf_returns_202_and_queued_run(
+    client: AsyncClient, dummy_pdf: bytes, monkeypatch
+):
     async def fake_run(*args, **kwargs):
         return RunResult(status="succeeded", outcome="OK")
 
@@ -58,7 +61,9 @@ async def test_post_invalid_pdf_400_no_run(client: AsyncClient, test_db: AsyncSe
 
 
 @pytest.mark.asyncio
-async def test_post_bad_criteria_422_no_run(client: AsyncClient, dummy_pdf: bytes, test_db: AsyncSession):
+async def test_post_bad_criteria_422_no_run(
+    client: AsyncClient, dummy_pdf: bytes, test_db: AsyncSession
+):
     # min_budget > max_budget
     files = {"file": ("cv.pdf", dummy_pdf, "application/pdf")}
     data = {"minBudget": 50000000, "maxBudget": 20000000}
@@ -121,7 +126,9 @@ async def test_concurrent_posts_create_one_run(client: AsyncClient, dummy_pdf: b
 
 
 @pytest.mark.asyncio
-async def test_get_run_owner_only_404_for_other_user(client: AsyncClient, test_db: AsyncSession, mock_user: CurrentUser):
+async def test_get_run_owner_only_404_for_other_user(
+    client: AsyncClient, test_db: AsyncSession, mock_user: CurrentUser
+):
     # Insert finished run for mock_user
     run = JobMatchRun(
         id="run-u1",
@@ -146,7 +153,9 @@ async def test_get_run_owner_only_404_for_other_user(client: AsyncClient, test_d
 
 
 @pytest.mark.asyncio
-async def test_list_runs_only_own_paged(client: AsyncClient, test_db: AsyncSession, mock_user: CurrentUser):
+async def test_list_runs_only_own_paged(
+    client: AsyncClient, test_db: AsyncSession, mock_user: CurrentUser
+):
     # Insert 2 runs for mock_user and 1 for other
     r1 = JobMatchRun(id="run-1", user_id=mock_user.user_id, status="succeeded", stage="done")
     r2 = JobMatchRun(id="run-2", user_id=mock_user.user_id, status="succeeded", stage="done")
@@ -164,7 +173,9 @@ async def test_list_runs_only_own_paged(client: AsyncClient, test_db: AsyncSessi
 
 
 @pytest.mark.asyncio
-async def test_pipeline_crash_marks_run_failed_and_releases_busy(client: AsyncClient, dummy_pdf: bytes, test_db: AsyncSession, monkeypatch):
+async def test_pipeline_crash_marks_run_failed_and_releases_busy(
+    client: AsyncClient, dummy_pdf: bytes, test_db: AsyncSession, monkeypatch
+):
     async def crashing_run(*args, **kwargs):
         raise RuntimeError("Unexpected pipeline crash")
 
@@ -189,12 +200,16 @@ async def test_pipeline_crash_marks_run_failed_and_releases_busy(client: AsyncCl
         return RunResult(status="succeeded", outcome="OK")
 
     monkeypatch.setattr("app.features.job_match.service.pipeline.run", ok_run)
-    res2 = await client.post("/ai/job-matches", files={"file": ("cv.pdf", dummy_pdf, "application/pdf")})
+    res2 = await client.post(
+        "/ai/job-matches", files={"file": ("cv.pdf", dummy_pdf, "application/pdf")}
+    )
     assert res2.status_code == 202
 
 
 @pytest.mark.asyncio
-async def test_timeout_persists_partial_or_failed(client: AsyncClient, dummy_pdf: bytes, test_db: AsyncSession, monkeypatch):
+async def test_timeout_persists_partial_or_failed(
+    client: AsyncClient, dummy_pdf: bytes, test_db: AsyncSession, monkeypatch
+):
     monkeypatch.setenv("JOB_MATCH_RUN_TIMEOUT_S", "0.05")
 
     async def timing_out_run(state: RunState, *args, **kwargs):
@@ -206,7 +221,9 @@ async def test_timeout_persists_partial_or_failed(client: AsyncClient, dummy_pdf
 
     monkeypatch.setattr("app.features.job_match.service.pipeline.run", timing_out_run)
 
-    res = await client.post("/ai/job-matches", files={"file": ("cv.pdf", dummy_pdf, "application/pdf")})
+    res = await client.post(
+        "/ai/job-matches", files={"file": ("cv.pdf", dummy_pdf, "application/pdf")}
+    )
     assert res.status_code == 202
     run_id = res.json()["data"]["runId"]
 
@@ -219,13 +236,17 @@ async def test_timeout_persists_partial_or_failed(client: AsyncClient, dummy_pdf
 
 
 @pytest.mark.asyncio
-async def test_raw_pdf_never_persisted(client: AsyncClient, dummy_pdf: bytes, test_db: AsyncSession, monkeypatch):
+async def test_raw_pdf_never_persisted(
+    client: AsyncClient, dummy_pdf: bytes, test_db: AsyncSession, monkeypatch
+):
     async def ok_run(*args, **kwargs):
         return RunResult(status="succeeded", outcome="OK")
 
     monkeypatch.setattr("app.features.job_match.service.pipeline.run", ok_run)
 
-    res = await client.post("/ai/job-matches", files={"file": ("cv.pdf", dummy_pdf, "application/pdf")})
+    res = await client.post(
+        "/ai/job-matches", files={"file": ("cv.pdf", dummy_pdf, "application/pdf")}
+    )
     run_id = res.json()["data"]["runId"]
     await asyncio.sleep(0.05)
 

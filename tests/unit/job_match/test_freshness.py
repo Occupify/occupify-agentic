@@ -1,7 +1,5 @@
 import pytest
-
 from app.features.job_match.freshness import check_projects_freshness
-from tests.unit.helpers import FakeRpc
 
 
 @pytest.mark.asyncio

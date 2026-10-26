@@ -1,15 +1,16 @@
 from decimal import Decimal
-import pytest
-from sqlalchemy import text
-from sqlalchemy.ext.asyncio import AsyncSession
-from sqlalchemy.exc import IntegrityError
 
-from app.db.models import JobMatchRun
+import pytest
 from app.features.job_match.index.store import PgJobIndex
 from app.features.job_match.index.sync import sweep_job_index
+from app.ml.fakes import FakeEmbedder
+from sqlalchemy import text
+from sqlalchemy.exc import IntegrityError
+from sqlalchemy.ext.asyncio import AsyncSession
+
+from app.db.models import JobMatchRun
 from app.features.job_match.ports import IndexRow, MatchCriteria
 from app.features.job_match.schemas import SalaryTypeFilter
-from app.ml.fakes import FakeEmbedder
 
 
 @pytest.fixture
@@ -93,7 +94,9 @@ async def test_partial_unique_active_run(pg_session: AsyncSession):
 
 @pytest.mark.integration
 @pytest.mark.asyncio
-async def test_new_project_findable_by_fulltext_before_embedding(pg_session: AsyncSession, fake_embedder):
+async def test_new_project_findable_by_fulltext_before_embedding(
+    pg_session: AsyncSession, fake_embedder
+):
     store = PgJobIndex(session=pg_session, embedder=fake_embedder)
     row = make_test_row(job_id="j-ft-1", doc_text="Kubernetes cluster DevOps engineer")
     stats = await store.upsert([row])
@@ -120,7 +123,9 @@ async def test_status_change_no_reembed(pg_session: AsyncSession, fake_embedder)
     await store.embed_backlog_batch(batch_size=10)
 
     # Now update only status
-    row_updated = make_test_row(job_id="j-st-1", doc_text="Text content stays identical", job_status="FILLED")
+    row_updated = make_test_row(
+        job_id="j-st-1", doc_text="Text content stays identical", job_status="FILLED"
+    )
     stats2 = await store.upsert([row_updated])
     assert stats2.updated == 1
     assert stats2.reembed_queued == 0  # No re-embed needed for metadata/status only change
@@ -150,8 +155,12 @@ async def test_deactivate_after_two_missed_sweeps(pg_session: AsyncSession, fake
 @pytest.mark.asyncio
 async def test_hybrid_search_filters(pg_session: AsyncSession, fake_embedder):
     store = PgJobIndex(session=pg_session, embedder=fake_embedder)
-    r_hourly = make_test_row(job_id="j-h-1", salary_type="HOURLY", budget_min=300000, budget_max=500000)
-    r_monthly = make_test_row(job_id="j-m-1", salary_type="MONTHLY", budget_min=25000000, budget_max=40000000)
+    r_hourly = make_test_row(
+        job_id="j-h-1", salary_type="HOURLY", budget_min=300000, budget_max=500000
+    )
+    r_monthly = make_test_row(
+        job_id="j-m-1", salary_type="MONTHLY", budget_min=25000000, budget_max=40000000
+    )
     await store.upsert([r_hourly, r_monthly])
 
     criteria = MatchCriteria(salary_type=SalaryTypeFilter.HOURLY)

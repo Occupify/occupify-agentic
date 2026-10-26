@@ -1,7 +1,5 @@
 import pytest
-
 from app.agents.capture import capture_model_requests
-from app.agents.subagent import override_skill_models
 from app.features.job_match.normalize import normalize_skill_name
 from app.features.job_match.skill_match import (
     compute_skill_coverage,
@@ -9,7 +7,9 @@ from app.features.job_match.skill_match import (
 )
 from app.skill_schemas.candidate import CandidateProfile
 from app.skill_schemas.matching import JobSkillVerdict, SkillMatchResult
-from tests.unit.job_match.scripts import raw_invalid, structured
+
+from app.agents.subagent import override_skill_models
+from tests.unit.job_match.scripts import structured
 
 
 def test_coverage_weights():
@@ -49,7 +49,9 @@ async def test_equivalent_verdicts_never_missing():
                 JobSkillVerdict(job_skill="React", verdict="equivalent", cv_skill="ReactJS"),
                 JobSkillVerdict(job_skill="Next.js", verdict="equivalent", cv_skill="NextJS"),
                 JobSkillVerdict(job_skill="TypeScript", verdict="equivalent", cv_skill="TS"),
-                JobSkillVerdict(job_skill="Tailwind CSS", verdict="equivalent", cv_skill="TailwindCSS"),
+                JobSkillVerdict(
+                    job_skill="Tailwind CSS", verdict="equivalent", cv_skill="TailwindCSS"
+                ),
             ]
         }
     )

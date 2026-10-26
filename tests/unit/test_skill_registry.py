@@ -1,6 +1,6 @@
 from pathlib import Path
-import pytest
 
+import pytest
 from app.agents.skill_registry import (
     SkillRegistry,
     SkillValidationError,

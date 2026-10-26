@@ -1,15 +1,10 @@
 import pytest
-from pydantic_ai.exceptions import UnexpectedModelBehavior
-from pydantic_ai.usage import Usage
-
 from app.agents.budget import (
     BudgetExceeded,
     HarnessStop,
     RunBudget,
     StopReason,
 )
-from app.agents.runner import run_agent
-from tests.unit.job_match.scripts import raw_invalid
 
 
 def test_limits_for_stage_absolute():
@@ -62,11 +57,13 @@ def test_rejected_calls_counted():
 def test_run_limit_at_assessment_uses_rules_fallback():
     # Helper verifying budget policy: limit at assessment -> rules fallback
     from app.features.job_match.pipeline import handle_budget_exceeded_at_stage
+
     fallback_mode = handle_budget_exceeded_at_stage("assessment")
     assert fallback_mode == "rules_fallback"
 
 
 def test_limit_before_scoring_fails_run_budget_exceeded():
     from app.features.job_match.pipeline import handle_budget_exceeded_at_stage
+
     res = handle_budget_exceeded_at_stage("retrieval")
     assert res == "RUN_BUDGET_EXCEEDED"

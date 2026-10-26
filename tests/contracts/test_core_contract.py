@@ -1,29 +1,29 @@
 import json
 from pathlib import Path
-import pytest
-import jsonschema
 
+import jsonschema
+import pytest
 from app.messaging.mock_core import MockCoreRpc
 
 
 @pytest.fixture
 def rpc_schema() -> dict:
     schema_path = Path(__file__).parent / "core_project_rpc.schema.json"
-    with open(schema_path, "r", encoding="utf-8") as f:
+    with open(schema_path, encoding="utf-8") as f:
         return json.load(f)
 
 
 @pytest.mark.asyncio
 async def test_mock_replies_match_core_schema(rpc_schema):
     rpc = MockCoreRpc()
-    
+
     # 1. Test search reply
     search_reply = await rpc.call("core.project.search", {"page": 0, "size": 10})
     jsonschema.validate(instance=search_reply, schema=rpc_schema)
     assert search_reply["ok"] is True
     assert "data" in search_reply["data"]
     assert "paging" in search_reply["data"]
-    
+
     # Verify no employer anywhere in data
     for proj in search_reply["data"]["data"]:
         assert "employer" not in proj
@@ -41,7 +41,9 @@ async def test_mock_replies_match_core_schema(rpc_schema):
         assert "employer" not in job
 
     # 3. Test not found reply
-    not_found_reply = await rpc.call("core.project.get", {"projectId": "00000000-0000-0000-0000-000000000000"})
+    not_found_reply = await rpc.call(
+        "core.project.get", {"projectId": "00000000-0000-0000-0000-000000000000"}
+    )
     jsonschema.validate(instance=not_found_reply, schema=rpc_schema)
     assert not_found_reply["ok"] is False
     assert not_found_reply["error"]["code"] == "PROJECT_NOT_FOUND"

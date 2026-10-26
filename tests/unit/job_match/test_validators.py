@@ -1,14 +1,14 @@
 import pytest
-
-from app.features.job_match.ports import MatchCriteria
-from app.features.job_match.schemas import SalaryTypeFilter
 from app.features.job_match.validators import (
     clean_output_pii,
     validate_assessment_with_retry,
     validate_v3_criteria,
 )
 from app.skill_schemas.matching import ProjectAssessment, RequirementCheck
-from tests.unit.job_match.scripts import raw_invalid, structured
+
+from app.features.job_match.ports import MatchCriteria
+from app.features.job_match.schemas import SalaryTypeFilter
+from tests.unit.job_match.scripts import raw_invalid
 
 
 def test_v3_drops_items_failing_criteria():
@@ -77,7 +77,9 @@ async def test_assessment_retry_then_rules_fallback():
 
 
 def test_output_pii_dropped():
-    text_with_sentinel = "Candidate sentinel.candidate@example.com phone 0912 000 111 is recommended."
+    text_with_sentinel = (
+        "Candidate sentinel.candidate@example.com phone 0912 000 111 is recommended."
+    )
     cleaned = clean_output_pii(text_with_sentinel)
     assert "sentinel.candidate@example.com" not in cleaned
     assert "0912 000 111" not in cleaned

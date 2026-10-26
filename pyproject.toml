@@ -17,6 +17,10 @@ dependencies = [
   "httpx",
   "docling",
   "pypdfium2",
+  "pgvector",
+  "sentence-transformers",
+  "pyyaml",
+  "torch",
 ]
 
 [dependency-groups]
@@ -53,4 +57,5 @@ pythonpath = ["."]
 markers = [
   "integration: needs Postgres + RabbitMQ",
   "docling: loads Docling models",
+  "ml: real ML model checks (embedder, reranker)",
 ]

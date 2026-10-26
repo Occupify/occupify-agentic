@@ -1,7 +1,6 @@
-import pytest
+from app.features.job_match.retrieval import compute_exhausted, rrf_fuse
 
 from app.features.job_match.ports import IndexHit
-from app.features.job_match.retrieval import compute_exhausted, rrf_fuse
 
 
 def test_rrf_k60_prefers_items_in_both_lists():
@@ -40,7 +39,9 @@ def test_exhausted_when_all_lists_short():
         [IndexHit(job_id=f"jd_{i}", project_id=f"pd_{i}", rank=i, score=1.0) for i in range(5)],
         [IndexHit(job_id=f"jd2_{i}", project_id=f"pd2_{i}", rank=i, score=1.0) for i in range(8)],
     ]
-    short_lex = [IndexHit(job_id=f"jl_{i}", project_id=f"pl_{i}", rank=i, score=1.0) for i in range(4)]
+    short_lex = [
+        IndexHit(job_id=f"jl_{i}", project_id=f"pl_{i}", rank=i, score=1.0) for i in range(4)
+    ]
     assert compute_exhausted(short_dense, short_lex, list_size=list_size) is True
 
     # Case 2: One dense list returned full list_size -> exhausted is False
@@ -50,5 +51,7 @@ def test_exhausted_when_all_lists_short():
     assert compute_exhausted(full_dense, short_lex, list_size=list_size) is False
 
     # Case 3: Lexical returned full list_size -> exhausted is False
-    full_lex = [IndexHit(job_id=f"jl_{i}", project_id=f"pl_{i}", rank=i, score=1.0) for i in range(10)]
+    full_lex = [
+        IndexHit(job_id=f"jl_{i}", project_id=f"pl_{i}", rank=i, score=1.0) for i in range(10)
+    ]
     assert compute_exhausted(short_dense, full_lex, list_size=list_size) is False

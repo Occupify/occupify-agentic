@@ -44,6 +44,27 @@ class Settings(BaseSettings):
     RABBITMQ_URL: str = "amqp://guest:guest@occupify-rabbitmq:5672/"
     RABBITMQ_RPC_TIMEOUT_S: int = 10
 
+    # UC4 Job Matching & ML Settings (§2.6)
+    SKILLS_DIR: str = "skills"
+    CORE_RPC_MODE: str = "mock"
+    CORE_MOCK_PATH: str = "app/features/job_match/mock/core_projects.json"
+    CORE_MOCK_GET_OVERLAY: str = ""
+    EMBEDDING_MODEL: str = "BAAI/bge-m3"
+    EMBEDDING_DIM: int = 1024
+    RERANKER_MODEL: str = "BAAI/bge-reranker-v2-m3"
+    HF_MODELS_DIR: str = "/opt/hf_models"
+    ML_THREADS: int = 4
+    ML_ENABLED: bool = True
+    JOB_INDEX_SWEEP_S: int = 600
+    JOB_INDEX_MAX_STALENESS_S: int = 1800
+    JOB_MATCH_MAX_REQUESTS: int = 150
+    JOB_MATCH_AGENT_MAX_REQUESTS: int = 40
+    JOB_MATCH_MAX_SEARCH_CALLS: int = 15
+    JOB_MATCH_MAX_INPUT_TOKENS: int = 2000000
+    JOB_MATCH_MAX_OUTPUT_TOKENS: int = 300000
+    JOB_MATCH_RUN_TIMEOUT_S: int = 900
+    JOB_MATCH_LLM_CONCURRENCY: int = 4
+
 
 @lru_cache
 def get_settings() -> Settings:

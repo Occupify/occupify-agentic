@@ -1,5 +1,3 @@
-import pytest
-
 from app.features.job_match.profile import map_profile_to_outcome
 from app.skill_schemas.candidate import CandidateProfile
 

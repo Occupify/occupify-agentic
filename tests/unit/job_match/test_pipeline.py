@@ -1,10 +1,11 @@
 from pathlib import Path
-import pytest
 
+import pytest
 from app.agents.capture import capture_model_requests
 from app.features.job_match.pipeline import run_pipeline
-from app.features.job_match.ports import PipelineOptions, RunResult, RunState
 from app.messaging.mock_core import MockCoreRpc
+
+from app.features.job_match.ports import PipelineOptions, RunState
 from tests.unit.job_match.fakes import FakeJobIndex
 
 
@@ -19,7 +20,9 @@ def persona_a_pdf() -> bytes:
 
 
 @pytest.mark.asyncio
-async def test_backend_persona_ranks_p03_top3_with_full_job_fields(mock_user, persona_a_pdf, mock_rpc):
+async def test_backend_persona_ranks_p03_top3_with_full_job_fields(
+    mock_user, persona_a_pdf, mock_rpc
+):
     state = RunState()
     res = await run_pipeline(
         state=state,
@@ -37,7 +40,9 @@ async def test_backend_persona_ranks_p03_top3_with_full_job_fields(mock_user, pe
     assert "a1000000-0000-0000-0000-000000000003" in top3_pids
 
     # Job j0301 listed with full fields
-    p03 = next(item for item in res.items if item["projectId"] == "a1000000-0000-0000-0000-000000000003")
+    p03 = next(
+        item for item in res.items if item["projectId"] == "a1000000-0000-0000-0000-000000000003"
+    )
     j0301 = next(j for j in p03["jobs"] if j["jobId"] == "b1000000-0000-0000-0000-000000000301")
     assert j0301["matchScore"] > 0
     assert "matchedSkills" in j0301
@@ -107,9 +112,11 @@ async def test_insufficient_profile_stops_before_search(mock_user, mock_rpc, mon
     sparse_cv_pdf = Path("tests/fixtures/job_match/not_a_cv.pdf").read_bytes()
 
     from app.skill_schemas.candidate import CandidateProfile
+
     sparse_profile = CandidateProfile(status="ok", skills=["SoloSkill"])
 
     from tests.unit.job_match.scripts import structured
+
     with override_skill_models({"extract-candidate-profile": structured(sparse_profile)}):
         state = RunState()
         res = await run_pipeline(
@@ -159,7 +166,9 @@ async def test_index_unusable_falls_back_to_core_search(mock_user, persona_a_pdf
 
 
 @pytest.mark.asyncio
-async def test_ml_disabled_outside_test_env_degrades_with_warnings(mock_user, persona_a_pdf, mock_rpc, monkeypatch):
+async def test_ml_disabled_outside_test_env_degrades_with_warnings(
+    mock_user, persona_a_pdf, mock_rpc, monkeypatch
+):
     # Outside APP_ENV=test with ML_ENABLED=false
     monkeypatch.setenv("APP_ENV", "production")
     monkeypatch.setenv("ML_ENABLED", "false")

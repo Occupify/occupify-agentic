@@ -1,15 +1,15 @@
-import pytest
 import inspect
-from pydantic_ai.exceptions import UnexpectedModelBehavior
 
+import pytest
 from app.agents.budget import HarnessStop, RunBudget, StopReason
-from app.features.job_match.ports import PipelineOptions, RunState
 from app.features.job_match.search_agent import (
     SearchAgentHarness,
     maybe_search_more,
     search_more,
 )
-from app.skill_schemas.search import SearchDecision, SearchMoreArgs
+from pydantic_ai.exceptions import UnexpectedModelBehavior
+
+from app.features.job_match.ports import PipelineOptions, RunState
 
 
 def test_search_more_schema_has_no_user_or_write_args():
@@ -72,6 +72,7 @@ def test_stop_reasons():
 def test_tool_states():
     # States returned by search_more: ok, ok_empty, invalid_param, duplicate, error, budget_exhausted
     from app.features.job_match.search_agent import ToolState
+
     expected_states = {"ok", "ok_empty", "invalid_param", "duplicate", "error", "budget_exhausted"}
     actual_states = {s.value for s in ToolState}
     assert expected_states.issubset(actual_states)
@@ -79,6 +80,7 @@ def test_tool_states():
 
 def test_unexpected_model_behavior_is_invalid_tool_use():
     from app.features.job_match.search_agent import map_exception_to_stop_reason
+
     stop = map_exception_to_stop_reason(UnexpectedModelBehavior("Invalid tool arguments"))
     assert stop == StopReason.INVALID_TOOL_USE
 

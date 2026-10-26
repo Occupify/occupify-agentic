@@ -1,4 +1,5 @@
 from typing import Any
+
 from pydantic import BaseModel
 from pydantic_ai.messages import ModelResponse, TextPart, ToolCallPart, ToolReturnPart
 from pydantic_ai.models.function import AgentInfo, FunctionModel
@@ -44,6 +45,7 @@ def tool_then_structured(
 
 def raw_invalid(invalid_payload: dict[str, Any] | str) -> FunctionModel:
     """Returns a model that emits an invalid output tool call or text, for testing schema and validation retries."""
+
     def fn(messages: list[Any], info: AgentInfo) -> ModelResponse:
         if isinstance(invalid_payload, str):
             return ModelResponse(parts=[TextPart(invalid_payload)])

@@ -1,12 +1,13 @@
 import json
 import logging
 from pathlib import Path
+
 import pytest
+from app.features.job_match.pipeline import run_pipeline
+from app.messaging.mock_core import MockCoreRpc
 
 from app.core.logging import JSONFormatter, bind_context
-from app.features.job_match.pipeline import run_pipeline
 from app.features.job_match.ports import PipelineOptions, RunState
-from app.messaging.mock_core import MockCoreRpc
 
 
 class LogCaptureHandler(logging.Handler):
@@ -45,7 +46,9 @@ async def test_agent_role_and_parent_run_id(mock_user, log_capture):
         options=PipelineOptions(),
     )
 
-    llm_events = [r for r in log_capture.records if r.get("event") in ("llm.request", "llm.response")]
+    llm_events = [
+        r for r in log_capture.records if r.get("event") in ("llm.request", "llm.response")
+    ]
     for event in llm_events:
         assert event.get("parent_run_id") == "run-test-logging-1"
         assert event.get("agent_role") in {"profile", "skill_match", "search", "assessment"}
@@ -95,13 +98,14 @@ async def test_no_text_in_logs(mock_user, log_capture):
 
 @pytest.mark.asyncio
 async def test_no_model_output_in_error_logs(log_capture):
-    from app.agents.runner import run_agent
     from app.core.errors import AppError
 
     # Force an error with redact_errors=True
     try:
         bind_context(redact_errors=True)
-        raise AppError(500, "INTERNAL_ERROR", "Failed to execute", extra={"sensitive": "secret_text"})
+        raise AppError(
+            500, "INTERNAL_ERROR", "Failed to execute", extra={"sensitive": "secret_text"}
+        )
     except Exception:
         logging.getLogger().error("Stage error occurred", exc_info=True)
 

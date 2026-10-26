@@ -1,5 +1,3 @@
-import pytest
-
 from app.features.job_match.sanitize import sanitize_project
 
 

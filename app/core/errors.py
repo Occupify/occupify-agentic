@@ -84,3 +84,27 @@ class LlmUnavailableError(AppError):
         message: str = "Failed to reach the AI model. Please try again.",
     ):
         super().__init__(502, message, "LLM_UNAVAILABLE")
+
+
+class JobMatchBusyError(AppError):
+    def __init__(
+        self,
+        message: str = "Failed to start: a job matching run is already in progress.",
+    ):
+        super().__init__(409, message, "JOB_MATCH_BUSY")
+
+
+class JobMatchNotFoundError(AppError):
+    def __init__(
+        self,
+        message: str = "Failed to find this job match run.",
+    ):
+        super().__init__(404, message, "JOB_MATCH_NOT_FOUND")
+
+
+class JobMatchContextFullError(AppError):
+    def __init__(
+        self,
+        message: str = "Failed to process: input context is full.",
+    ):
+        super().__init__(422, message, "JOB_MATCH_CONTEXT_FULL")

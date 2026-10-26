@@ -1,10 +1,11 @@
 import time
+
 import numpy as np
 import pytest
-
-from app.core.config import get_settings
 from app.ml.embedder import Embedder
 from app.ml.reranker import Reranker
+
+from app.core.config import get_settings
 
 
 @pytest.mark.ml
@@ -53,7 +54,10 @@ def test_skill_similarity_threshold():
 def test_reranker_40_pairs_latency_report():
     reranker = Reranker()
     pairs = [
-        ("Java Spring Boot Developer with PostgreSQL experience", f"Project requirement document number {i} with Java details")
+        (
+            "Java Spring Boot Developer with PostgreSQL experience",
+            f"Project requirement document number {i} with Java details",
+        )
         for i in range(40)
     ]
 
