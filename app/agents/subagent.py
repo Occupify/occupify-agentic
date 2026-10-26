@@ -44,12 +44,14 @@ def create_skill_agent(
     tools: list[Any] | None = None,
     model_settings: Any = None,
     prompt_mode: str = "skill",
+    model: Any = None,
 ) -> Agent:
-    overrides = _skill_model_overrides.get()
-    if name in overrides:
-        model = overrides[name]
-    else:
-        model = get_model()
+    if model is None:
+        overrides = _skill_model_overrides.get()
+        if name in overrides:
+            model = overrides[name]
+        else:
+            model = get_model()
 
     registry = get_skill_registry()
     meta = registry.get(name)
