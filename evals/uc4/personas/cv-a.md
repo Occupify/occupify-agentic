@@ -1,0 +1,24 @@
+# THÔNG TIN CÁ NHÂN
+Nguyễn Văn Testcase
+Email: sentinel.candidate@example.com | Điện thoại: 0912 000 111
+Địa chỉ: 12 Ngõ Thử Nghiệm, Hà Nội
+
+# KỸ NĂNG
+- Ngôn ngữ & Frameworks: Java, Spring Boot, RESTful API
+- Cơ sở dữ liệu: PostgreSQL, JPA/Hibernate, SQL Optimization
+- Công cụ & Hệ thống: Docker, Git, CI/CD, Microservices
+
+# KINH NGHIỆM LÀM VIỆC
+## Senior Backend Engineer - Công ty Cổ phần Công nghệ Y tế số (01/2023 - Hiện tại)
+- Thiết kế và phát triển hệ thống RESTful API cho nền tảng đặt lịch khám và quản trị bệnh viện sử dụng Java và Spring Boot.
+- Tối ưu hóa truy vấn cơ sở dữ liệu PostgreSQL, giải quyết các điểm nghẽn hiệu năng trên các bảng dữ liệu lớn.
+- Xây dựng unit test toàn diện với JUnit 5 và Mockito, đạt độ bao phủ kiểm thử trên 85%.
+- Đóng gói ứng dụng thành Docker container và triển khai dịch vụ trên môi trường thử nghiệm.
+
+## Backend Developer - Công ty Giải pháp Phần mềm Thông minh (06/2021 - 12/2022)
+- Tham gia phát triển các module quản lý người dùng, phân quyền và tích hợp cổng thanh toán trực tuyến.
+- Viết tài liệu kỹ thuật và đặc tả API RESTful cho đội ngũ frontend và đối tác tích hợp.
+- Phối hợp với đội DevOps duy trì hệ thống kiểm thử tự động.
+
+# DỰ ÁN TIÊU BIỂU
+- Nền tảng Đặt lịch Khám bệnh trực tuyến: Hệ thống phục vụ 50.000 lượt đặt lịch mỗi tháng, tích hợp cổng thanh toán thẻ và ví điện tử, kiến trúc microservices với Spring Boot và PostgreSQL.
