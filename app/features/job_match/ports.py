@@ -125,3 +125,6 @@ class RunResult(BaseModel):
     tokens_out: int = 0
     cost_usd: float = 0.0
     stages: list[dict[str, Any]] = Field(default_factory=list)
+
+
+PipelineResult = RunResult
