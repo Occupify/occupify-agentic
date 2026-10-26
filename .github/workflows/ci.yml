@@ -79,14 +79,26 @@ jobs:
           uv run ruff format --check .
           uv run ruff check .
 
-      - name: Run Test Suite
+      - name: Skills Check
+        run: uv run python -m app.agents.skill_registry --check
+
+      - name: Run Unit Test Suite
         env:
           DATABASE_URL: postgresql+asyncpg://postgres:postgres@localhost:5432/occupify_agentic
           RABBITMQ_URL: amqp://guest:guest@localhost:5672/
           APP_ENV: test
+          ML_ENABLED: "false"
         run: |
           mkdir -p reports
           uv run pytest --junitxml=reports/junit.xml --cov=app tests/unit/
+
+      - name: Run Integration Tests
+        env:
+          TEST_PG_URL: postgresql+asyncpg://postgres:postgres@localhost:5432/occupify_agentic
+          RABBITMQ_URL: amqp://guest:guest@localhost:5672/
+          APP_ENV: test
+        run: |
+          uv run pytest -m integration --junitxml=reports/junit-integration.xml tests/integration/
 
       - name: Publish Test Results
         uses: dorny/test-reporter@v1
@@ -94,7 +106,7 @@ jobs:
         continue-on-error: true
         with:
           name: Python Test Results
-          path: reports/junit.xml
+          path: reports/junit*.xml
           reporter: java-junit
 
   image-build:

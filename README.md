@@ -135,3 +135,29 @@ All `/ai/chat/*` calls need the `X-User-Id` header (set by the gateway in produc
 | `make up` fails with `no space left on device` | remove old unused images (`podman image prune`) and retry |
 | `/ui` returns 404 | `APP_ENV` is not `local`; or, in containers, the image is old: run `make up` again |
 | Replies are slow to start | z.ai sometimes queues requests; try another paid model in `GLM_MODEL` |
+
+## UC4 · CV Job Matching
+
+UC4 performs candidate-job matching using a hybrid pipeline:
+1. **CV Ingestion & Profiling:** Extracts text, redacts PII (`privacy.gate.clean`), structures candidate profile using the `extract-candidate-profile` skill.
+2. **Hybrid Retrieval:** Query generation, dense vector search (`BAAI/bge-m3` via pgvector HNSW), BM25 full-text search (`tsvector` via GIN), fused with Reciprocal Rank Fusion (RRF `k=60`).
+3. **Skill Verification & Re-ranking:** Verifies candidate vs required skills (`match-skills`), assesses job fit (`assess-job-fit`), applies cross-encoder reranker (`BAAI/bge-reranker-v2-m3`).
+4. **Agentic Search:** If candidate has low or missing fit, `plan-job-search` expands search queries within budget caps.
+
+### Settings (`.env`)
+- `CORE_RPC_MODE`: `live` (RabbitMQ RPC to `occupify-core`) or `mock` (in-memory mock with 18 seed projects).
+- `ML_ENABLED`: `true` for local dense embeddings & reranking, `false` for unit testing fallback.
+- `EMBEDDER_MODEL`: `BAAI/bge-m3` (1024-dim dense embeddings).
+- `RERANKER_MODEL`: `BAAI/bge-reranker-v2-m3`.
+- `JOB_MATCH_RUN_TIMEOUT_S`: Maximum runtime for a match run (default 900s).
+- `JOB_MATCH_LLM_CONCURRENCY`: Concurrency limit for model calls (default 4).
+
+### Skill Library & Verification
+- Skills reside in `skills/` with `SKILL.md` frontmatter.
+- Check skill library validity: `make skills-check`
+- Regenerate skill catalog: `make skills-catalog`
+
+### Database & Image Notes
+- `make reset-db`: Drops container volumes and recreates `postgres-agentic` with `vector` and `unaccent` extensions.
+- Docker image: Uses CPU-only PyTorch and pre-downloads `bge-m3` and `bge-reranker-v2-m3` with `allow_patterns` (excluding ONNX and images) and `HF_HUB_OFFLINE=1`.
+

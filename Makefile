@@ -1,6 +1,6 @@
 COMPOSE ?= podman compose
 
-.PHONY: install fmt lint test test-all infra up down reset-db logs run
+.PHONY: install fmt lint test test-all test-integration skills-check skills-catalog infra up down reset-db logs run
 
 install:
 	uv sync
@@ -13,8 +13,17 @@ lint:
 	uv run ruff format --check .
 	uv run ruff check .
 
+skills-check:
+	uv run python -m app.agents.skill_registry --check
+
+skills-catalog:
+	uv run python -m app.agents.skill_registry --write-catalog
+
 test:
 	uv run pytest tests/unit/
+
+test-integration:
+	TEST_PG_URL="postgresql+asyncpg://postgres:postgres@localhost:5535/occupify_agentic" uv run pytest -m integration tests/integration/
 
 test-all:
 	uv run pytest --cov=app tests/
