@@ -7,11 +7,11 @@ from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker, create_asyn
 
 # Ensure no real model requests ever leave test runs
 models.ALLOW_MODEL_REQUESTS = False
-os.environ["APP_ENV"] = "test"
+os.environ.setdefault("APP_ENV", "test")
 os.environ["ZAI_API_KEY"] = "mock-key-never-used"
 os.environ["PDF_EXTRACTOR"] = "pdfium"
 os.environ["DATABASE_URL"] = "sqlite+aiosqlite:///:memory:"
-os.environ["ML_ENABLED"] = "false"
+os.environ.setdefault("ML_ENABLED", "false")
 os.environ["CORE_RPC_MODE"] = "mock"
 
 from app.core.config import Settings, get_settings  # noqa: E402

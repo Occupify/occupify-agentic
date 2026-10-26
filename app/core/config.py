@@ -65,6 +65,10 @@ class Settings(BaseSettings):
     JOB_MATCH_RUN_TIMEOUT_S: int = 900
     JOB_MATCH_LLM_CONCURRENCY: int = 4
 
+    @property
+    def EMBEDDER_MODEL(self) -> str:
+        return self.EMBEDDING_MODEL
+
 
 @lru_cache
 def get_settings() -> Settings:

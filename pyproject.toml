@@ -21,6 +21,7 @@ dependencies = [
   "sentence-transformers",
   "pyyaml",
   "torch",
+  "torchvision",
 ]
 
 [dependency-groups]
