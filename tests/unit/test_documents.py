@@ -74,11 +74,37 @@ def test_user_cv_extraction():
     cv_data, lines, page_count = extract_cv(str(fixture_path))
     assert page_count == 1
     assert len(lines) > 20
-    assert cv_data["personal_info"]["name"] == "Minh Tien Vo"
-    assert cv_data["personal_info"]["email"] == "tienvm886@gmail.com"
+
+    # Removed fields
+    for field in ["personal_info", "summary", "education", "languages", "references"]:
+        assert field not in cv_data
+
+    # Kept skills
     assert len(cv_data["skills"]) >= 20
-    assert len(cv_data["education"]) >= 1
+    assert "skills_by_category" in cv_data
+
+    # Kept experience highlights only
     assert len(cv_data["experience"]) >= 1
+    for exp in cv_data["experience"]:
+        assert "highlights" in exp
+        assert "company" not in exp
+        assert "role" not in exp
+        assert "period" not in exp
+        assert "link" not in exp
+        assert len(exp["highlights"]) >= 1
+
+    # Kept project highlights only
+    assert len(cv_data["projects"]) >= 1
+    for proj in cv_data["projects"]:
+        assert "highlights" in proj
+        assert "name" not in proj
+        assert "role" not in proj
+        assert "period" not in proj
+        assert "link" not in proj
+        assert len(proj["highlights"]) >= 1
+
+    # Kept key technical highlights
+    assert len(cv_data["key_technical_highlights"]) >= 1
 
 
 @pytest.mark.asyncio

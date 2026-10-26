@@ -79,7 +79,9 @@ async def validate_upload_file(file: UploadFile) -> tuple[bytes, int]:
     return content, page_count
 
 
-def extract_cv(file_input: bytes | str | Path) -> tuple[dict[str, Any], list[str], int]:
+def extract_cv(
+    file_input: bytes | str | Path, hide_personal_info: bool = True
+) -> tuple[dict[str, Any], list[str], int]:
     """
     Extracts structured CV data using docTR OCR predictor and cv_parser.
     Returns (cv_dict, all_lines, page_count).
@@ -97,7 +99,7 @@ def extract_cv(file_input: bytes | str | Path) -> tuple[dict[str, Any], list[str
                 if text:
                     all_lines.append(text)
 
-    cv_data = parse_cv(all_lines)
+    cv_data = parse_cv(all_lines, hide_personal_info=hide_personal_info)
     return cv_data, all_lines, page_count
 
 

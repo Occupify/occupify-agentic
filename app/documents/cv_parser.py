@@ -19,7 +19,7 @@ LANG_RE = re.compile(r'^([A-Za-z\s]{2,30})\s*[:=\-]\s*(.+)$')
 GPA_RE = re.compile(r'GPA\s*:\s*([\d\.]+(?:/\s*[\d\.]+)?)|(?:\bGPA\b\s*)?([\d\.]+\s*/\s*[\d\.]+)', re.IGNORECASE)
 
 DEGREE_KW = ['b.sc', 'b.s.', 'bachelor', 'master', 'm.sc', 'm.s.', 'phd', 'doctor', 'degree', 'diploma', 'associate']
-INSTITUTION_KW = ['university', 'college', 'school', 'institute', 'academy', 'uit', 'vnu', 'polytechnic']
+INSTITUTION_KW = ['university', 'college', 'school', 'institute', 'academy']
 ROLE_KW = ['developer', 'engineer', 'leader', 'intern', 'manager', 'lead', 'architect', 'specialist', 'member', 'members', 'officer', 'consultant']
 NOISE_RE = re.compile(r'^[a-z] [a-z] [a-z]\d+$')
 CONTACT_LABELS = {'phone:', 'e-mail:', 'email:', 'linkedin:', 'github:', 'phone', 'email', 'linkedin', 'github'}
@@ -45,16 +45,19 @@ def match_section(line: str):
     return None
 
 
-def clean_bullet(text: str) -> str:
+def clean_bullet(text: str, hide_personal_info: bool = False) -> str:
     text = re.sub(r'(\w+)\s*-\s*-\s*(\w+)', r'\1-\2', text)
     text = re.sub(r'(\w+)\s+-\s*(\w+)', r'\1-\2', text)
     text = re.sub(r'(\w+)\s*-\s+(\w+)', r'\1-\2', text)
     text = re.sub(r'\s+([.,;:!?])', r'\1', text)
     text = re.sub(r'\s{2,}', ' ', text)
+    if hide_personal_info:
+        text = EMAIL_RE.sub('[HIDDEN]', text)
+        text = PHONE_RE.sub('[HIDDEN]', text)
     return text.strip()
 
 
-def stitch_bullets(lines: list[str]) -> list[str]:
+def stitch_bullets(lines: list[str], hide_personal_info: bool = False) -> list[str]:
     bullets = []
     current = ''
     for line in lines:
@@ -70,17 +73,17 @@ def stitch_bullets(lines: list[str]) -> list[str]:
             elif current.endswith('- ') or current.endswith(' - ') or current.endswith(' -'):
                 current = current.rstrip('- ') + s
             elif current.endswith('.') or current.endswith(';'):
-                bullets.append(clean_bullet(current))
+                bullets.append(clean_bullet(current, hide_personal_info=hide_personal_info))
                 current = s
             else:
                 current = current + ' ' + s
     if current:
-        bullets.append(clean_bullet(current))
+        bullets.append(clean_bullet(current, hide_personal_info=hide_personal_info))
     return bullets
 
 
-def clean_text_block(lines: list[str]) -> str:
-    return ' '.join(stitch_bullets(lines))
+def clean_text_block(lines: list[str], hide_personal_info: bool = False) -> str:
+    return ' '.join(stitch_bullets(lines, hide_personal_info=hide_personal_info))
 
 
 def normalize_date(date_str: str) -> str:
@@ -90,7 +93,7 @@ def normalize_date(date_str: str) -> str:
     return date_str
 
 
-def _extract_contact(lines: list[str]) -> dict[str, str]:
+def _extract_contact(lines: list[str], hide: bool = True) -> dict[str, str]:
     contact = {'name': '', 'phone': '', 'email': '', 'github': '', 'linkedin': ''}
     for line in lines:
         s = line.strip()
@@ -99,31 +102,31 @@ def _extract_contact(lines: list[str]) -> dict[str, str]:
         if not contact['email']:
             m = EMAIL_RE.search(s)
             if m:
-                contact['email'] = m.group(0)
+                contact['email'] = '[HIDDEN]' if hide else m.group(0)
                 continue
         if not contact['github']:
             m = GITHUB_RE.search(s)
             if m:
-                contact['github'] = re.sub(r'github\s*\.\s*com', 'github.com', m.group(0), flags=re.IGNORECASE)
+                contact['github'] = '[HIDDEN]' if hide else re.sub(r'github\s*\.\s*com', 'github.com', m.group(0), flags=re.IGNORECASE)
                 continue
         if not contact['linkedin']:
             m = LINKEDIN_RE.search(s)
             if m:
-                contact['linkedin'] = m.group(0)
+                contact['linkedin'] = '[HIDDEN]' if hide else m.group(0)
                 continue
         if not contact['phone'] and PHONE_RE.search(s) and sum(c.isdigit() for c in s) >= 9:
-            contact['phone'] = PHONE_RE.search(s).group(0).strip()
+            contact['phone'] = '[HIDDEN]' if hide else PHONE_RE.search(s).group(0).strip()
             continue
         if not contact['name'] and re.match(r'^[A-Za-zÀ-ỹ\s\.\-]+$', s) and not re.search(r'\d', s):
             words = s.split()
             if 2 <= len(words) <= 5 and not match_section(s):
-                contact['name'] = s
+                contact['name'] = '[HIDDEN]' if hide else s
     return contact
 
 
 def _find_sections(lines: list[str]) -> dict[str, list[str]]:
-    sections = {'preamble': []}
-    current = 'preamble'
+    sections: dict[str, list[str]] = {}
+    current = None
     for line in lines:
         s = line.strip()
         sec_id = match_section(s)
@@ -131,12 +134,12 @@ def _find_sections(lines: list[str]) -> dict[str, list[str]]:
             current = sec_id
             if current not in sections:
                 sections[current] = []
-        else:
+        elif current is not None:
             sections[current].append(line)
     return sections
 
 
-def _parse_entries(lines: list[str], is_project: bool = False) -> list[dict]:
+def _parse_entries(lines: list[str], is_project: bool = False, hide_personal_info: bool = True) -> list[dict]:
     raw_entries = []
     current_entry_lines = []
 
@@ -158,15 +161,7 @@ def _parse_entries(lines: list[str], is_project: bool = False) -> list[dict]:
         raw_entries.append(current_entry_lines)
 
     entries = []
-    title_key = 'name' if is_project else 'company'
     for chunk in raw_entries:
-        entry = {
-            title_key: '',
-            'role': '',
-            'period': '',
-            'link': '',
-            'highlights': []
-        }
         meta_lines = []
         desc_lines = []
         is_desc = False
@@ -175,8 +170,6 @@ def _parse_entries(lines: list[str], is_project: bool = False) -> list[dict]:
             s = line_item.strip()
             m_link = URL_RE.search(s)
             if m_link and not is_desc:
-                norm_link = re.sub(r'github\s*\.\s*com', 'github.com', m_link.group(0), flags=re.IGNORECASE)
-                entry['link'] = norm_link
                 continue
 
             m_date = DATE_RANGE_RE.search(s)
@@ -187,32 +180,9 @@ def _parse_entries(lines: list[str], is_project: bool = False) -> list[dict]:
                 is_desc = True
                 desc_lines.append(s)
 
-        for m in meta_lines:
-            m_date = DATE_RANGE_RE.search(m)
-            if m_date:
-                entry['period'] = normalize_date(m_date.group(0).strip())
-                rem = m.replace(m_date.group(0), '').strip(' -|,')
-                if rem:
-                    if not entry[title_key] and not any(kw in rem.lower() for kw in ROLE_KW):
-                        entry[title_key] = rem
-                    else:
-                        entry['role'] = rem
-                continue
-            if ' - ' in m and not entry[title_key] and not entry['role']:
-                parts = m.split(' - ', 1)
-                entry['role'] = parts[0].strip()
-                entry[title_key] = parts[1].strip()
-                continue
-            if any(kw in m.lower() for kw in ROLE_KW):
-                entry['role'] = m
-            elif not entry[title_key]:
-                entry[title_key] = m
-            elif not entry['role']:
-                entry['role'] = m
-
-        entry['highlights'] = stitch_bullets(desc_lines)
-        if entry[title_key] or entry['role'] or entry['highlights']:
-            entries.append(entry)
+        highlights = stitch_bullets(desc_lines, hide_personal_info=hide_personal_info)
+        if highlights:
+            entries.append({'highlights': highlights})
 
     return entries
 
@@ -286,47 +256,20 @@ def _parse_skills(lines: list[str]) -> tuple[list[str], dict[str, list[str]]]:
     return flat_skills, by_category
 
 
-def parse_cv(lines: list[str]) -> dict:
-    contact = _extract_contact(lines)
+def parse_cv(lines: list[str], hide_personal_info: bool = True) -> dict:
     sections = _find_sections(lines)
-
-    # Summary
-    obj_lines = sections.get('objective', [])
-    preamble_lines = [
-        line_item for line_item in sections.get('preamble', [])
-        if not NOISE_RE.match(line_item.strip())
-        and not any(contact.get(k) and contact[k].lower() in line_item.lower() for k in ['name', 'email', 'phone', 'github', 'linkedin'])
-        and line_item.strip().lower() not in CONTACT_LABELS
-    ]
-
-    summary = clean_text_block(obj_lines) if obj_lines else clean_text_block(preamble_lines)
-
-    # Education
-    education = _parse_education(sections.get('education', []))
 
     # Skills
     skills, skills_by_category = _parse_skills(sections.get('skills', []))
 
-    # Experience
-    experience = _parse_entries(sections.get('experience', []), is_project=False)
+    # Experience (highlights only)
+    experience = _parse_entries(sections.get('experience', []), is_project=False, hide_personal_info=hide_personal_info)
 
-    # Projects
-    projects = _parse_entries(sections.get('projects', []), is_project=True)
+    # Projects (highlights only)
+    projects = _parse_entries(sections.get('projects', []), is_project=True, hide_personal_info=hide_personal_info)
 
     # Key Technical Highlights
-    key_highlights = stitch_bullets(sections.get('key_highlights', []))
-
-    # Languages
-    languages = []
-    for line_item in sections.get('languages', []):
-        s = line_item.strip()
-        if not s or NOISE_RE.match(s):
-            continue
-        m = LANG_RE.match(s)
-        if m:
-            languages.append({'language': m.group(1).strip(), 'level': m.group(2).strip()})
-        else:
-            languages.append({'language': s, 'level': ''})
+    key_highlights = stitch_bullets(sections.get('key_highlights', []), hide_personal_info=hide_personal_info)
 
     # Certifications
     certifications = [
@@ -334,24 +277,13 @@ def parse_cv(lines: list[str]) -> dict:
         if line_item.strip() and not NOISE_RE.match(line_item.strip()) and not LANG_RE.match(line_item.strip())
     ]
 
-    # References
-    references = [
-        line_item.strip() for line_item in sections.get('references', [])
-        if line_item.strip() and not NOISE_RE.match(line_item.strip())
-    ]
-
     return {
-        'personal_info': contact,
-        'summary': summary,
-        'education': education,
         'skills': skills,
         'skills_by_category': skills_by_category,
         'experience': experience,
         'projects': projects,
         'key_technical_highlights': key_highlights,
-        'languages': languages,
         'certifications': certifications,
-        'references': references,
     }
 
 
