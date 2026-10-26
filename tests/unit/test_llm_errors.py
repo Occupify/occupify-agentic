@@ -91,3 +91,44 @@ async def test_stream_errors_use_failed_to_message(test_db):
             pass
 
     assert exc_info.value.message.startswith("Failed to")
+
+
+@pytest.mark.asyncio
+async def test_error_step_contains_detailed_fields(test_db):
+    from sqlalchemy import select
+
+    from app.db.models import AgentRun
+
+    user = CurrentUser(user_id="user-err-detail", role="ROLE_USER")
+    deps = AgentDeps(user=user, session_id="sess-err-detail", db=test_db)
+
+    async def err_fn(messages, info):
+        raise ModelHTTPError(
+            status_code=400,
+            model_name="glm-4.5-flash",
+            body={"code": "1302", "message": "Too many concurrent requests"},
+        )
+
+    agent = Agent(model=FunctionModel(function=err_fn), deps_type=AgentDeps)
+
+    with pytest.raises(LlmUnavailableError):
+        await run_agent(agent, "hi", deps, use_case="chat")
+
+    # Verify run record in DB
+    runs = (
+        (await test_db.execute(select(AgentRun).where(AgentRun.user_id == "user-err-detail")))
+        .scalars()
+        .all()
+    )
+    assert len(runs) == 1
+    run_record = runs[0]
+    assert run_record.status == "failed"
+    assert "ModelHTTPError" in run_record.error
+    assert "1302" in run_record.error or "Too many concurrent requests" in run_record.error
+
+    # Verify step log
+    error_step = next(s for s in run_record.steps if s["event"] == "run.error")
+    assert error_step["error_type"] == "ModelHTTPError"
+    assert "error_message" in error_step
+    assert "status_code" in error_step
+    assert error_step["status_code"] == 400

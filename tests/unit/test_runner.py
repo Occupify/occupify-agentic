@@ -42,6 +42,8 @@ async def test_runner_with_test_model(test_db):
         assert res.output == "Test response"
         assert res.model == "glm-4.5-air"
         assert res.run_id is not None
+        assert res.cost_usd >= 0.0
+        assert res.cost_vnd >= 0.0
 
         run_record = await test_db.get(AgentRun, res.run_id)
         assert run_record is not None
@@ -80,6 +82,8 @@ async def test_stream_agent_records_run_and_steps(test_db):
     assert len(done_items) == 1
     done = done_items[0]
     assert done.output == "Hello stream!"
+    assert done.cost_usd >= 0.0
+    assert done.cost_vnd >= 0.0
 
     # Verify agent_runs record was written in DB for streamed turn (F-03)
     run_record = await test_db.get(AgentRun, done.run_id)
@@ -134,3 +138,36 @@ async def test_history_parse_failure_raises(test_db):
     with pytest.raises(AppError) as exc_info:
         await run_agent(test_agent, "hi", deps, use_case="chat", history=malformed_history)
     assert exc_info.value.error_code == "HISTORY_PARSE_FAILED"
+
+
+@pytest.mark.asyncio
+async def test_runner_computes_token_costs(test_db):
+    from pydantic_ai.messages import ModelResponse, TextPart
+    from pydantic_ai.usage import RequestUsage
+
+    user = CurrentUser(user_id="user-cost-1", role="ROLE_USER")
+    deps = AgentDeps(user=user, session_id="sess-cost-1", db=test_db)
+
+    async def fn(messages, info):
+        return ModelResponse(
+            parts=[TextPart("Cost evaluated")],
+            usage=RequestUsage(
+                input_tokens=10_000,
+                output_tokens=5_000,
+                cache_read_tokens=2_000,
+            ),
+        )
+
+    agent = Agent(model=FunctionModel(function=fn), deps_type=AgentDeps)
+    res = await run_agent(agent, "calculate cost", deps, use_case="chat")
+
+    assert res.cost_usd > 0
+    assert res.cost_vnd > 0
+    # For glm-4.5-air:
+    # uncached input: 8,000 * 0.14 / 1M = 0.00112
+    # cached input: 2,000 * 0.03 / 1M = 0.00006
+    # output: 5,000 * 0.14 / 1M = 0.0007
+    # total cost_usd = 0.00188
+    # cost_vnd = 0.00188 * 25400 = 47.75
+    assert round(res.cost_usd, 5) == 0.00188
+    assert res.cost_vnd == round(0.00188 * 25400, 2)

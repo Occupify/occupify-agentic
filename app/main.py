@@ -72,7 +72,12 @@ def create_app() -> FastAPI:
 
     @app.exception_handler(Exception)
     async def unhandled_exception_handler(request: Request, exc: Exception):
-        log_step("app.unhandled_exception", error=str(exc))
+        log_step(
+            "app.unhandled_exception",
+            error_type=type(exc).__name__,
+            error_message=str(exc),
+            path=str(request.url.path),
+        )
         return JSONResponse(
             status_code=500,
             content={

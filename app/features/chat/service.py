@@ -25,6 +25,7 @@ from app.core.errors import (
     FileInvalidError,
     SessionNotFoundError,
 )
+from app.core.logging import log_step
 from app.core.security import CurrentUser
 from app.db.repositories.chat import ChatRepository
 from app.db.repositories.documents import DocumentRepository
@@ -344,6 +345,12 @@ class ChatService:
                     ):
                         await queue.put(item)
                 except Exception as exc:
+                    log_step(
+                        "chat.producer_error",
+                        error_type=type(exc).__name__,
+                        error_message=str(exc),
+                        error_code=getattr(exc, "error_code", None),
+                    )
                     await queue.put(exc)
                 finally:
                     await queue.put(_DONE)
@@ -449,6 +456,13 @@ class ChatService:
         except Exception as exc:
             err = exc if isinstance(exc, AppError) else _map_llm_exception(exc)
             err_payload = {"errorCode": err.error_code, "message": err.message}
+            log_step(
+                "chat.stream_error",
+                error_type=type(exc).__name__,
+                error_message=str(exc),
+                error_code=err.error_code,
+                response_message=err.message,
+            )
             yield f"event: error\ndata: {json.dumps(err_payload)}\n\n"
 
         finally:

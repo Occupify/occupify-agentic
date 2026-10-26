@@ -16,7 +16,7 @@ from pydantic_ai.exceptions import (
     UnexpectedModelBehavior,
     UsageLimitExceeded,
 )
-from pydantic_ai.messages import ModelMessagesTypeAdapter
+from pydantic_ai.messages import ModelMessagesTypeAdapter, repair_messages
 from pydantic_ai.settings import ModelSettings
 from pydantic_ai.usage import RunUsage, UsageLimits
 
@@ -29,6 +29,7 @@ from app.core.errors import (
     LlmUnavailableError,
 )
 from app.core.logging import bind_context, log_step
+from app.core.pricing import calculate_token_cost
 from app.db.repositories.runs import RunRepository
 from app.llm.glm import get_model_settings
 
@@ -43,6 +44,8 @@ class AgentRunOutput:
     run_id: str
     model: str
     latency_ms: int
+    cost_usd: float = 0.0
+    cost_vnd: float = 0.0
 
 
 @dataclass
@@ -67,6 +70,8 @@ class AgentStreamDone:
     latency_ms: int
     run_id: str
     model: str
+    cost_usd: float = 0.0
+    cost_vnd: float = 0.0
 
 
 @dataclass
@@ -114,6 +119,8 @@ def _extract_usage_fields(usage: Any, model_name: str) -> dict[str, Any]:
             "tokens_total": 0,
             "requests": 0,
             "tokens_known": False,
+            "cost_usd": 0.0,
+            "cost_vnd": 0.0,
         }
     tokens_in = getattr(usage, "input_tokens", 0) or 0
     tokens_cached = getattr(usage, "cache_read_tokens", 0) or 0
@@ -121,6 +128,7 @@ def _extract_usage_fields(usage: Any, model_name: str) -> dict[str, Any]:
     tokens_reasoning = getattr(usage, "output_reasoning_tokens", 0) or 0
     tokens_total = tokens_in + tokens_out
     requests = getattr(usage, "requests", 0) or 0
+    cost_data = calculate_token_cost(model_name, tokens_in, tokens_out, tokens_cached)
     return {
         "model": model_name,
         "tokens_in": tokens_in,
@@ -130,6 +138,9 @@ def _extract_usage_fields(usage: Any, model_name: str) -> dict[str, Any]:
         "tokens_total": tokens_total,
         "requests": requests,
         "tokens_known": True,
+        "cost_usd": cost_data["cost_usd"],
+        "cost_vnd": cost_data["cost_vnd"],
+        "pricing_rate": cost_data["pricing_rate"],
     }
 
 
@@ -207,8 +218,13 @@ async def _setup_run(
     if history:
         try:
             validated_history = ModelMessagesTypeAdapter.validate_python(history)
+            validated_history = repair_messages(validated_history)
         except Exception as exc:
-            log_step("history.parse_failed", error_type=type(exc).__name__)
+            log_step(
+                "history.parse_failed",
+                error_type=type(exc).__name__,
+                error_message=str(exc),
+            )
             raise AppError(
                 500, "Failed to load conversation history.", "HISTORY_PARSE_FAILED"
             ) from exc
@@ -216,6 +232,8 @@ async def _setup_run(
     bind_context(
         trace_id=trace_id,
         run_id=run_id,
+        parent_run_id=getattr(deps, "parent_run_id", None),
+        agent_role=getattr(deps, "agent_role", "primary"),
         use_case=use_case,
         user_id=deps.user.user_id,
         session_id=deps.session_id,
@@ -239,6 +257,8 @@ async def _setup_run(
     ctx.record_step(
         "run.start",
         model=model_name,
+        agent_role=getattr(deps, "agent_role", "primary"),
+        parent_run_id=getattr(deps, "parent_run_id", None),
         history_messages=len(validated_history),
         prompt_chars=len(prompt),
     )
@@ -305,14 +325,33 @@ async def _finish_run_failed(
 ) -> None:
     duration_ms = int((time.perf_counter() - ctx.start_time) * 1000)
     safe_err = type(exc).__name__
+    err_msg = str(exc) or getattr(exc, "message", "") or safe_err
+    err_code = getattr(exc, "error_code", None) or getattr(exc, "code", None) or safe_err
+
+    extra_err_fields: dict[str, Any] = {
+        "error_type": safe_err,
+        "error_message": err_msg,
+        "error_code": str(err_code),
+    }
+    if hasattr(exc, "status_code"):
+        extra_err_fields["status_code"] = getattr(exc, "status_code")
+    if hasattr(exc, "body") and getattr(exc, "body") is not None:
+        extra_err_fields["error_body"] = str(getattr(exc, "body"))[:500]
+
     u = _extract_usage_fields(usage, ctx.model_name)
-    ctx.record_step("run.error", level=logging.WARNING, ms=duration_ms, error_type=safe_err, **u)
+    ctx.record_step(
+        "run.error",
+        level=logging.WARNING,
+        ms=duration_ms,
+        **extra_err_fields,
+        **u,
+    )
 
     if deps.db:
         repo = RunRepository(deps.db)
         await repo.finish_failed(
             run_id=ctx.run_id,
-            error_message=safe_err,
+            error_message=f"{safe_err}: {err_msg[:450]}",
             latency_ms=duration_ms,
             steps=ctx.steps_log,
         )
@@ -349,8 +388,8 @@ async def run_agent(
             u = _extract_usage_fields(usage, ctx.model_name)
             ctx.record_step("llm.response", **u)
 
-            user_msgs = [m for m in all_new if getattr(m, "kind", None) == "request"]
-            asst_msgs = [m for m in all_new if getattr(m, "kind", None) == "response"]
+            user_msgs = all_new[:1] if all_new else []
+            asst_msgs = all_new[1:] if len(all_new) > 1 else []
 
             user_json = (
                 ModelMessagesTypeAdapter.dump_python(user_msgs, mode="json") if user_msgs else []
@@ -370,6 +409,8 @@ async def run_agent(
                 run_id=ctx.run_id,
                 model=ctx.model_name,
                 latency_ms=duration_ms,
+                cost_usd=u.get("cost_usd", 0.0),
+                cost_vnd=u.get("cost_vnd", 0.0),
             )
 
         except Exception as exc:
@@ -418,8 +459,8 @@ async def stream_agent(
                 u = _extract_usage_fields(usage, ctx.model_name)
                 ctx.record_step("llm.response", **u)
 
-                user_msgs = [m for m in all_new if getattr(m, "kind", None) == "request"]
-                asst_msgs = [m for m in all_new if getattr(m, "kind", None) == "response"]
+                user_msgs = all_new[:1] if all_new else []
+                asst_msgs = all_new[1:] if len(all_new) > 1 else []
 
                 user_json = (
                     ModelMessagesTypeAdapter.dump_python(user_msgs, mode="json")
@@ -443,6 +484,8 @@ async def stream_agent(
                     latency_ms=duration_ms,
                     run_id=ctx.run_id,
                     model=ctx.model_name,
+                    cost_usd=u.get("cost_usd", 0.0),
+                    cost_vnd=u.get("cost_vnd", 0.0),
                 )
 
         except asyncio.CancelledError:
