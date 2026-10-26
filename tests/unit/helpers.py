@@ -38,3 +38,8 @@ def scripted_model(tool_name: str, args: dict[str, Any], final_text: str = "done
         return ModelResponse(parts=[ToolCallPart(tool_name, args)])
 
     return FunctionModel(fn)
+
+
+from tests.unit.job_match.scripts import raw_invalid, structured, tool_then_structured  # noqa: E402
+
+__all__ = ["FakeRpc", "scripted_model", "structured", "tool_then_structured", "raw_invalid"]

@@ -11,6 +11,8 @@ os.environ["APP_ENV"] = "test"
 os.environ["ZAI_API_KEY"] = "mock-key-never-used"
 os.environ["PDF_EXTRACTOR"] = "pdfium"
 os.environ["DATABASE_URL"] = "sqlite+aiosqlite:///:memory:"
+os.environ["ML_ENABLED"] = "false"
+os.environ["CORE_RPC_MODE"] = "mock"
 
 from app.core.config import Settings, get_settings  # noqa: E402
 
