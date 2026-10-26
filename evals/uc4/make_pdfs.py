@@ -1,5 +1,4 @@
 import io
-import os
 import sys
 from pathlib import Path
 
@@ -56,11 +55,7 @@ def render_markdown_to_pdf(markdown_text: str, output_path: Path) -> bytes:
             continue
 
         # Simple HTML escape for reportlab
-        safe_line = (
-            stripped.replace("&", "&amp;")
-            .replace("<", "&lt;")
-            .replace(">", "&gt;")
-        )
+        safe_line = stripped.replace("&", "&amp;").replace("<", "&lt;").replace(">", "&gt;")
 
         if safe_line.startswith("# "):
             story.append(Paragraph(safe_line[2:], title_style))

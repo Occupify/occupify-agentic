@@ -34,7 +34,8 @@ async def test_restart_marks_open_runs_failed(test_db: AsyncSession):
     await init_db()
 
     # Query back
-    res = await test_db.execute(select(JobMatchRun).order_id(JobMatchRun.id))
+    test_db.expire_all()
+    res = await test_db.execute(select(JobMatchRun).order_by(JobMatchRun.id))
     runs = {r.id: r for r in res.scalars().all()}
 
     assert runs["run-queued-1"].status == "failed"
