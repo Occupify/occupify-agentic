@@ -1,4 +1,5 @@
 from dataclasses import dataclass
+from typing import Any
 
 from sqlalchemy.ext.asyncio import AsyncSession
 
@@ -10,3 +11,6 @@ class AgentDeps:
     user: CurrentUser
     session_id: str | None = None
     db: AsyncSession | None = None
+    rpc: Any = None
+    parent_run_id: str | None = None
+    agent_role: str = "primary"

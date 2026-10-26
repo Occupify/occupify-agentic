@@ -92,8 +92,16 @@ class JSONFormatter(logging.Formatter):
             entry["event"] = "log.message"
 
         # Inject context fields: trace_id, run_id, use_case, user_id, session_id, etc.
-        for key in ["trace_id", "run_id", "use_case", "session_id", "user_id"]:
-            if key in ctx:
+        for key in [
+            "trace_id",
+            "run_id",
+            "parent_run_id",
+            "agent_role",
+            "use_case",
+            "session_id",
+            "user_id",
+        ]:
+            if key in ctx and ctx[key] is not None:
                 entry[key] = ctx[key]
 
         # Add extra fields passed in kwargs
