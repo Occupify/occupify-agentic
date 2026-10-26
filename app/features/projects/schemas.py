@@ -9,6 +9,7 @@ class ProjectStatus(StrEnum):
 
 
 class ProjectPeriod(StrEnum):
+    DAY = "DAY"
     FIXED = "FIXED"
     HOURLY = "HOURLY"
     WEEKLY = "WEEKLY"
@@ -27,6 +28,10 @@ class ProjectFilterParams(BaseModel):
     keyword: str | None = Field(
         default=None,
         description="Optional search keyword matching title and description.",
+    )
+    skills: list[str] | None = Field(
+        default=None,
+        description="Optional list of skills matching project jobs.",
     )
     status: ProjectStatus | None = Field(
         default=None,
