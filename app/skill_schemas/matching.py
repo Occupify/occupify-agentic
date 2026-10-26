@@ -29,7 +29,7 @@ class SkillVerdict(BaseModel):
     model_config = ConfigDict(extra="forbid")
 
     ref: str
-    verdict: Literal["exact", "equivalent", "implied", "missing"]
+    verdict: Literal["exact", "equivalent", "implied", "inferred", "missing"]
     cv_skill: str | None = None
 
 
@@ -37,7 +37,7 @@ class JobSkillVerdict(BaseModel):
     model_config = ConfigDict(extra="forbid")
 
     job_skill: str
-    verdict: Literal["exact", "equivalent", "implied", "missing"]
+    verdict: Literal["exact", "equivalent", "implied", "inferred", "missing"]
     cv_skill: str | None = None
 
 

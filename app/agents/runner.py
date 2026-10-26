@@ -38,7 +38,7 @@ from app.llm.glm import get_model_settings
 
 @dataclass
 class AgentRunOutput:
-    output: str
+    output: Any
     user_model_messages: list[Any]
     assistant_model_messages: list[Any]
     tokens_in: int
@@ -435,7 +435,7 @@ async def run_agent(
             duration_ms, u = await _finish_run_success(deps, ctx, usage_result)
 
             return AgentRunOutput(
-                output=res.output if isinstance(res.output, str) else str(res.output),
+                output=res.output,
                 user_model_messages=user_json,
                 assistant_model_messages=asst_json,
                 tokens_in=u["tokens_in"],
