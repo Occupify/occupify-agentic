@@ -48,7 +48,7 @@ class LoopDetector:
 
         # Check in history
         if key in self.history:
-            self.repeat_counts[key] = self.repeat_counts.get(key, 1) + 1
+            self.repeat_counts[key] = self.repeat_counts.get(key, 0) + 1
             if self.repeat_counts[key] >= 2:
                 raise HarnessStop(StopReason.LOOP)
             return "duplicate"
