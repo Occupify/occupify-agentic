@@ -30,7 +30,7 @@ from app.core.errors import (
     ContentFilteredError,
     LlmUnavailableError,
 )
-from app.core.logging import bind_context, log_step
+from app.core.logging import _context, bind_context, get_current_context, log_step
 from app.core.pricing import calculate_token_cost
 from app.db.repositories.runs import RunRepository
 from app.llm.glm import get_model_settings
@@ -387,87 +387,95 @@ async def run_agent(
     parent_run_id: str | None = None,
     redact_errors: bool = False,
 ) -> AgentRunOutput:
-    record_captured_request(prompt)
-    ctx = await _setup_run(
-        deps,
-        use_case,
-        prompt,
-        history,
-        usage_limits=usage_limits,
-        agent_role=agent_role,
-        parent_run_id=parent_run_id,
-        redact_errors=redact_errors,
-    )
-    last_usage = None
-    with capture_run_messages() as captured_messages:
-        try:
-            ctx.record_step(
-                "llm.request",
-                model=ctx.model_name,
-                message_count=len(ctx.validated_history) + 1,
-            )
-            res = await agent.run(
-                prompt,
-                message_history=ctx.validated_history,
-                deps=deps,
-                usage=usage,
-                usage_limits=ctx.usage_limits,
-                model_settings=ctx.model_settings,
-            )
-            last_usage = getattr(res, "usage", None)
-            all_new = res.new_messages()
-            _check_context_window(all_new)
+    saved_context = get_current_context()
+    try:
+        record_captured_request(prompt)
+        ctx = await _setup_run(
+            deps,
+            use_case,
+            prompt,
+            history,
+            usage_limits=usage_limits,
+            agent_role=agent_role,
+            parent_run_id=parent_run_id,
+            redact_errors=redact_errors,
+        )
+        last_usage = None
+        with capture_run_messages() as captured_messages:
+            try:
+                ctx.record_step(
+                    "llm.request",
+                    model=ctx.model_name,
+                    message_count=len(ctx.validated_history) + 1,
+                )
+                res = await agent.run(
+                    prompt,
+                    message_history=ctx.validated_history,
+                    deps=deps,
+                    usage=usage,
+                    usage_limits=ctx.usage_limits,
+                    model_settings=ctx.model_settings,
+                )
+                last_usage = getattr(res, "usage", None)
+                all_new = res.new_messages()
+                _check_context_window(all_new)
 
-            usage_result = last_usage
-            u = _extract_usage_fields(usage_result, ctx.model_name)
-            ctx.record_step("llm.response", **u)
+                usage_result = last_usage
+                u = _extract_usage_fields(usage_result, ctx.model_name)
+                ctx.record_step("llm.response", **u)
 
-            user_msgs = all_new[:1] if all_new else []
-            asst_msgs = all_new[1:] if len(all_new) > 1 else []
+                user_msgs = all_new[:1] if all_new else []
+                asst_msgs = all_new[1:] if len(all_new) > 1 else []
 
-            user_json = (
-                ModelMessagesTypeAdapter.dump_python(user_msgs, mode="json") if user_msgs else []
-            )
-            asst_json = (
-                ModelMessagesTypeAdapter.dump_python(asst_msgs, mode="json") if asst_msgs else []
-            )
+                user_json = (
+                    ModelMessagesTypeAdapter.dump_python(user_msgs, mode="json")
+                    if user_msgs
+                    else []
+                )
+                asst_json = (
+                    ModelMessagesTypeAdapter.dump_python(asst_msgs, mode="json")
+                    if asst_msgs
+                    else []
+                )
 
-            duration_ms, u = await _finish_run_success(deps, ctx, usage_result)
+                duration_ms, u = await _finish_run_success(deps, ctx, usage_result)
 
-            return AgentRunOutput(
-                output=res.output,
-                user_model_messages=user_json,
-                assistant_model_messages=asst_json,
-                tokens_in=u["tokens_in"],
-                tokens_out=u["tokens_out"],
-                run_id=ctx.run_id,
-                model=ctx.model_name,
-                latency_ms=duration_ms,
-                cost_usd=u.get("cost_usd", 0.0),
-                cost_vnd=u.get("cost_vnd", 0.0),
-            )
+                return AgentRunOutput(
+                    output=res.output,
+                    user_model_messages=user_json,
+                    assistant_model_messages=asst_json,
+                    tokens_in=u["tokens_in"],
+                    tokens_out=u["tokens_out"],
+                    run_id=ctx.run_id,
+                    model=ctx.model_name,
+                    latency_ms=duration_ms,
+                    cost_usd=u.get("cost_usd", 0.0),
+                    cost_vnd=u.get("cost_vnd", 0.0),
+                )
 
-        except Exception as exc:
-            usage_to_log = last_usage or _extract_usage_from_messages(captured_messages)
-            await _finish_run_failed(
-                deps, ctx, exc, usage=usage_to_log, redact_errors=redact_errors
-            )
-            if isinstance(exc, HarnessStop):
-                raise exc
-            if isinstance(exc, UsageLimitExceeded):
-                msg = str(exc).lower()
-                if "tool_call" in msg:
-                    kind = "tool_calls"
-                elif "input_token" in msg:
-                    kind = "input_tokens"
-                elif "output_token" in msg or "response_token" in msg:
-                    kind = "output_tokens"
-                else:
-                    kind = "requests"
-                raise BudgetExceeded(kind) from exc
-            if isinstance(exc, AppError):
-                raise exc
-            raise _map_llm_exception(exc) from exc
+            except Exception as exc:
+                usage_to_log = last_usage or _extract_usage_from_messages(captured_messages)
+                await _finish_run_failed(
+                    deps, ctx, exc, usage=usage_to_log, redact_errors=redact_errors
+                )
+                if isinstance(exc, HarnessStop):
+                    raise exc
+                if isinstance(exc, UsageLimitExceeded):
+                    msg = str(exc).lower()
+                    if "tool_call" in msg:
+                        kind = "tool_calls"
+                    elif "input_token" in msg:
+                        kind = "input_tokens"
+                    elif "output_token" in msg or "response_token" in msg:
+                        kind = "output_tokens"
+                    else:
+                        kind = "requests"
+                    raise BudgetExceeded(kind) from exc
+                if isinstance(exc, AppError):
+                    raise exc
+                raise _map_llm_exception(exc) from exc
+    finally:
+        _context.set(saved_context)
 
 
 async def stream_agent(

@@ -92,6 +92,7 @@ async def match_skills_for_project(
     budget: RunBudget | None = None,
     options: PipelineOptions | None = None,
     deps: AgentDeps | None = None,
+    parent_run_id: str | None = None,
 ) -> tuple[dict[str, dict[str, Any]], list[str]]:
     """
     Matches candidate skills against all jobs of a single project in one model call.
@@ -122,6 +123,7 @@ async def match_skills_for_project(
         user=CurrentUser(user_id="job-match-user", role="ROLE_USER"),
         session_id=str(uuid.uuid4()),
         agent_role="skill_match",
+        parent_run_id=parent_run_id,
     )
 
     usage = budget.usage if budget else None
@@ -137,6 +139,7 @@ async def match_skills_for_project(
             usage=usage,
             usage_limits=limits,
             agent_role="skill_match",
+            parent_run_id=parent_run_id,
             redact_errors=True,
         )
 

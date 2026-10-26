@@ -2,10 +2,10 @@ import time
 
 import numpy as np
 import pytest
-from app.ml.embedder import Embedder
-from app.ml.reranker import Reranker
 
 from app.core.config import get_settings
+from app.ml.embedder import Embedder
+from app.ml.reranker import Reranker
 
 
 @pytest.mark.ml

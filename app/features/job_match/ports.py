@@ -6,8 +6,6 @@ from pydantic import BaseModel, Field
 
 from app.features.job_match.schemas import (
     ErrorCode,
-    JobMatchProjectItem,
-    JobMatchWarning,
     MatchCriteria,
     RunOutcome,
     RunStatus,
@@ -115,8 +113,8 @@ class RunResult(BaseModel):
     stop_reason: str | None = None
     error_code: ErrorCode | None = None
     message: str = ""
-    warnings: list[JobMatchWarning] = Field(default_factory=list)
-    items: list[JobMatchProjectItem] = Field(default_factory=list)
+    warnings: list[Any] = Field(default_factory=list)
+    items: list[Any] = Field(default_factory=list)
     top_missing_skills: list[str] = Field(default_factory=list)
     profile: dict[str, Any] | None = None
     skill_versions: dict[str, str] = Field(default_factory=dict)

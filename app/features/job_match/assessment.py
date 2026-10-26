@@ -22,6 +22,7 @@ async def assess_single_project(
     profile: Any,
     lang: str = "vi",
     model_override: Any = None,
+    parent_run_id: str | None = None,
 ) -> tuple[dict[str, Any], list[str]]:
     """Runs assess-job-fit skill for a single project's jobs with boundary isolation and rules fallback."""
     project_id = project_item.get("project_id") or project_item.get("id", "unknown")
@@ -98,6 +99,8 @@ async def assess_single_project(
     deps = AgentDeps(
         user=CurrentUser(user_id="system", email="system@example.com", role="USER"),
         session_id="job_match_assessment",
+        agent_role="assessment",
+        parent_run_id=parent_run_id,
     )
 
     success = False
@@ -111,6 +114,7 @@ async def assess_single_project(
                 deps=deps,
                 use_case="job_match",
                 agent_role="assessment",
+                parent_run_id=parent_run_id,
                 redact_errors=True,
             )
             raw_out = res.output
@@ -189,6 +193,7 @@ async def assess_shortlisted_projects(
     lang: str = "vi",
     model_override: Any = None,
     concurrency: int = 4,
+    parent_run_id: str | None = None,
 ) -> tuple[list[dict[str, Any]], list[str]]:
     """Concurrently assesses shortlisted projects with controlled concurrency."""
     if not shortlisted:
@@ -204,6 +209,7 @@ async def assess_shortlisted_projects(
                 profile=profile,
                 lang=lang,
                 model_override=model_override,
+                parent_run_id=parent_run_id,
             )
             for w in warns:
                 if w not in all_warnings:

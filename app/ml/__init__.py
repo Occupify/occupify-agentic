@@ -26,13 +26,19 @@ _reranker: Any = None
 
 def get_embedder() -> Embedder | FakeEmbedder:
     global _embedder
+    import os
+
     settings = get_settings()
-    if settings.APP_ENV == "test":
+    app_env = os.getenv("APP_ENV") or settings.APP_ENV
+    ml_env = os.getenv("ML_ENABLED")
+    is_ml = (ml_env.lower() != "false") if ml_env is not None else settings.ML_ENABLED
+
+    if app_env == "test":
         if _embedder is None:
             _embedder = FakeEmbedder()
         return _embedder
 
-    if not settings.ML_ENABLED:
+    if not is_ml:
         raise EmbedderUnavailable("ML is disabled by configuration (ML_ENABLED=false)")
 
     if _embedder is None:
@@ -45,13 +51,19 @@ def get_embedder() -> Embedder | FakeEmbedder:
 
 def get_reranker() -> Reranker | FakeReranker:
     global _reranker
+    import os
+
     settings = get_settings()
-    if settings.APP_ENV == "test":
+    app_env = os.getenv("APP_ENV") or settings.APP_ENV
+    ml_env = os.getenv("ML_ENABLED")
+    is_ml = (ml_env.lower() != "false") if ml_env is not None else settings.ML_ENABLED
+
+    if app_env == "test":
         if _reranker is None:
             _reranker = FakeReranker()
         return _reranker
 
-    if not settings.ML_ENABLED:
+    if not is_ml:
         raise RerankerUnavailable("ML is disabled by configuration (ML_ENABLED=false)")
 
     if _reranker is None:

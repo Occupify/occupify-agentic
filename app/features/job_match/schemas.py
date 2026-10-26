@@ -118,6 +118,14 @@ class JobMatchJobItem(BaseModel):
 
     model_config = {"populate_by_name": True}
 
+    def __getitem__(self, key: str) -> Any:
+        if hasattr(self, key):
+            return getattr(self, key)
+        for field_name, field_info in self.model_fields.items():
+            if field_info.alias == key:
+                return getattr(self, field_name)
+        raise KeyError(key)
+
 
 class JobMatchProjectItem(BaseModel):
     rank: int
@@ -129,10 +137,23 @@ class JobMatchProjectItem(BaseModel):
 
     model_config = {"populate_by_name": True}
 
+    def __getitem__(self, key: str) -> Any:
+        if hasattr(self, key):
+            return getattr(self, key)
+        for field_name, field_info in self.model_fields.items():
+            if field_info.alias == key:
+                return getattr(self, field_name)
+        raise KeyError(key)
+
 
 class JobMatchWarning(BaseModel):
     code: str
     message: str
+
+    def __getitem__(self, key: str) -> Any:
+        if hasattr(self, key):
+            return getattr(self, key)
+        raise KeyError(key)
 
 
 class JobMatchRunDetail(BaseModel):

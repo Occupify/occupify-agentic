@@ -47,6 +47,7 @@ async def extract_profile(
     user: CurrentUser,
     deps: AgentDeps | None = None,
     options: PipelineOptions | None = None,
+    parent_run_id: str | None = None,
 ) -> tuple[CandidateProfile, RunOutcome, list[JobMatchWarning]]:
     """
     Extracts structured candidate profile from cleaned CV text using the
@@ -66,6 +67,7 @@ async def extract_profile(
         user=user,
         session_id=str(uuid.uuid4()),
         agent_role="profile",
+        parent_run_id=parent_run_id,
     )
 
     res = await run_agent(
@@ -76,6 +78,7 @@ async def extract_profile(
         usage=budget.usage,
         usage_limits=limits,
         agent_role="profile",
+        parent_run_id=parent_run_id,
         redact_errors=True,
     )
 

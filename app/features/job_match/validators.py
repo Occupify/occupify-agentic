@@ -13,6 +13,39 @@ from app.skill_schemas.matching import JobAssessment, ProjectAssessment, Require
 logger = logging.getLogger(__name__)
 
 
+def apply_assessment_to_ranked_items(
+    pre_ranked: list[dict[str, Any]],
+    assessments: dict[str, Any],
+) -> list[dict[str, Any]]:
+    """Applies assessment summaries and requirements to pre-ranked items while strictly preserving order."""
+    final_items = []
+    for item in pre_ranked:
+        pid = item.get("project_id") or item.get("projectId")
+        item_copy = dict(item)
+        jobs = []
+        proj_asmt = assessments.get(pid, {})
+        for job in item.get("jobs", []):
+            j_copy = dict(job)
+            jid = j_copy.get("job_id") or j_copy.get("jobId")
+            j_asmt = (
+                proj_asmt.get(jid)
+                if isinstance(proj_asmt, dict) and jid in proj_asmt
+                else proj_asmt
+            )
+            if isinstance(j_asmt, dict):
+                if "summary" in j_asmt:
+                    j_copy["summary"] = j_asmt["summary"]
+                if "requirements" in j_asmt:
+                    j_copy["requirements"] = j_asmt["requirements"]
+            # Strip forbidden keys that LLMs might try to inject
+            j_copy.pop("score", None)
+            j_copy.pop("order", None)
+            jobs.append(j_copy)
+        item_copy["jobs"] = jobs
+        final_items.append(item_copy)
+    return final_items
+
+
 def validate_v3_criteria(
     items: list[dict[str, Any]],
     criteria: MatchCriteria,
