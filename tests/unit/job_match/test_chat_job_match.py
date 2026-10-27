@@ -110,8 +110,9 @@ async def test_need_cv_when_none_or_expired():
         turn_documents=[],
     )
 
+    # Even if index is missing/unavailable, missing CV takes precedence
     with patch("app.features.job_match.chat_tool.models_loaded", return_value=True), \
-         patch("app.features.job_match.chat_tool.index_state", return_value="ok"):
+         patch("app.features.job_match.chat_tool.index_state", return_value="missing"):
         res = await match_jobs_for_cv(ctx)
 
     assert res["outcome"] == "NEED_CV"

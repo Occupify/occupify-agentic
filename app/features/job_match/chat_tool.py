@@ -177,7 +177,22 @@ async def match_jobs_for_cv(
     if hours_per_day is not None:
         criteria_applied["hours_per_day"] = hours_per_day.value
 
-    # 3. Readiness checks
+    # 3. Locate CV text
+    cv_obj = await _find_candidate_cv(ctx)
+    if cv_obj is None:
+        summary = {
+            "outcome": "NEED_CV",
+            "itemCount": 0,
+            "warnings": ["NEED_CV"],
+            "topMissingSkills": [],
+            "criteriaApplied": criteria_applied,
+            "items": [],
+        }
+        ctx.deps.job_match_memo = summary
+        ctx.deps.job_match_block = render_job_match_markdown([], criteria_applied, [], "NEED_CV", lang=lang)
+        return summary
+
+    # 4. Readiness checks
     if not models_loaded():
         summary = {
             "outcome": "MODELS_LOADING",
@@ -203,21 +218,6 @@ async def match_jobs_for_cv(
         }
         ctx.deps.job_match_memo = summary
         ctx.deps.job_match_block = render_job_match_markdown([], criteria_applied, [], "INDEX_UNAVAILABLE", lang=lang)
-        return summary
-
-    # 4. Locate CV text
-    cv_obj = await _find_candidate_cv(ctx)
-    if cv_obj is None:
-        summary = {
-            "outcome": "NEED_CV",
-            "itemCount": 0,
-            "warnings": ["NEED_CV"],
-            "topMissingSkills": [],
-            "criteriaApplied": criteria_applied,
-            "items": [],
-        }
-        ctx.deps.job_match_memo = summary
-        ctx.deps.job_match_block = render_job_match_markdown([], criteria_applied, [], "NEED_CV", lang=lang)
         return summary
 
     # 5. Progress handler
