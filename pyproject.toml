@@ -29,6 +29,7 @@ dev = [
   "pytest",
   "pytest-asyncio",
   "pytest-cov",
+  "pytest-timeout",
   "respx",
   "ruff",
   "reportlab",
@@ -55,6 +56,7 @@ ignore = ["E501"]
 [tool.pytest.ini_options]
 asyncio_mode = "auto"
 pythonpath = ["."]
+timeout = 120
 markers = [
   "integration: needs Postgres + RabbitMQ",
   "docling: loads Docling models",
