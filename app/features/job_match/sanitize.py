@@ -15,6 +15,9 @@ def _clean_field(text: str | None, default: str = "") -> str:
         return default
 
 
+DOC_TEXT_VERSION = "v1"
+
+
 def sanitize_project(project: dict[str, Any]) -> list[IndexRow]:
     """
     Cleans free-text fields of a project individually using privacy.gate.clean.

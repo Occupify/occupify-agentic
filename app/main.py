@@ -12,6 +12,7 @@ from pathlib import Path
 
 from fastapi import FastAPI, Request
 from fastapi.exceptions import RequestValidationError
+from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse
 
 from app.agents.skill_registry import validate_skills_directory
@@ -22,15 +23,8 @@ from app.core.logging import log_step, setup_logging
 from app.db.init import init_db
 from app.db.session import get_sessionmaker
 from app.features.chat import router as chat_router
-from app.features.job_match import router as job_match_router
-from app.features.job_match.index import (
-    build_job_index,
-    start_embed_backlog_task,
-    start_sweep_task,
-)
 from app.messaging.broker import close_broker, start_broker
-from app.messaging.core_client import get_core_rpc
-from app.ml import get_embedder, load_models_in_background
+from app.ml import load_models_in_background
 
 logger = logging.getLogger(__name__)
 
@@ -44,55 +38,29 @@ async def lifespan(app: FastAPI):
     if settings.APP_ENV != "test" and not settings.ZAI_API_KEY:
         raise RuntimeError("ZAI_API_KEY environment variable is required in non-test environments.")
 
-    # Validate skill registry on startup (T-20)
-    skills_dir = Path("skills")
-    if skills_dir.exists():
-        validate_skills_directory(skills_dir)
+    # Validate skill registry on startup (T-20, C-12)
+    skills_dir = Path(settings.SKILLS_DIR)
+    if not skills_dir.exists():
+        raise RuntimeError(f"Skills directory is missing: {settings.SKILLS_DIR}")
+    validate_skills_directory(skills_dir)
 
     log_step("app.startup", env=settings.APP_ENV, port=settings.APP_PORT, model=settings.GLM_MODEL)
 
     # Initialize DB (tables + cleanup). Fail startup if tables cannot be initialized (F-20)
     await init_db()
 
-    # Initialize messaging broker
-    await start_broker()
+    # Initialize messaging broker only when CORE_RPC_MODE != mock
+    if settings.CORE_RPC_MODE != "mock":
+        await start_broker()
 
     # Background model loading
     load_models_in_background()
 
-    # Initial index build and background sweep
-    sweep_task = None
-    embed_task = None
-    if settings.APP_ENV != "test":
-        session_maker = get_sessionmaker()
-        async with session_maker() as session:
-            try:
-                embedder = get_embedder()
-            except Exception:
-                embedder = None
-            core_rpc = get_core_rpc()
-            try:
-                await build_job_index(session, core_rpc, embedder)
-            except Exception as e:
-                logger.warning("Startup build_job_index error: %s", e)
-
-        sweep_task = asyncio.create_task(
-            start_sweep_task(session_maker, get_core_rpc(), settings.JOB_INDEX_SWEEP_S)
-        )
-        embed_task = asyncio.create_task(start_embed_backlog_task(session_maker, interval_s=10))
-
     yield
 
     # Teardown
-    for task in (sweep_task, embed_task):
-        if task:
-            task.cancel()
-            try:
-                await task
-            except asyncio.CancelledError:
-                pass
-
-    await close_broker()
+    if settings.CORE_RPC_MODE != "mock":
+        await close_broker()
     log_step("app.shutdown")
 
 
@@ -103,6 +71,20 @@ def create_app() -> FastAPI:
         description="Lightweight Python service hosting AI agents for Occupify",
         version="0.1.0",
         lifespan=lifespan,
+    )
+
+    app.add_middleware(
+        CORSMiddleware,
+        allow_origins=[
+            "http://localhost:3000",
+            "http://localhost:5173",
+            "http://127.0.0.1:3000",
+            "http://127.0.0.1:5173",
+        ],
+        allow_origin_regex=r"^https?://(localhost|127\.0\.0\.1)(:[0-9]+)?$",
+        allow_credentials=True,
+        allow_methods=["*"],
+        allow_headers=["*"],
     )
 
     # Custom exception handlers
@@ -143,7 +125,6 @@ def create_app() -> FastAPI:
     # Mount routers
     app.include_router(health.router)
     app.include_router(chat_router.router)
-    app.include_router(job_match_router.router)
 
     if settings.APP_ENV in ("local", "test"):
         app.include_router(dev.router)

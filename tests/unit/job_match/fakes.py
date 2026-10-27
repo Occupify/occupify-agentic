@@ -123,12 +123,21 @@ class FakeJobIndex:
             embed_model="BAAI/bge-m3",
             dim=1024,
             source="mock",
+            doc_text_version="v1",
             built_at=datetime.now(UTC),
             jobs_n=len(self._rows),
         )
 
     def is_usable(self) -> bool:
         return self._usable and len(self._rows) > 0
+
+    async def index_state(self) -> str:
+        if not self._usable:
+            return "mismatch"
+        if len(self._rows) == 0:
+            return "missing"
+        return "ok"
+
 
 
 def get_default_test_model(name: str) -> Any:

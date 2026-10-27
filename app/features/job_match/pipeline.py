@@ -34,6 +34,7 @@ from app.features.job_match.scoring import (
 from app.features.job_match.search_agent import maybe_search_more
 from app.features.job_match.skill_match import match_skills_for_project
 from app.features.job_match.validators import validate_v3_criteria
+from app.documents.cv_text import CvText, gate_cv_text
 from app.ml import get_embedder, get_reranker
 from app.privacy.gate import clean as privacy_clean
 
@@ -49,48 +50,11 @@ def handle_budget_exceeded_at_stage(stage: str) -> str:
     return "RUN_BUDGET_EXCEEDED"
 
 
-def clean_cv(text: str, source: str = "cv", is_file: bool = True) -> str:
+def clean_cv(text: str, source: str = "cv", is_file: bool = True, user: CurrentUser | None = None) -> str:
     """Cleans CV text using privacy gate. Raises exception if PII removal fails."""
-    known_name = ""
-    for line in text.splitlines()[:15]:
-        stripped = line.strip()
-        cleaned = re.sub(r"^[\s#*_\->|:]+", "", stripped)
-        cleaned = re.sub(r"[\s*_\->|:]+$", "", cleaned).strip()
-        if not cleaned:
-            continue
-        if any(
-            h in cleaned.lower()
-            for h in [
-                "thông tin",
-                "liên hệ",
-                "curriculum vitae",
-                "resume",
-                "cv",
-                "kỹ năng",
-                "kinh nghiệm",
-                "contact",
-            ]
-        ):
-            continue
-        words = cleaned.split()
-        if (
-            2 <= len(words) <= 6
-            and "@" not in cleaned
-            and "http" not in cleaned.lower()
-            and not re.search(r"\d{3,}", cleaned)
-        ):
-            known_name = cleaned
-            break
+    cv_obj = gate_cv_text(text, user=user)
+    return cv_obj.text
 
-    # Strip inline address mentions
-    addr_pat = re.compile(
-        r"(?:tại\s+)?(?:địa chỉ|address)\s*[:\s]\s*[^,\n|)]+?(?=(?:\s+hoặc|\s+or|\s+qua|\s+với|[,|\n)]|$))",
-        re.IGNORECASE,
-    )
-    pre_cleaned = addr_pat.sub("[ADDRESS]", text)
-
-    cleaned, _ = privacy_clean(pre_cleaned, source=source, is_file=is_file, known_name=known_name)
-    return cleaned
 
 
 def sanitize_boundary_text(text: str, boundary_tag: str) -> str:
@@ -118,18 +82,20 @@ def _is_cv_precheck(text: str) -> bool:
 
 
 async def run_pipeline(
-    state: RunState,
-    pdf_bytes: bytes,
-    user: CurrentUser,
+    cv_text: Any = None,
+    user: CurrentUser | None = None,
     store: Any = None,
     core_rpc: Any = None,
     criteria: MatchCriteria | None = None,
     lang: str = "vi",
     options: PipelineOptions | None = None,
     on_stage: Any = None,
+    state: RunState | None = None,
+    pdf_bytes: bytes | None = None,
 ) -> PipelineResult:
-    """Full UC4 pipeline orchestrator (S0-S10) under RunBudget and privacy constraints."""
+    """Full UC4 pipeline orchestrator (S0a-S10) under RunBudget and privacy constraints."""
     settings = get_settings()
+    state = state or RunState()
     criteria = criteria or MatchCriteria()
     options = options or PipelineOptions()
     if core_rpc is None:
@@ -139,13 +105,14 @@ async def run_pipeline(
 
     run_id = state.run_id or str(uuid.uuid4())
     state.run_id = run_id
+    user_id = user.user_id if user else "anonymous"
     bind_context(
         run_id=run_id,
         use_case="job_match",
-        user_id=user.user_id,
+        user_id=user_id,
         redact_errors=True,
     )
-    log_step("job_match.start", run_id=run_id, user_id=user.user_id)
+    log_step("job_match.start", run_id=run_id, user_id=user_id)
 
     warnings: list[dict[str, str]] = []
     run_status = RunStatus.SUCCEEDED
@@ -158,54 +125,70 @@ async def run_pipeline(
             on_stage(st)
 
     # -------------------------------------------------------------
-    # S0: Text extraction & S0a pre-check
+    # S0a: CV text & pre-check
     # -------------------------------------------------------------
     set_stage("s0_extract_text")
-    try:
-        pdf = pdfium.PdfDocument(pdf_bytes)
-        raw_text = "".join(p.get_textpage().get_text_range() for p in pdf)
-    except Exception as exc:
-        logger.warning("Failed to extract PDF text: %s", exc)
-        raw_text = ""
+    if cv_text is None and pdf_bytes is not None:
+        try:
+            pdf = pdfium.PdfDocument(pdf_bytes)
+            raw_text = "".join(p.get_textpage().get_text_range() for p in pdf)
+        except Exception as exc:
+            logger.warning("Failed to extract PDF text: %s", exc)
+            raw_text = ""
 
-    if not _is_cv_precheck(raw_text):
-        log_step(
-            "job_match.end",
-            run_id=run_id,
-            status=RunStatus.SUCCEEDED.value,
-            outcome=RunOutcome.NOT_A_CV.value,
-            tokens_in=0,
-            tokens_out=0,
-            cost_usd=0.0,
-        )
-        return RunResult(
-            status=RunStatus.SUCCEEDED,
-            outcome=RunOutcome.NOT_A_CV,
-            message="Failed to recognize document as a valid CV: no standard CV sections found.",
-        )
+        set_stage("s0a_precheck")
+        if not _is_cv_precheck(raw_text):
+            log_step(
+                "job_match.end",
+                run_id=run_id,
+                status=RunStatus.SUCCEEDED.value,
+                outcome=RunOutcome.NOT_A_CV.value,
+                tokens_in=0,
+                tokens_out=0,
+                cost_usd=0.0,
+            )
+            return RunResult(
+                status=RunStatus.SUCCEEDED,
+                outcome=RunOutcome.NOT_A_CV,
+                message="Failed to recognize document as a valid CV: no standard CV sections found.",
+            )
 
-    # -------------------------------------------------------------
-    # S1: Privacy Gate
-    # -------------------------------------------------------------
-    set_stage("s1_privacy_clean")
-    try:
-        cleaned_cv = clean_cv(raw_text, source="cv", is_file=True)
-    except Exception as exc:
-        logger.warning("Privacy gate failed: %s", type(exc).__name__)
-        log_step(
-            "job_match.end",
-            run_id=run_id,
-            status=RunStatus.FAILED.value,
-            error_code=ErrorCode.PII_REMOVAL_FAILED.value,
-            tokens_in=0,
-            tokens_out=0,
-            cost_usd=0.0,
-        )
-        return RunResult(
-            status=RunStatus.FAILED,
-            error_code=ErrorCode.PII_REMOVAL_FAILED,
-            message=f"Privacy gate removal failed: {type(exc).__name__}",
-        )
+        try:
+            cleaned_cv = clean_cv(raw_text, source="cv", is_file=True, user=user)
+        except Exception as exc:
+            logger.warning("Privacy gate failed: %s", type(exc).__name__)
+            log_step(
+                "job_match.end",
+                run_id=run_id,
+                status=RunStatus.FAILED.value,
+                error_code=ErrorCode.PII_REMOVAL_FAILED.value,
+                tokens_in=0,
+                tokens_out=0,
+                cost_usd=0.0,
+            )
+            return RunResult(
+                status=RunStatus.FAILED,
+                error_code=ErrorCode.PII_REMOVAL_FAILED,
+                message=f"Privacy gate removal failed: {type(exc).__name__}",
+            )
+    else:
+        cleaned_cv = cv_text.text if hasattr(cv_text, "text") else (cv_text or "")
+        set_stage("s0a_precheck")
+        if not _is_cv_precheck(cleaned_cv):
+            log_step(
+                "job_match.end",
+                run_id=run_id,
+                status=RunStatus.SUCCEEDED.value,
+                outcome=RunOutcome.NOT_A_CV.value,
+                tokens_in=0,
+                tokens_out=0,
+                cost_usd=0.0,
+            )
+            return RunResult(
+                status=RunStatus.SUCCEEDED,
+                outcome=RunOutcome.NOT_A_CV,
+                message="Failed to recognize document as a valid CV: no standard CV sections found.",
+            )
 
     # -------------------------------------------------------------
     # S2: Profile Extraction
@@ -304,27 +287,6 @@ async def run_pipeline(
         fused_hits = rrf_fuse(dense_lists + [lex_hits], k=60)
         top_hits = fused_hits[: options.pool_size]
         pool_rows = await store.get_rows([h.job_id for h in top_hits])
-
-        # Check for INDEX_STALE (AC-8, 21-plan §2.3)
-        if hasattr(store, "meta"):
-            try:
-                m = await store.meta()
-                if m and m.built_at:
-                    from datetime import UTC, datetime
-
-                    b_at = m.built_at if m.built_at.tzinfo else m.built_at.replace(tzinfo=UTC)
-                    age = (datetime.now(UTC) - b_at).total_seconds()
-                    if age > 2 * settings.JOB_INDEX_SWEEP_S:
-                        if not any(w["code"] == "INDEX_STALE" for w in warnings):
-                            warnings.append(
-                                {
-                                    "code": "INDEX_STALE",
-                                    "message": "Search index sweep is older than expected.",
-                                }
-                            )
-            except Exception:
-                pass
-
     else:
         # Fallback to core.project.search
         warnings.append(

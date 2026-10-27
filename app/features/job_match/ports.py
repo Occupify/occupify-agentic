@@ -30,12 +30,6 @@ class IndexRow(BaseModel):
     project_status: str
     job_status: str
     doc_text: str
-    active: bool = True
-    missed_sweeps: int = 0
-    content_hash: str | None = None
-    embedding: list[float] | None = None
-    embedding_model: str | None = None
-    indexed_at: datetime | None = None
 
 
 class IndexHit(BaseModel):
@@ -49,6 +43,7 @@ class IndexMeta(BaseModel):
     embed_model: str
     dim: int
     source: str
+    doc_text_version: str = "v1"
     built_at: datetime
     jobs_n: int
 
@@ -61,8 +56,6 @@ class UpsertStats(BaseModel):
 
 
 class JobIndex(Protocol):
-    async def upsert(self, rows: list[IndexRow]) -> UpsertStats: ...
-
     async def hybrid_search(
         self,
         dense_queries: list[list[float]],
@@ -73,11 +66,10 @@ class JobIndex(Protocol):
 
     async def get_rows(self, job_ids: list[str]) -> list[IndexRow]: ...
 
-    async def mark_inactive(self, job_ids: list[str]) -> None: ...
-
     async def meta(self) -> IndexMeta | None: ...
 
-    def is_usable(self) -> bool: ...
+    async def index_state(self) -> Literal["ok", "missing", "mismatch"]: ...
+
 
 
 class PipelineOptions(BaseModel):

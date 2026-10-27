@@ -48,13 +48,11 @@ class ErrorCode(StrEnum):
     RUN_BUDGET_EXCEEDED = "RUN_BUDGET_EXCEEDED"
     RUN_TIMEOUT = "RUN_TIMEOUT"
     CORE_UNAVAILABLE = "CORE_UNAVAILABLE"
-    SERVICE_RESTARTED = "SERVICE_RESTARTED"
     INTERNAL_ERROR = "INTERNAL_ERROR"
 
 
 class WarningCode(StrEnum):
     INDEX_UNAVAILABLE = "INDEX_UNAVAILABLE"
-    INDEX_STALE = "INDEX_STALE"
     RERANKER_UNAVAILABLE = "RERANKER_UNAVAILABLE"
     SKILL_MATCH_FALLBACK = "SKILL_MATCH_FALLBACK"
     ASSESSMENT_FALLBACK = "ASSESSMENT_FALLBACK"
@@ -154,26 +152,3 @@ class JobMatchWarning(BaseModel):
         if hasattr(self, key):
             return getattr(self, key)
         raise KeyError(key)
-
-
-class JobMatchRunDetail(BaseModel):
-    run_id: str = Field(alias="runId")
-    status: RunStatus
-    stage: str
-    outcome: RunOutcome | None = None
-    stop_reason: str | None = Field(default=None, alias="stopReason")
-    error_code: ErrorCode | None = Field(default=None, alias="errorCode")
-    message: str | None = None
-    warnings: list[JobMatchWarning] = Field(default_factory=list)
-    criteria: dict[str, Any] | None = None
-    top_missing_skills: list[str] = Field(default_factory=list, alias="topMissingSkills")
-    items: list[JobMatchProjectItem] = Field(default_factory=list)
-
-    model_config = {"populate_by_name": True}
-
-
-class JobMatchRunAccepted(BaseModel):
-    run_id: str = Field(alias="runId")
-    status: str = "queued"
-
-    model_config = {"populate_by_name": True}

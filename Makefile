@@ -1,6 +1,6 @@
 COMPOSE ?= podman compose
 
-.PHONY: install fmt lint test test-all test-integration skills-check skills-catalog infra up down reset-db logs run
+.PHONY: install fmt lint test test-all test-integration skills-check skills-catalog infra up down reset-db logs run migrate-jobs migrate-jobs-container
 
 install:
 	uv sync
@@ -46,3 +46,9 @@ logs:
 
 run:
 	DATABASE_URL="postgresql+asyncpg://postgres:postgres@localhost:5535/occupify_agentic" RABBITMQ_URL="amqp://guest:guest@localhost:5672/" uv run uvicorn app.main:app --host 0.0.0.0 --port 8186 --reload
+
+migrate-jobs:
+	DATABASE_URL="postgresql+asyncpg://postgres:postgres@localhost:5535/occupify_agentic" uv run python -m app.features.job_match.index.migrate
+
+migrate-jobs-container:
+	$(COMPOSE) exec agentic uv run python -m app.features.job_match.index.migrate

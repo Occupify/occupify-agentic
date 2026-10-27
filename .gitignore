@@ -37,3 +37,4 @@ models_cache/
 
 note.md
 docs/evals/uc4/.eval_cache.json
+evals/uc4/.eval_cache.json

@@ -145,17 +145,43 @@ UC4 performs candidate-job matching using a hybrid pipeline:
 4. **Agentic Search:** If candidate has low or missing fit, `plan-job-search` expands search queries within budget caps.
 
 ### Settings (`.env`)
-- `CORE_RPC_MODE`: `live` (RabbitMQ RPC to `occupify-core`) or `mock` (in-memory mock with 18 seed projects).
+- `CORE_RPC_MODE`: `live` (RabbitMQ RPC to `occupify-core`) or `mock` (in-memory mock with catalog JSON).
+- `CORE_MOCK_PATH`: path to mock projects catalog (e.g. `evals/uc4/data/catalog_scale_clean.json`).
 - `ML_ENABLED`: `true` for local dense embeddings & reranking, `false` for unit testing fallback.
 - `EMBEDDER_MODEL`: `BAAI/bge-m3` (1024-dim dense embeddings).
 - `RERANKER_MODEL`: `BAAI/bge-reranker-v2-m3`.
-- `JOB_MATCH_RUN_TIMEOUT_S`: Maximum runtime for a match run (default 900s).
+- `JOB_MATCH_TOOL_TIMEOUT_S`: Maximum tool runtime (default 200s).
 - `JOB_MATCH_LLM_CONCURRENCY`: Concurrency limit for model calls (default 4).
 
 ### Skill Library & Verification
 - Skills reside in `skills/` with `SKILL.md` frontmatter.
 - Check skill library validity: `make skills-check`
 - Regenerate skill catalog: `make skills-catalog`
+
+### Showcase Runbook
+Follow these steps to run the complete end-to-end showcase:
+1. Start the infra:
+   ```bash
+   make infra
+   ```
+2. Set `CORE_MOCK_PATH=evals/uc4/data/catalog_scale_clean.json` in `.env`. The app and the migration must use the **same** file; otherwise the source guard makes the index unusable.
+3. Run the job index migration:
+   ```bash
+   make migrate-jobs
+   ```
+4. Start the service:
+   ```bash
+   make run
+   ```
+   Wait until `/ready` shows `models_loaded: true` and `index: ok`.
+5. Open the web chat UI, or use the curl example in stream mode with a synthetic persona PDF from `evals/uc4/personas/`:
+   ```bash
+   curl -N -X POST http://localhost:8186/ai/chat/messages \
+     -H "X-User-Id: test-user" \
+     -F "message=Tìm cho mình công việc phù hợp với CV này" \
+     -F "stream=true" \
+     -F "files=@evals/uc4/personas/cv-a.pdf"
+   ```
 
 ### Database & Image Notes
 - `make reset-db`: Drops container volumes and recreates `postgres-agentic` with `vector` and `unaccent` extensions.

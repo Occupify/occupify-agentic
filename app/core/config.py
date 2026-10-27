@@ -1,4 +1,5 @@
 from functools import lru_cache
+from typing import Any
 
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
@@ -55,16 +56,16 @@ class Settings(BaseSettings):
     HF_MODELS_DIR: str = "/opt/hf_models"
     ML_THREADS: int = 4
     ML_ENABLED: bool = True
-    JOB_INDEX_SWEEP_S: int = 600
-    JOB_INDEX_MAX_STALENESS_S: int = 1800
+    JOB_MATCH_TOOL_TIMEOUT_S: int = 200
     JOB_MATCH_MAX_REQUESTS: int = 150
     JOB_MATCH_AGENT_MAX_REQUESTS: int = 40
     JOB_MATCH_MAX_SEARCH_CALLS: int = 15
     JOB_MATCH_MAX_INPUT_TOKENS: int = 2000000
     JOB_MATCH_MAX_OUTPUT_TOKENS: int = 300000
-    JOB_MATCH_RUN_TIMEOUT_S: int = 900
     JOB_MATCH_LLM_CONCURRENCY: int = 4
-    JOB_MATCH_MAX_FILE_BYTES: int = 10 * 1024 * 1024
+
+    def model_post_init(self, __context: Any) -> None:
+        assert self.JOB_MATCH_TOOL_TIMEOUT_S <= 240, "JOB_MATCH_TOOL_TIMEOUT_S must be <= 240"
 
     @property
     def EMBEDDER_MODEL(self) -> str:

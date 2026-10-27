@@ -1,43 +1,66 @@
 import hashlib
 import logging
 from datetime import datetime
-from typing import Any
+from pathlib import Path
+from typing import Any, Literal
 
-from sqlalchemy import and_, func, or_, select, text, update
+from sqlalchemy import and_, func, or_, select, text
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from app.db.models import IndexMetaModel, JobIndexRow, utc_now
-from app.features.job_match.ports import (
-    IndexHit,
-    IndexMeta,
-    IndexRow,
-    MatchCriteria,
-    UpsertStats,
-)
+from app.core.config import get_settings
+from app.db.models import IndexMetaModel, JobIndexRow
+from app.db.session import get_sessionmaker
+from app.features.job_match.ports import IndexHit, IndexMeta, IndexRow, MatchCriteria
+from app.features.job_match.sanitize import DOC_TEXT_VERSION
 from app.features.job_match.schemas import HoursPerDayFilter
+from app.ml import models_loaded
 
 logger = logging.getLogger(__name__)
 
 
-_index_building: bool = False
-_index_jobs_count: int = 0
-_index_empty: bool = True
+def get_expected_index_source() -> str:
+    """Computes expected source identifier based on CORE_RPC_MODE and mock file sha256."""
+    settings = get_settings()
+    if settings.CORE_RPC_MODE == "mock":
+        p = Path(settings.CORE_MOCK_PATH)
+        if p.exists():
+            return "mock:" + hashlib.sha256(p.read_bytes()).hexdigest()[:12]
+        return "mock:unknown"
+    return "rpc"
 
 
-def set_index_building(val: bool) -> None:
-    global _index_building
-    _index_building = val
+async def check_index_state_with_session(session: AsyncSession) -> Literal["ok", "missing", "mismatch"]:
+    """Inspects index_meta in session and evaluates status against current settings."""
+    settings = get_settings()
+    try:
+        res = await session.execute(select(IndexMetaModel).where(IndexMetaModel.id == 1))
+        meta = res.scalar_one_or_none()
+        if meta is None or meta.jobs_n == 0:
+            return "missing"
+
+        expected_source = get_expected_index_source()
+        if (
+            meta.embed_model != settings.EMBEDDER_MODEL
+            or meta.dim != settings.EMBEDDING_DIM
+            or getattr(meta, "doc_text_version", "") != DOC_TEXT_VERSION
+            or meta.source != expected_source
+        ):
+            return "mismatch"
+
+        return "ok"
+    except Exception as exc:
+        logger.warning("Error checking index state: %s", exc)
+        return "missing"
 
 
-def set_index_jobs_count(count: int) -> None:
-    global _index_jobs_count, _index_empty
-    _index_jobs_count = count
-    _index_empty = count == 0
+async def index_state(session: AsyncSession | None = None) -> Literal["ok", "missing", "mismatch"]:
+    """Asynchronously checks whether the job index is ok, missing, or mismatched."""
+    if session is not None:
+        return await check_index_state_with_session(session)
 
-
-def set_index_empty(val: bool) -> None:
-    global _index_empty
-    _index_empty = val
+    session_maker = get_sessionmaker()
+    async with session_maker() as sess:
+        return await check_index_state_with_session(sess)
 
 
 class PgJobIndex:
@@ -53,144 +76,12 @@ class PgJobIndex:
         self.embedder = embedder
         self._is_empty = is_empty
 
-    def is_usable(self) -> bool:
-        """Synchronous check if store has an active session, embedder, and is not rebuilding or empty."""
-        if self.session is None:
-            return False
-        if self.embedder is None:
-            return False
-        if _index_building:
-            return False
-        if self._is_empty is True:
-            return False
-        if self._is_empty is None and _index_empty:
-            return False
-        return True
-
-    async def upsert(self, rows: list[IndexRow]) -> UpsertStats:
-        """Upserts a batch of IndexRows.
-
-        Detects identical content_hash to avoid re-embedding on metadata-only updates.
-        Computes search_tsv vector for lexical search immediately upon insert.
-        """
-        inserted = 0
-        updated = 0
-        reembed_queued = 0
-        unchanged = 0
-
-        job_ids = [r.job_id for r in rows]
-        existing_stmt = select(JobIndexRow).where(JobIndexRow.job_id.in_(job_ids))
-        res = await self.session.execute(existing_stmt)
-        existing_map = {row.job_id: row for row in res.scalars().all()}
-
-        is_pg = self.session.bind and "postgresql" in str(self.session.bind.dialect.name)
-
-        for row in rows:
-            content_hash = hashlib.sha256(row.doc_text.encode("utf-8")).hexdigest()
-            existing = existing_map.get(row.job_id)
-
-            if existing is None:
-                # Insert new row
-                new_db_row = JobIndexRow(
-                    job_id=row.job_id,
-                    project_id=row.project_id,
-                    project_title=row.project_title,
-                    project_description=row.project_description,
-                    job_title=row.job_title,
-                    job_description=row.job_description,
-                    skills=row.skills,
-                    requirements=row.requirements,
-                    salary_type=row.salary_type or "MONTHLY",
-                    budget_min=row.budget_min,
-                    budget_max=row.budget_max,
-                    experience_level=row.experience_level or "ENTRY",
-                    period=row.period or "MONTHLY",
-                    hours_per_day=row.hours_per_day,
-                    project_status=row.project_status,
-                    job_status=row.job_status,
-                    doc_text=row.doc_text,
-                    active=(row.project_status == "OPEN" and row.job_status == "RECRUITING"),
-                    missed_sweeps=0,
-                    content_hash=content_hash,
-                    embedding=None,
-                    embedding_model=None,
-                )
-                self.session.add(new_db_row)
-                inserted += 1
-                reembed_queued += 1
-
-                if is_pg:
-                    # Update search_tsv via SQL function
-                    new_db_row.search_tsv = func.to_tsvector("simple", func.unaccent(row.doc_text))
-            else:
-                # Existing row
-                content_changed = existing.content_hash != content_hash
-                existing.project_title = row.project_title
-                existing.project_description = row.project_description
-                existing.job_title = row.job_title
-                existing.job_description = row.job_description
-                existing.skills = row.skills
-                existing.requirements = row.requirements
-                existing.salary_type = row.salary_type or existing.salary_type
-                existing.budget_min = row.budget_min
-                existing.budget_max = row.budget_max
-                existing.experience_level = row.experience_level or existing.experience_level
-                existing.period = row.period or existing.period
-                existing.hours_per_day = row.hours_per_day
-                existing.project_status = row.project_status
-                existing.job_status = row.job_status
-                existing.active = row.project_status == "OPEN" and row.job_status == "RECRUITING"
-                existing.missed_sweeps = 0
-
-                if content_changed:
-                    existing.doc_text = row.doc_text
-                    existing.content_hash = content_hash
-                    existing.embedding = None
-                    existing.embedding_model = None
-                    if is_pg:
-                        existing.search_tsv = func.to_tsvector(
-                            "simple", func.unaccent(row.doc_text)
-                        )
-                    updated += 1
-                    reembed_queued += 1
-                else:
-                    updated += 1
-
-        await self.session.commit()
-        if inserted > 0 or updated > 0:
-            set_index_jobs_count(max(1, inserted + updated))
-        return UpsertStats(
-            inserted=inserted,
-            updated=updated,
-            reembed_queued=reembed_queued,
-            unchanged=unchanged,
-        )
-
-    async def embed_backlog_batch(self, batch_size: int = 100) -> int:
-        """Finds active rows without embeddings and computes them."""
-        stmt = (
-            select(JobIndexRow)
-            .where(and_(JobIndexRow.active.is_(True), JobIndexRow.embedding.is_(None)))
-            .limit(batch_size)
-        )
-        res = await self.session.execute(stmt)
-        rows = res.scalars().all()
-
-        if not rows or not self.embedder:
-            return 0
-
-        texts = [r.doc_text for r in rows]
-        embeddings = self.embedder.embed(texts)
-        for r, emb in zip(rows, embeddings, strict=False):
-            r.embedding = emb
-
-        await self.session.commit()
-        return len(rows)
+    async def index_state(self) -> Literal["ok", "missing", "mismatch"]:
+        return await check_index_state_with_session(self.session)
 
     def _build_filter_clauses(self, criteria: MatchCriteria) -> list[Any]:
         """Constructs SQLAlchemy WHERE clauses for MatchCriteria."""
         clauses = [
-            JobIndexRow.active.is_(True),
             JobIndexRow.project_status == "OPEN",
             JobIndexRow.job_status == "RECRUITING",
         ]
@@ -250,7 +141,6 @@ class PgJobIndex:
         top: int = 50,
     ) -> tuple[list[list[IndexHit]], list[IndexHit]]:
         """Executes dense vector searches and lexical fulltext search against the index."""
-        # Set HNSW index params if in PostgreSQL
         try:
             await self.session.execute(text("SET LOCAL hnsw.ef_search = 200;"))
             await self.session.execute(text("SET LOCAL hnsw.iterative_scan = 'relaxed_order';"))
@@ -262,7 +152,6 @@ class PgJobIndex:
         # 1. Dense vector searches
         dense_results: list[list[IndexHit]] = []
         for q_vec in dense_queries:
-            # Distance using cosine_distance <=>
             distance_expr = JobIndexRow.embedding.cosine_distance(q_vec)
             stmt = (
                 select(JobIndexRow.job_id, JobIndexRow.project_id, distance_expr.label("distance"))
@@ -280,7 +169,6 @@ class PgJobIndex:
         # 2. Lexical search
         lexical_hits: list[IndexHit] = []
         if lexical and lexical.strip():
-            # In PG, use search_tsv @@ plainto_tsquery
             is_pg = self.session.bind and "postgresql" in str(self.session.bind.dialect.name)
             if is_pg:
                 ts_query = func.websearch_to_tsquery("simple", func.unaccent(lexical))
@@ -292,7 +180,6 @@ class PgJobIndex:
                     .limit(top)
                 )
             else:
-                # Fallback for SQLite/test
                 score_expr = func.length(JobIndexRow.doc_text).label("score")
                 stmt = (
                     select(JobIndexRow.job_id, JobIndexRow.project_id, score_expr)
@@ -342,50 +229,11 @@ class PgJobIndex:
                     project_status=r.project_status,
                     job_status=r.job_status,
                     doc_text=r.doc_text,
-                    active=r.active,
-                    missed_sweeps=r.missed_sweeps,
-                    content_hash=r.content_hash,
-                    embedding=r.embedding,
-                    embedding_model=r.embedding_model,
-                    indexed_at=r.indexed_at,
                 )
             )
         return results
 
-    async def mark_inactive(self, job_ids: list[str]) -> None:
-        """Marks given job_ids as inactive."""
-        if not job_ids:
-            return
-        stmt = update(JobIndexRow).where(JobIndexRow.job_id.in_(job_ids)).values(active=False)
-        await self.session.execute(stmt)
-        await self.session.commit()
-
-    async def handle_model_mismatch(self, new_model: str, new_dim: int) -> None:
-        """Resets all embeddings when embedding model changes."""
-        await self.session.execute(
-            update(JobIndexRow).values(embedding=None, embedding_model=new_model)
-        )
-
-        res = await self.session.execute(select(IndexMetaModel).where(IndexMetaModel.id == 1))
-        meta_row = res.scalar_one_or_none()
-        if meta_row is None:
-            meta_row = IndexMetaModel(
-                id=1,
-                embed_model=new_model,
-                dim=new_dim,
-                source="core_rpc",
-                built_at=utc_now(),
-                jobs_n=0,
-            )
-            self.session.add(meta_row)
-        else:
-            meta_row.embed_model = new_model
-            meta_row.dim = new_dim
-            meta_row.built_at = utc_now()
-
-        await self.session.commit()
-
-    async def meta(self) -> IndexMeta:
+    async def meta(self) -> IndexMeta | None:
         """Returns current index metadata."""
         res = await self.session.execute(select(IndexMetaModel).where(IndexMetaModel.id == 1))
         meta_row = res.scalar_one_or_none()
@@ -393,18 +241,13 @@ class PgJobIndex:
         jobs_n = count_res.scalar() or 0
 
         if meta_row is None:
-            return IndexMeta(
-                embed_model="",
-                dim=1024,
-                source="core_rpc",
-                built_at=datetime.now(),
-                jobs_n=jobs_n,
-            )
+            return None
 
         return IndexMeta(
             embed_model=meta_row.embed_model,
             dim=meta_row.dim,
             source=meta_row.source,
+            doc_text_version=meta_row.doc_text_version,
             built_at=meta_row.built_at,
             jobs_n=jobs_n,
         )

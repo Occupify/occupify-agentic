@@ -55,8 +55,9 @@ from app.agents.capture import capture_model_requests
 from app.core.security import CurrentUser
 from app.db.init import init_db
 from app.db.session import set_engine
+from app.documents.cv_text import prepare_cv_text
+from app.features.job_match.index.migrate import build as build_job_index, write_index
 from app.features.job_match.index.store import PgJobIndex, set_index_empty
-from app.features.job_match.index.sync import build_job_index
 from app.features.job_match.pipeline import run_pipeline
 from app.features.job_match.ports import PipelineOptions, RunResult, RunState
 from app.features.job_match.schemas import ErrorCode, RunStatus
@@ -211,9 +212,10 @@ async def evaluate_single_run(
         async with sessionmaker() as session:
             store = PgJobIndex(session=session, embedder=embedder, is_empty=False)
             try:
+                cv_text = await prepare_cv_text(pdf_bytes, user=user)
                 res = await run_pipeline(
                     state=state,
-                    pdf_bytes=pdf_bytes,
+                    cv_text=cv_text,
                     user=user,
                     store=store,
                     core_rpc=core_rpc,
@@ -320,30 +322,13 @@ async def seed_job_index(
     sessionmaker: async_sessionmaker[AsyncSession],
     core_rpc: Any,
 ) -> int:
-    """Truncates job index tables and re-seeds via build_job_index."""
+    """Migrates and re-seeds job index via migrate.build and write_index."""
     embedder = get_embedder()
+    rows, vectors, meta = await build_job_index(core_rpc, embedder)
     async with sessionmaker() as session:
-        # Check if index is already fully populated and embedded
-        active_count = await session.scalar(
-            text("SELECT count(*) FROM job_index WHERE active = true;")
-        )
-        pending_count = await session.scalar(
-            text("SELECT count(*) FROM job_index WHERE active = true AND embedding IS NULL;")
-        )
-        if active_count and active_count > 100 and pending_count == 0:
-            print(
-                f"Job index already seeded ({active_count} active embedded jobs). Skipping truncate/re-seed."
-            )
-            set_index_empty(False)
-            return active_count
-
-        await session.execute(
-            text("TRUNCATE TABLE job_match_results, job_match_runs, job_index, index_meta CASCADE;")
-        )
-        await session.commit()
-        indexed_count = await build_job_index(session, core_rpc, embedder)
-        set_index_empty(indexed_count == 0)
-        return indexed_count
+        await write_index(session, rows, vectors, meta)
+    set_index_empty(len(rows) == 0)
+    return len(rows)
 
 
 # =====================================================================
@@ -460,11 +445,12 @@ async def run_freshness_eval(sessionmaker: async_sessionmaker[AsyncSession]) -> 
         )
         state = RunState()
         core_rpc = MockCoreRpc(mock_path=V1_PROJECTS_PATH)
+        cv_text = await prepare_cv_text(pdf_bytes, user=user)
         async with sessionmaker() as session:
             store = PgJobIndex(session=session, embedder=embedder, is_empty=False)
             res = await run_pipeline(
                 state=state,
-                pdf_bytes=pdf_bytes,
+                cv_text=cv_text,
                 user=user,
                 store=store,
                 core_rpc=core_rpc,
@@ -499,6 +485,7 @@ async def run_injection_eval(sessionmaker: async_sessionmaker[AsyncSession]) -> 
     pdf_bytes = (PERSONAS_DIR / "cv-g.pdf").read_bytes()
     user = CurrentUser(user_id="eval-injection", role="ROLE_USER", email="injection@example.com")
     embedder = get_embedder()
+    cv_text = await prepare_cv_text(pdf_bytes, user=user)
 
     # 1. Run with standard mock (contains injection in p16)
     state1 = RunState()
@@ -507,7 +494,7 @@ async def run_injection_eval(sessionmaker: async_sessionmaker[AsyncSession]) -> 
         store1 = PgJobIndex(session=session1, embedder=embedder, is_empty=False)
         res_injected = await run_pipeline(
             state=state1,
-            pdf_bytes=pdf_bytes,
+            cv_text=cv_text,
             user=user,
             store=store1,
             core_rpc=core1,
@@ -522,7 +509,7 @@ async def run_injection_eval(sessionmaker: async_sessionmaker[AsyncSession]) -> 
         store2 = PgJobIndex(session=session2, embedder=embedder, is_empty=False)
         res_clean = await run_pipeline(
             state=state2,
-            pdf_bytes=pdf_bytes,
+            cv_text=cv_text,
             user=user,
             store=store2,
             core_rpc=core2,
@@ -584,11 +571,12 @@ async def run_forced_search_agent(sessionmaker: async_sessionmaker[AsyncSession]
     core_rpc = MockCoreRpc(mock_path=V1_PROJECTS_PATH)
     opts = PipelineOptions(list_size=8, pool_size=8, search_agent=True)
     embedder = get_embedder()
+    cv_text = await prepare_cv_text(pdf_bytes, user=user)
     async with sessionmaker() as session:
         store = PgJobIndex(session=session, embedder=embedder, is_empty=False)
         res = await run_pipeline(
             state=state,
-            pdf_bytes=pdf_bytes,
+            cv_text=cv_text,
             user=user,
             store=store,
             core_rpc=core_rpc,
@@ -996,6 +984,7 @@ async def run_scale_injection_eval(
     for pid in test_pids:
         pdf_bytes = (PERSONAS_DIR / f"{pid}.pdf").read_bytes()
         user = CurrentUser(user_id=f"eval-inj-{pid}", role="ROLE_USER", email=f"{pid}@example.com")
+        cv_text = await prepare_cv_text(pdf_bytes, user=user)
 
         # 1. Injected catalog run
         core1 = MockCoreRpc(mock_path=SCALE_PROJECTS_PATH)
@@ -1004,7 +993,7 @@ async def run_scale_injection_eval(
             store1 = PgJobIndex(session=session1, embedder=embedder, is_empty=False)
             res1 = await run_pipeline(
                 state=state1,
-                pdf_bytes=pdf_bytes,
+                cv_text=cv_text,
                 user=user,
                 store=store1,
                 core_rpc=core1,
@@ -1018,7 +1007,7 @@ async def run_scale_injection_eval(
             store2 = PgJobIndex(session=session2, embedder=embedder, is_empty=False)
             res2 = await run_pipeline(
                 state=state2,
-                pdf_bytes=pdf_bytes,
+                cv_text=cv_text,
                 user=user,
                 store=store2,
                 core_rpc=core2,

@@ -6,7 +6,7 @@ from collections.abc import AsyncIterator
 from dataclasses import dataclass
 from typing import Any
 
-from pydantic_ai import Agent, capture_run_messages
+from pydantic_ai import Agent, _agent_graph, capture_run_messages
 from pydantic_ai.exceptions import (
     ContentFilterError,
     ModelContextWindowExceededError,
@@ -16,7 +16,7 @@ from pydantic_ai.exceptions import (
     UnexpectedModelBehavior,
     UsageLimitExceeded,
 )
-from pydantic_ai.messages import ModelMessagesTypeAdapter, repair_messages
+from pydantic_ai.messages import ModelMessagesTypeAdapter, TextPart, repair_messages
 from pydantic_ai.settings import ModelSettings
 from pydantic_ai.usage import RunUsage, UsageLimits
 
@@ -497,19 +497,39 @@ async def stream_agent(
             )
             full_output_chunks: list[str] = []
 
-            async with agent.run_stream(
+            async with agent.iter(
                 prompt,
                 message_history=ctx.validated_history,
                 deps=deps,
                 usage_limits=ctx.usage_limits,
                 model_settings=ctx.model_settings,
-            ) as res:
-                async for chunk in res.stream_text(delta=True, debounce_by=None):
-                    full_output_chunks.append(chunk)
-                    yield AgentStreamDelta(content=chunk)
+            ) as agent_run:
+                streamed_this_turn = False
+                async for node in agent_run:
+                    if isinstance(node, _agent_graph.ModelRequestNode):
+                        model = getattr(agent, "model", None)
+                        if hasattr(agent_run.ctx.deps, "model"):
+                            model = agent_run.ctx.deps.model
+                        has_fn = getattr(model, "function", None) is not None
+                        has_stream_fn = getattr(model, "stream_function", None) is not None
+                        can_stream = not (has_fn and not has_stream_fn)
+                        if can_stream:
+                            async with node.stream(agent_run.ctx) as s:
+                                async for chunk in s.stream_text(delta=True, debounce_by=None):
+                                    full_output_chunks.append(chunk)
+                                    yield AgentStreamDelta(content=chunk)
+                            streamed_this_turn = True
+                        else:
+                            streamed_this_turn = False
+                    elif isinstance(node, _agent_graph.CallToolsNode):
+                        if not streamed_this_turn:
+                            for part in node.model_response.parts:
+                                if isinstance(part, TextPart) and part.content:
+                                    full_output_chunks.append(part.content)
+                                    yield AgentStreamDelta(content=part.content)
 
-                all_new = res.new_messages()
-                last_usage = getattr(res, "usage", None)
+                all_new = agent_run.new_messages()
+                last_usage = agent_run.usage
                 _check_context_window(all_new)
 
                 usage = last_usage

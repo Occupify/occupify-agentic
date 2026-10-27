@@ -74,6 +74,19 @@ def get_reranker() -> Reranker | FakeReranker:
     return _reranker
 
 
+_models_loaded: bool = False
+
+
+def models_loaded() -> bool:
+    """Returns True if local ML models have finished loading into memory."""
+    settings = get_settings()
+    if settings.APP_ENV == "test":
+        return True
+    if not settings.ML_ENABLED:
+        return True
+    return _models_loaded
+
+
 async def _async_load_models() -> None:
     settings = get_settings()
     if not settings.ML_ENABLED or settings.APP_ENV == "test":
@@ -89,6 +102,9 @@ async def _async_load_models() -> None:
         get_reranker()
         t3 = time.perf_counter()
         log_step("ml.loaded", model=settings.RERANKER_MODEL, ms=int((t3 - t2) * 1000))
+
+        global _models_loaded
+        _models_loaded = True
 
     await asyncio.to_thread(_load)
 
@@ -110,4 +126,6 @@ __all__ = [
     "get_embedder",
     "get_reranker",
     "load_models_in_background",
+    "models_loaded",
 ]
+

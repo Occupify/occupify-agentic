@@ -1,7 +1,9 @@
 from fastapi import APIRouter, Response, status
 from sqlalchemy import text
 
+from app.core.config import get_settings
 from app.db.session import get_engine
+from app.features.job_match.index import index_state, models_loaded
 from app.messaging.broker import is_broker_connected
 
 router = APIRouter(tags=["health"])
@@ -14,8 +16,8 @@ async def health():
 
 @router.get("/ready")
 async def readiness(response: Response):
+    settings = get_settings()
     db_status = "DOWN"
-    broker_status = "DOWN"
 
     # 1. Check Database
     try:
@@ -27,10 +29,15 @@ async def readiness(response: Response):
         db_status = "DOWN"
 
     # 2. Check Broker connection state
-    if is_broker_connected():
-        broker_status = "UP"
-    else:
-        broker_status = "DOWN"
+    broker_status = "UP" if is_broker_connected() else "DOWN"
+
+    # 3. Informational index and models_loaded checks
+    try:
+        idx_state = await index_state()
+    except Exception:
+        idx_state = "missing"
+
+    m_loaded = models_loaded()
 
     is_ready = (db_status == "UP") and (broker_status == "UP")
     if not is_ready:
@@ -41,5 +48,7 @@ async def readiness(response: Response):
         "checks": {
             "database": db_status,
             "broker": broker_status,
+            "index": idx_state,
+            "models_loaded": m_loaded,
         },
     }

@@ -1,13 +1,14 @@
+from datetime import UTC, datetime
 from decimal import Decimal
 
 import pytest
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from app.features.job_match.index.store import PgJobIndex
-from app.features.job_match.index.sync import sweep_job_index
+from app.db.models import IndexMetaModel, JobIndexRow
+from app.features.job_match.index.store import PgJobIndex, get_expected_index_source, index_state
 from app.features.job_match.ports import IndexRow, MatchCriteria
+from app.features.job_match.sanitize import DOC_TEXT_VERSION
 from app.features.job_match.schemas import SalaryTypeFilter
-from app.ml.fakes import FakeEmbedder
 
 
 def make_test_row(
@@ -39,74 +40,46 @@ def make_test_row(
 
 
 @pytest.mark.asyncio
-async def test_store_upsert_and_get_rows_sqlite(test_db: AsyncSession):
-    store = PgJobIndex(session=test_db, embedder=FakeEmbedder(dim=1024), is_empty=True)
-    assert store.is_usable() is False
-
-    row = make_test_row()
-    stats = await store.upsert([row])
-    assert stats.inserted == 1
-    assert stats.reembed_queued == 1
-    # After rows exist, store becomes usable
-    store_ready = PgJobIndex(session=test_db, embedder=FakeEmbedder(dim=1024), is_empty=False)
-    assert store_ready.is_usable() is True
-
-    rows = await store.get_rows(["j-unit-1"])
-    assert len(rows) == 1
-    assert rows[0].job_id == "j-unit-1"
-    assert rows[0].active is True
-
-    # Sweep job index: seen_job_ids has j-unit-1 -> missed_sweeps remains 0
-    await sweep_job_index(test_db, seen_job_ids=["j-unit-1"])
-    rows_after = await store.get_rows(["j-unit-1"])
-    assert rows_after[0].missed_sweeps == 0
-
-    # Sweep with missing job -> missed_sweeps = 1
-    await sweep_job_index(test_db, seen_job_ids=[])
-    rows_after_miss1 = await store.get_rows(["j-unit-1"])
-    assert rows_after_miss1[0].missed_sweeps == 1
-    assert rows_after_miss1[0].active is True
-
-    # Sweep with missing job again -> missed_sweeps = 2, active becomes False
-    await sweep_job_index(test_db, seen_job_ids=[])
-    rows_after_miss2 = await store.get_rows(["j-unit-1"])
-    assert rows_after_miss2[0].missed_sweeps == 2
-    assert rows_after_miss2[0].active is False
-
-
-def test_is_usable_false_when_empty():
-    store = PgJobIndex(session="session", embedder="embedder", is_empty=True)
-    assert store.is_usable() is False
-
-
-def test_is_usable_false_when_rebuilding():
-    from app.features.job_match.index.store import set_index_building
-
-    set_index_building(True)
-    try:
-        store = PgJobIndex(session="session", embedder="embedder", is_empty=False)
-        assert store.is_usable() is False
-    finally:
-        set_index_building(False)
-
-
-def test_is_usable_false_when_embedder_missing():
-    store = PgJobIndex(session="session", embedder=None, is_empty=False)
-    assert store.is_usable() is False
+async def test_index_state_missing_when_no_meta(test_db: AsyncSession):
+    state = await index_state(session=test_db)
+    assert state == "missing"
 
 
 @pytest.mark.asyncio
-async def test_store_mark_inactive_and_meta(test_db: AsyncSession):
-    store = PgJobIndex(session=test_db, embedder=FakeEmbedder(dim=1024))
-    row = make_test_row(job_id="j-inact-1")
-    await store.upsert([row])
+async def test_index_state_ok_when_meta_matches(test_db: AsyncSession):
+    source = get_expected_index_source()
+    meta = IndexMetaModel(
+        id=1,
+        embed_model="BAAI/bge-m3",
+        dim=1024,
+        source=source,
+        doc_text_version=DOC_TEXT_VERSION,
+        built_at=datetime.now(UTC),
+        jobs_n=10,
+    )
+    test_db.add(meta)
+    await test_db.commit()
 
-    await store.mark_inactive(["j-inact-1"])
-    rows = await store.get_rows(["j-inact-1"])
-    assert rows[0].active is False
+    state = await index_state(session=test_db)
+    assert state == "ok"
 
-    meta = await store.meta()
-    assert meta.jobs_n >= 1
+
+@pytest.mark.asyncio
+async def test_index_state_mismatch_when_model_or_source_differs(test_db: AsyncSession):
+    meta = IndexMetaModel(
+        id=1,
+        embed_model="old-model",
+        dim=512,
+        source="wrong_source",
+        doc_text_version="v0",
+        built_at=datetime.now(UTC),
+        jobs_n=5,
+    )
+    test_db.add(meta)
+    await test_db.commit()
+
+    state = await index_state(session=test_db)
+    assert state == "mismatch"
 
 
 def test_filter_clauses():
@@ -114,3 +87,35 @@ def test_filter_clauses():
     criteria = MatchCriteria(salary_type=SalaryTypeFilter.HOURLY, min_budget=100000)
     clauses = store._build_filter_clauses(criteria)
     assert len(clauses) >= 4
+
+
+@pytest.mark.asyncio
+async def test_get_rows(test_db: AsyncSession):
+    store = PgJobIndex(session=test_db)
+    db_row = JobIndexRow(
+        job_id="j-unit-1",
+        project_id="p-unit-1",
+        project_title="Title",
+        project_description="Desc",
+        job_title="Job",
+        job_description="Desc",
+        skills=["Python"],
+        requirements=["Req"],
+        salary_type="MONTHLY",
+        budget_min=Decimal("1000"),
+        budget_max=Decimal("2000"),
+        experience_level="ENTRY",
+        period="MONTHLY",
+        hours_per_day=8.0,
+        project_status="OPEN",
+        job_status="RECRUITING",
+        doc_text="Python",
+        embedding=[0.1] * 1024,
+    )
+    test_db.add(db_row)
+    await test_db.commit()
+
+    rows = await store.get_rows(["j-unit-1"])
+    assert len(rows) == 1
+    assert rows[0].job_id == "j-unit-1"
+    assert rows[0].job_title == "Job"
