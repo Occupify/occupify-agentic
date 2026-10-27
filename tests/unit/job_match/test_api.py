@@ -84,14 +84,14 @@ async def test_second_active_run_409_busy(client: AsyncClient, dummy_pdf: bytes,
 
     async def slow_pipeline_run(*args, **kwargs):
         run_started.set()
-        await finish_run.wait()
+        await asyncio.wait_for(finish_run.wait(), timeout=5.0)
         return RunResult(status="succeeded", outcome="OK")
 
     monkeypatch.setattr("app.features.job_match.service.pipeline.run", slow_pipeline_run)
 
     files1 = {"file": ("cv1.pdf", dummy_pdf, "application/pdf")}
     task1 = asyncio.create_task(client.post("/ai/job-matches", files=files1))
-    await run_started.wait()
+    await asyncio.wait_for(run_started.wait(), timeout=5.0)
 
     # Second active run while first is running
     files2 = {"file": ("cv2.pdf", dummy_pdf, "application/pdf")}
@@ -102,7 +102,7 @@ async def test_second_active_run_409_busy(client: AsyncClient, dummy_pdf: bytes,
     assert body2["error"]["message"].startswith("Failed to")
 
     finish_run.set()
-    res1 = await task1
+    res1 = await asyncio.wait_for(task1, timeout=5.0)
     assert res1.status_code == 202
 
 

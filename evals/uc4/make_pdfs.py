@@ -23,10 +23,28 @@ def render_markdown_to_pdf(markdown_text: str, output_path: Path) -> bytes:
         bottomMargin=36,
     )
 
+    from reportlab.pdfbase import pdfmetrics
+    from reportlab.pdfbase.ttfonts import TTFont
+
+    font_name = "Helvetica"
+    for fc in [
+        Path("/usr/share/fonts/google-noto-vf/NotoSans[wght].ttf"),
+        Path("/usr/share/fonts/liberation-sans-fonts/LiberationSans-Regular.ttf"),
+        Path("/usr/share/fonts/truetype/dejavu/DejaVuSans.ttf"),
+    ]:
+        if fc.exists():
+            try:
+                pdfmetrics.registerFont(TTFont("CustomUnicodeFont", str(fc)))
+                font_name = "CustomUnicodeFont"
+                break
+            except Exception:
+                pass
+
     styles = getSampleStyleSheet()
     title_style = ParagraphStyle(
         "CustomTitle",
         parent=styles["Heading1"],
+        fontName=font_name,
         fontSize=14,
         leading=18,
         spaceAfter=6,
@@ -34,6 +52,7 @@ def render_markdown_to_pdf(markdown_text: str, output_path: Path) -> bytes:
     heading2_style = ParagraphStyle(
         "CustomH2",
         parent=styles["Heading2"],
+        fontName=font_name,
         fontSize=12,
         leading=15,
         spaceAfter=4,
@@ -41,6 +60,7 @@ def render_markdown_to_pdf(markdown_text: str, output_path: Path) -> bytes:
     body_style = ParagraphStyle(
         "CustomBody",
         parent=styles["Normal"],
+        fontName=font_name,
         fontSize=10,
         leading=14,
         spaceAfter=4,

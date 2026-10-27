@@ -47,7 +47,33 @@ def handle_budget_exceeded_at_stage(stage: str) -> str:
 
 def clean_cv(text: str, source: str = "cv", is_file: bool = True) -> str:
     """Cleans CV text using privacy gate. Raises exception if PII removal fails."""
-    cleaned, _ = privacy_clean(text, source=source, is_file=is_file)
+    known_name = ""
+    for line in text.splitlines()[:15]:
+        stripped = line.strip()
+        cleaned = re.sub(r"^[\s#*_\->|:]+", "", stripped)
+        cleaned = re.sub(r"[\s*_\->|:]+$", "", cleaned).strip()
+        if not cleaned:
+            continue
+        if any(h in cleaned.lower() for h in ["thông tin", "liên hệ", "curriculum vitae", "resume", "cv", "kỹ năng", "kinh nghiệm", "contact"]):
+            continue
+        words = cleaned.split()
+        if (
+            2 <= len(words) <= 6
+            and "@" not in cleaned
+            and "http" not in cleaned.lower()
+            and not re.search(r"\d{3,}", cleaned)
+        ):
+            known_name = cleaned
+            break
+
+    # Strip inline address mentions
+    addr_pat = re.compile(
+        r"(?:tại\s+)?(?:địa chỉ|address)\s*[:\s]\s*[^,\n|)]+?(?=(?:\s+hoặc|\s+or|\s+qua|\s+với|[,|\n)]|$))",
+        re.IGNORECASE,
+    )
+    pre_cleaned = addr_pat.sub("[ADDRESS]", text)
+
+    cleaned, _ = privacy_clean(pre_cleaned, source=source, is_file=is_file, known_name=known_name)
     return cleaned
 
 
