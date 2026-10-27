@@ -453,24 +453,25 @@ async def run_pipeline(
             )
 
         proj_score, fitting_jobs = compute_project_scores(evaluated_jobs)
-        scored_projects.append(
-            {
-                "project_id": pid,
-                "projectId": pid,
-                "project_title": p_title,
-                "projectTitle": p_title,
-                "match_score": proj_score,
-                "matchScore": proj_score,
-                "jobs": evaluated_jobs,
-                "has_fits": len(fitting_jobs) > 0,
-            }
-        )
+        if fitting_jobs:
+            scored_projects.append(
+                {
+                    "project_id": pid,
+                    "projectId": pid,
+                    "project_title": p_title,
+                    "projectTitle": p_title,
+                    "match_score": proj_score,
+                    "matchScore": proj_score,
+                    "jobs": fitting_jobs,
+                    "has_fits": True,
+                }
+            )
 
     # -------------------------------------------------------------
     # S6: Check for fitting projects
     # -------------------------------------------------------------
     set_stage("s6_scoring")
-    fitting_projects = [p for p in scored_projects if p["has_fits"]]
+    fitting_projects = scored_projects
     state.fitting_projects_count = len(fitting_projects)
     if not fitting_projects:
         # NO_MATCH outcome
@@ -533,9 +534,9 @@ async def run_pipeline(
                     }
                 )
 
-    # Sort descending by matchScore
-    scored_projects.sort(key=lambda p: p["matchScore"], reverse=True)
-    shortlisted = scored_projects[:target_k]
+    # Sort descending by matchScore and cut to target_k (only fitting projects)
+    fitting_projects.sort(key=lambda p: p["matchScore"], reverse=True)
+    shortlisted = fitting_projects[:target_k]
 
     # -------------------------------------------------------------
     # S8: Freshness check against core
@@ -547,7 +548,7 @@ async def run_pipeline(
             shortlisted=shortlisted,
             rpc=core_rpc,
             limit=target_k,
-            all_candidates=scored_projects,
+            all_candidates=fitting_projects,
         )
         verified_shortlisted = v_items
         for fw in f_warns:
@@ -644,6 +645,10 @@ async def run_pipeline(
 
     # Validator V3: drop jobs and projects that fail criteria
     final_items = validate_v3_criteria(final_items, criteria)
+
+    # Re-number ranks to guarantee contiguous 1..n with no gaps
+    for rank, it in enumerate(final_items, start=1):
+        it["rank"] = rank
 
     # Update state
     tokens_in = budget.usage.input_tokens
