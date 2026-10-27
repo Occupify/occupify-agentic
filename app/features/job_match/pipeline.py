@@ -54,7 +54,19 @@ def clean_cv(text: str, source: str = "cv", is_file: bool = True) -> str:
         cleaned = re.sub(r"[\s*_\->|:]+$", "", cleaned).strip()
         if not cleaned:
             continue
-        if any(h in cleaned.lower() for h in ["thông tin", "liên hệ", "curriculum vitae", "resume", "cv", "kỹ năng", "kinh nghiệm", "contact"]):
+        if any(
+            h in cleaned.lower()
+            for h in [
+                "thông tin",
+                "liên hệ",
+                "curriculum vitae",
+                "resume",
+                "cv",
+                "kỹ năng",
+                "kinh nghiệm",
+                "contact",
+            ]
+        ):
             continue
         words = cleaned.split()
         if (
