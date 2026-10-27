@@ -681,11 +681,16 @@ async def run_pipeline(
         if meta and meta.skill_version:
             skill_versions[sk] = meta.skill_version
 
+    from collections import Counter
+    counter = Counter(all_pool_missing_skills)
+    top_missing = [s for s, _ in counter.most_common(5)]
+
     return RunResult(
         status=run_status,
         outcome=RunOutcome.OK,
         warnings=[JobMatchWarning(code=w["code"], message=w["message"]) for w in warnings],
         items=final_items,
+        top_missing_skills=top_missing,
         profile=profile.model_dump() if hasattr(profile, "model_dump") else profile,
         skill_versions=skill_versions,
         tokens_in=tokens_in,

@@ -2,7 +2,7 @@ from datetime import datetime
 from decimal import Decimal
 from typing import Any, Literal, Protocol
 
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, Field, model_validator
 
 from app.features.job_match.schemas import (
     ErrorCode,
@@ -109,6 +109,7 @@ class RunResult(BaseModel):
     warnings: list[Any] = Field(default_factory=list)
     items: list[Any] = Field(default_factory=list)
     top_missing_skills: list[str] = Field(default_factory=list)
+    missing_skills: list[str] = Field(default_factory=list)
     profile: dict[str, Any] | None = None
     skill_versions: dict[str, str] = Field(default_factory=dict)
     scoring_version: str = "v1"
@@ -116,6 +117,14 @@ class RunResult(BaseModel):
     tokens_out: int = 0
     cost_usd: float = 0.0
     stages: list[dict[str, Any]] = Field(default_factory=list)
+
+    @model_validator(mode="after")
+    def sync_missing_skills(self) -> "RunResult":
+        if self.top_missing_skills and not self.missing_skills:
+            self.missing_skills = list(self.top_missing_skills)
+        elif self.missing_skills and not self.top_missing_skills:
+            self.top_missing_skills = list(self.missing_skills)
+        return self
 
 
 PipelineResult = RunResult

@@ -117,6 +117,30 @@ def render_job_match_markdown(
         )
         return "\n".join(lines) + "\n"
 
+    if outcome == "NOT_A_CV":
+        lines.append(
+            "> ⚠️ **Tài liệu đính kèm không phải là CV hợp lệ**. Vui lòng kiểm tra và tải lên bản CV hoàn chỉnh (PDF) chứa các phần kinh nghiệm, kỹ năng."
+            if is_vi
+            else "> ⚠️ **Attached document does not appear to be a valid CV**. Please provide a complete CV (PDF) with your experience and skills."
+        )
+        return "\n".join(lines) + "\n"
+
+    if outcome == "INSUFFICIENT_PROFILE":
+        lines.append(
+            "> ⚠️ **Hồ sơ chưa có đủ thông tin kỹ năng để tìm kiếm việc làm**. Vui lòng cập nhật thêm kinh nghiệm hoặc kỹ năng trong CV."
+            if is_vi
+            else "> ⚠️ **Your profile lacks sufficient skill details to match jobs**. Please provide more skills or experience in your CV."
+        )
+        return "\n".join(lines) + "\n"
+
+    if outcome == "INTERNAL_ERROR":
+        lines.append(
+            "> ⚠️ **Đã xảy ra lỗi trong quá trình tìm kiếm việc làm**. Vui lòng thử lại sau."
+            if is_vi
+            else "> ⚠️ **An error occurred during job matching**. Please try again later."
+        )
+        return "\n".join(lines) + "\n"
+
     if not items or outcome == "NO_MATCH":
         lines.append(
             "### Kết quả tìm kiếm công việc phù hợp\n\nKhông tìm thấy công việc nào phù hợp với CV và tiêu chí đã chọn."
@@ -352,6 +376,68 @@ async def match_jobs_for_cv(
                 options=PipelineOptions(),
                 on_stage=on_stage,
             )
+
+        # 7. Telemetry & token accounting
+        tokens_in = getattr(run_res, "tokens_in", 0) or 0
+        tokens_out = getattr(run_res, "tokens_out", 0) or 0
+        cost_usd = getattr(run_res, "cost_usd", 0.0) or 0.0
+        ctx.deps.pipeline_tokens_in += tokens_in
+        ctx.deps.pipeline_tokens_out += tokens_out
+        status_val = run_res.status.value if hasattr(run_res.status, "value") else str(run_res.status)
+        outcome_val = run_res.outcome.value if hasattr(run_res.outcome, "value") else str(run_res.outcome or "MATCH_FOUND")
+        log_step(
+            "job_match.end",
+            run_id=state.run_id,
+            parent_run_id=ctx.deps.parent_run_id,
+            status=status_val,
+            outcome=outcome_val,
+            tokens_in=tokens_in,
+            tokens_out=tokens_out,
+            cost_usd=cost_usd,
+        )
+
+        # 8. Render markdown block
+        outcome_str = outcome_val
+        block = render_job_match_markdown(
+            items=run_res.items,
+            criteria_applied=criteria_applied,
+            warnings=run_res.warnings,
+            outcome=outcome_str,
+            lang=lang,
+        )
+        ctx.deps.job_match_block = block
+
+        # 9. Return model summary (IDs only, no titles, scores, or CV text)
+        item_summaries = [
+            {
+                "rank": it.get("rank", idx) if isinstance(it, dict) else getattr(it, "rank", idx),
+                "projectId": it.get("projectId") or it.get("project_id", "") if isinstance(it, dict) else (getattr(it, "project_id", None) or getattr(it, "projectId", "")),
+            }
+            for idx, it in enumerate(run_res.items, start=1)
+        ]
+        raw_missing = (
+            getattr(run_res, "top_missing_skills", None)
+            or getattr(run_res, "missing_skills", None)
+            or []
+        )
+        missing_skills = [
+            m.get("name") or str(m) if isinstance(m, dict) else str(m)
+            for m in raw_missing[:5]
+        ]
+        warnings_list = [
+            w.get("code") if isinstance(w, dict) else str(w) for w in (run_res.warnings or [])
+        ]
+
+        summary = {
+            "outcome": outcome_str,
+            "itemCount": len(run_res.items),
+            "warnings": warnings_list,
+            "topMissingSkills": missing_skills,
+            "criteriaApplied": criteria_applied,
+            "items": item_summaries,
+        }
+        ctx.deps.job_match_memo = summary
+        return summary
     except TimeoutError:
         summary = {
             "outcome": "RUN_TIMEOUT",
@@ -377,55 +463,3 @@ async def match_jobs_for_cv(
         ctx.deps.job_match_memo = summary
         ctx.deps.job_match_block = render_job_match_markdown([], criteria_applied, [], "INTERNAL_ERROR", lang=lang)
         return summary
-
-    # 7. Telemetry & token accounting
-    ctx.deps.pipeline_tokens_in += run_res.tokens_in
-    ctx.deps.pipeline_tokens_out += run_res.tokens_out
-    log_step(
-        "job_match.end",
-        run_id=state.run_id,
-        parent_run_id=ctx.deps.parent_run_id,
-        status=run_res.status.value if hasattr(run_res.status, "value") else str(run_res.status),
-        outcome=run_res.outcome.value if hasattr(run_res.outcome, "value") else str(run_res.outcome),
-        tokens_in=run_res.tokens_in,
-        tokens_out=run_res.tokens_out,
-        cost_usd=run_res.cost_usd,
-    )
-
-    # 8. Render markdown block
-    outcome_str = run_res.outcome.value if hasattr(run_res.outcome, "value") else str(run_res.outcome or "MATCH_FOUND")
-    block = render_job_match_markdown(
-        items=run_res.items,
-        criteria_applied=criteria_applied,
-        warnings=run_res.warnings,
-        outcome=outcome_str,
-        lang=lang,
-    )
-    ctx.deps.job_match_block = block
-
-    # 9. Return model summary (IDs only, no titles, scores, or CV text)
-    item_summaries = [
-        {
-            "rank": it.get("rank", idx) if isinstance(it, dict) else getattr(it, "rank", idx),
-            "projectId": it.get("projectId") or it.get("project_id", "") if isinstance(it, dict) else (getattr(it, "project_id", None) or getattr(it, "projectId", "")),
-        }
-        for idx, it in enumerate(run_res.items, start=1)
-    ]
-    missing_skills = [
-        m.get("name") or str(m) if isinstance(m, dict) else str(m)
-        for m in (run_res.missing_skills or [])[:5]
-    ]
-    warnings_list = [
-        w.get("code") if isinstance(w, dict) else str(w) for w in (run_res.warnings or [])
-    ]
-
-    summary = {
-        "outcome": outcome_str,
-        "itemCount": len(run_res.items),
-        "warnings": warnings_list,
-        "topMissingSkills": missing_skills,
-        "criteriaApplied": criteria_applied,
-        "items": item_summaries,
-    }
-    ctx.deps.job_match_memo = summary
-    return summary

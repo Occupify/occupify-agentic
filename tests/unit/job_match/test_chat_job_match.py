@@ -407,3 +407,77 @@ async def test_pipeline_dict_items_rendered_correctly():
     assert "Fintech Platform" in ctx.deps.job_match_block
     assert "20,000,000 - 30,000,000 VND" in ctx.deps.job_match_block
 
+
+@pytest.mark.asyncio
+async def test_real_run_result_instance_with_top_missing_skills():
+    user = CurrentUser(user_id="u1", role="ROLE_USER")
+    cv = CvText(
+        text="CV Candidate\n## Experience\nPython Engineer\n## Skills\nPython",
+        removed={},
+    )
+    sha = "sha-real-run-result"
+    await cache_cv_text(sha, cv)
+
+    ctx = MagicMock()
+    ctx.deps = AgentDeps(user=user, turn_documents=[sha])
+
+    real_result = RunResult(
+        status=RunStatus.SUCCEEDED,
+        outcome=RunOutcome.OK,
+        tokens_in=120,
+        tokens_out=45,
+        cost_usd=0.0005,
+        items=[
+            {
+                "rank": 1,
+                "projectId": "proj-real",
+                "projectTitle": "Cloud Platform",
+                "matchScore": 90,
+                "verified": True,
+                "jobs": [
+                    {
+                        "jobId": "job-real-1",
+                        "title": "Lead DevOps",
+                        "salaryType": "FIXED",
+                        "budgetMin": 30000000,
+                        "budgetMax": 40000000,
+                        "matchScore": 90,
+                        "matchedSkills": ["Python"],
+                        "missingSkills": ["Docker", "Kubernetes"],
+                    }
+                ],
+            }
+        ],
+        top_missing_skills=["Docker", "Kubernetes"],
+        warnings=[],
+    )
+
+    with patch("app.features.job_match.chat_tool.models_loaded", return_value=True), \
+         patch("app.features.job_match.chat_tool.index_state", return_value="ok"), \
+         patch("app.features.job_match.chat_tool.run_pipeline", return_value=real_result):
+        summary = await match_jobs_for_cv(ctx)
+
+    assert summary["outcome"] == "OK"
+    assert summary["itemCount"] == 1
+    assert summary["items"] == [{"rank": 1, "projectId": "proj-real"}]
+    assert summary["topMissingSkills"] == ["Docker", "Kubernetes"]
+    assert ctx.deps.pipeline_tokens_in == 120
+    assert ctx.deps.pipeline_tokens_out == 45
+    assert ctx.deps.job_match_block is not None
+    assert "Lead DevOps" in ctx.deps.job_match_block
+
+
+def test_outcome_renderings():
+    vi_not_cv = render_job_match_markdown([], {}, [], "NOT_A_CV", lang="vi")
+    assert "không phải là CV hợp lệ" in vi_not_cv
+
+    en_not_cv = render_job_match_markdown([], {}, [], "NOT_A_CV", lang="en")
+    assert "not appear to be a valid CV" in en_not_cv
+
+    vi_insufficient = render_job_match_markdown([], {}, [], "INSUFFICIENT_PROFILE", lang="vi")
+    assert "chưa có đủ thông tin kỹ năng" in vi_insufficient
+
+    vi_internal = render_job_match_markdown([], {}, [], "INTERNAL_ERROR", lang="vi")
+    assert "Đã xảy ra lỗi" in vi_internal
+
+
