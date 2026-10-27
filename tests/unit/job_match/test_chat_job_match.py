@@ -349,3 +349,61 @@ async def test_source_mismatch_is_not_usable():
     assert res["outcome"] == "INDEX_UNAVAILABLE"
     assert res["itemCount"] == 0
     assert "chưa sẵn sàng" in ctx.deps.job_match_block
+
+
+@pytest.mark.asyncio
+async def test_pipeline_dict_items_rendered_correctly():
+    user = CurrentUser(user_id="u1", role="ROLE_USER")
+    cv = CvText(
+        text="CV Candidate\n## Experience\nPython Engineer\n## Skills\nPython",
+        removed={},
+    )
+    sha = "sha-dict-items"
+    await cache_cv_text(sha, cv)
+
+    ctx = MagicMock()
+    ctx.deps = AgentDeps(user=user, turn_documents=[sha])
+
+    mock_result = MagicMock()
+    mock_result.status = RunStatus.SUCCEEDED
+    mock_result.outcome = RunOutcome.OK
+    mock_result.tokens_in = 100
+    mock_result.tokens_out = 50
+    mock_result.cost_usd = 0.001
+    mock_result.items = [
+        {
+            "rank": 1,
+            "projectId": "proj-123",
+            "projectTitle": "Fintech Platform",
+            "matchScore": 85,
+            "verified": True,
+            "jobs": [
+                {
+                    "jobId": "job-1",
+                    "title": "Senior Python Dev",
+                    "salaryType": "FIXED",
+                    "budgetMin": 20000000,
+                    "budgetMax": 30000000,
+                    "matchScore": 85,
+                    "matchedSkills": ["Python", "FastAPI"],
+                    "summary": "Great fit for backend",
+                }
+            ],
+        }
+    ]
+    mock_result.missing_skills = []
+    mock_result.warnings = []
+
+    with patch("app.features.job_match.chat_tool.models_loaded", return_value=True), \
+         patch("app.features.job_match.chat_tool.index_state", return_value="ok"), \
+         patch("app.features.job_match.chat_tool.run_pipeline", return_value=mock_result):
+        summary = await match_jobs_for_cv(ctx)
+
+    assert summary["outcome"] == "OK"
+    assert summary["itemCount"] == 1
+    assert summary["items"] == [{"rank": 1, "projectId": "proj-123"}]
+    assert ctx.deps.job_match_block is not None
+    assert "Senior Python Dev" in ctx.deps.job_match_block
+    assert "Fintech Platform" in ctx.deps.job_match_block
+    assert "20,000,000 - 30,000,000 VND" in ctx.deps.job_match_block
+

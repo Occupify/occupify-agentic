@@ -83,33 +83,99 @@ def render_job_match_markdown(
         else "### 🎯 Best Matching Job Opportunities for Your Profile\n"
     )
 
-    for item in items:
-        rank = getattr(item, "rank", 1)
-        score = getattr(item, "score", 0.0)
-        pct = int(round(score * 100)) if score else 0
-        job_title = getattr(item, "job_title", "Vị trí tuyển dụng")
-        proj_title = getattr(item, "project_title", "Dự án")
-        salary = getattr(item, "salary", "")
-        skills = getattr(item, "matched_skills", []) or getattr(item, "skills", [])
-        skills_str = ", ".join(skills) if skills else "Đang cập nhật"
+    for idx, item in enumerate(items, start=1):
+        if isinstance(item, dict):
+            rank = item.get("rank", idx)
+            score = item.get("matchScore") or item.get("match_score") or item.get("score", 0.0)
+            proj_title = item.get("projectTitle") or item.get("project_title", "Dự án")
+            jobs = item.get("jobs", [])
+            if jobs:
+                for j in jobs:
+                    j_title = j.get("title") or j.get("job_title", "Vị trí tuyển dụng")
+                    j_score = j.get("matchScore") or j.get("match_score", score)
+                    pct = int(round(j_score * 100)) if j_score <= 1.0 else int(round(j_score))
+                    b_min = j.get("budgetMin") or j.get("budget_min")
+                    b_max = j.get("budgetMax") or j.get("budget_max")
+                    s_type = j.get("salaryType") or j.get("salary_type")
+                    if b_min or b_max:
+                        if b_min and b_max:
+                            salary = f"{b_min:,.0f} - {b_max:,.0f} VND"
+                        elif b_min:
+                            salary = f"Từ {b_min:,.0f} VND"
+                        else:
+                            salary = f"Đến {b_max:,.0f} VND"
+                        if s_type:
+                            salary += f" ({s_type})"
+                    else:
+                        salary = j.get("salary", "")
+                    skills = j.get("matchedSkills") or j.get("matched_skills") or j.get("skills", [])
+                    skills_str = ", ".join(skills) if skills else "Đang cập nhật"
+                    assessment = j.get("summary") or j.get("assessment", "")
 
-        if is_vi:
-            lines.append(f"#### {rank}. {job_title} — {proj_title} (Độ phù hợp: {pct}%)")
-            if salary:
-                lines.append(f"- **Ngân sách / Lương:** {salary}")
-            lines.append(f"- **Kỹ năng phù hợp:** {skills_str}")
-            assessment = getattr(item, "assessment", "")
-            if assessment:
-                lines.append(f"- **Đánh giá:** {assessment}")
+                    if is_vi:
+                        lines.append(f"#### {rank}. {j_title} — {proj_title} (Độ phù hợp: {pct}%)")
+                        if salary:
+                            lines.append(f"- **Ngân sách / Lương:** {salary}")
+                        lines.append(f"- **Kỹ năng phù hợp:** {skills_str}")
+                        if assessment:
+                            lines.append(f"- **Đánh giá:** {assessment}")
+                    else:
+                        lines.append(f"#### {rank}. {j_title} — {proj_title} (Match: {pct}%)")
+                        if salary:
+                            lines.append(f"- **Budget / Salary:** {salary}")
+                        lines.append(f"- **Matched Skills:** {skills_str}")
+                        if assessment:
+                            lines.append(f"- **Assessment:** {assessment}")
+                    lines.append("")
+            else:
+                pct = int(round(score * 100)) if score <= 1.0 else int(round(score))
+                job_title = item.get("job_title") or item.get("title", "Vị trí tuyển dụng")
+                salary = item.get("salary", "")
+                skills = item.get("matched_skills") or item.get("skills", [])
+                skills_str = ", ".join(skills) if skills else "Đang cập nhật"
+                assessment = item.get("assessment", "")
+
+                if is_vi:
+                    lines.append(f"#### {rank}. {job_title} — {proj_title} (Độ phù hợp: {pct}%)")
+                    if salary:
+                        lines.append(f"- **Ngân sách / Lương:** {salary}")
+                    lines.append(f"- **Kỹ năng phù hợp:** {skills_str}")
+                    if assessment:
+                        lines.append(f"- **Đánh giá:** {assessment}")
+                else:
+                    lines.append(f"#### {rank}. {job_title} — {proj_title} (Match: {pct}%)")
+                    if salary:
+                        lines.append(f"- **Budget / Salary:** {salary}")
+                    lines.append(f"- **Matched Skills:** {skills_str}")
+                    if assessment:
+                        lines.append(f"- **Assessment:** {assessment}")
+                lines.append("")
         else:
-            lines.append(f"#### {rank}. {job_title} — {proj_title} (Match: {pct}%)")
-            if salary:
-                lines.append(f"- **Budget / Salary:** {salary}")
-            lines.append(f"- **Matched Skills:** {skills_str}")
+            rank = getattr(item, "rank", idx)
+            score = getattr(item, "score", 0.0) or getattr(item, "match_score", 0.0)
+            pct = int(round(score * 100)) if score <= 1.0 else int(round(score))
+            job_title = getattr(item, "job_title", "Vị trí tuyển dụng")
+            proj_title = getattr(item, "project_title", "Dự án")
+            salary = getattr(item, "salary", "")
+            skills = getattr(item, "matched_skills", []) or getattr(item, "skills", [])
+            skills_str = ", ".join(skills) if skills else "Đang cập nhật"
             assessment = getattr(item, "assessment", "")
-            if assessment:
-                lines.append(f"- **Assessment:** {assessment}")
-        lines.append("")
+
+            if is_vi:
+                lines.append(f"#### {rank}. {job_title} — {proj_title} (Độ phù hợp: {pct}%)")
+                if salary:
+                    lines.append(f"- **Ngân sách / Lương:** {salary}")
+                lines.append(f"- **Kỹ năng phù hợp:** {skills_str}")
+                if assessment:
+                    lines.append(f"- **Đánh giá:** {assessment}")
+            else:
+                lines.append(f"#### {rank}. {job_title} — {proj_title} (Match: {pct}%)")
+                if salary:
+                    lines.append(f"- **Budget / Salary:** {salary}")
+                lines.append(f"- **Matched Skills:** {skills_str}")
+                if assessment:
+                    lines.append(f"- **Assessment:** {assessment}")
+            lines.append("")
 
     return "\n".join(lines) + "\n"
 
@@ -302,7 +368,13 @@ async def match_jobs_for_cv(
     ctx.deps.job_match_block = block
 
     # 9. Return model summary (IDs only, no titles, scores, or CV text)
-    item_summaries = [{"rank": it.rank, "projectId": it.project_id} for it in run_res.items]
+    item_summaries = [
+        {
+            "rank": it.get("rank", idx) if isinstance(it, dict) else getattr(it, "rank", idx),
+            "projectId": it.get("projectId") or it.get("project_id", "") if isinstance(it, dict) else (getattr(it, "project_id", None) or getattr(it, "projectId", "")),
+        }
+        for idx, it in enumerate(run_res.items, start=1)
+    ]
     missing_skills = (run_res.missing_skills or [])[:5]
     warnings_list = [
         w.get("code") if isinstance(w, dict) else str(w) for w in (run_res.warnings or [])
