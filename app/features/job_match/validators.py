@@ -1,9 +1,9 @@
 import logging
 from typing import Any
 
+from app.agents import subagent
 from app.agents.deps import AgentDeps
 from app.agents.runner import run_agent
-from app.agents.subagent import create_skill_agent
 from app.core.security import CurrentUser
 from app.features.job_match.criteria import matches
 from app.features.job_match.ports import MatchCriteria
@@ -165,7 +165,7 @@ async def validate_assessment_with_retry(
     warnings: list[str] = []
 
     # Attempt LLM assessment with 1 retry (max 2 attempts)
-    agent = create_skill_agent(
+    agent = subagent.create_skill_agent(
         name="assess-job-fit",
         model=model,
         model_settings={"temperature": 0.0},

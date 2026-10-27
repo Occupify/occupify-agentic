@@ -3,9 +3,9 @@ import logging
 import uuid
 from typing import Any
 
+from app.agents import subagent
 from app.agents.deps import AgentDeps, CurrentUser
 from app.agents.runner import run_agent
-from app.agents.subagent import create_skill_agent
 from app.features.job_match.validators import (
     _build_rules_fallback,
     clean_output_pii,
@@ -90,7 +90,7 @@ async def assess_single_project(
     prompt_lines.append(f"</{boundary}>")
     prompt = "\n".join(prompt_lines)
 
-    agent = create_skill_agent(
+    agent = subagent.create_skill_agent(
         name="assess-job-fit",
         model=model_override,
         model_settings={"temperature": 0.0},

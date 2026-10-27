@@ -90,6 +90,10 @@ async def run_pipeline(
     settings = get_settings()
     criteria = criteria or MatchCriteria()
     options = options or PipelineOptions()
+    if core_rpc is None:
+        from app.messaging.core_client import get_core_rpc
+
+        core_rpc = get_core_rpc()
 
     run_id = state.run_id or str(uuid.uuid4())
     state.run_id = run_id
@@ -566,13 +570,26 @@ async def run_pipeline(
         cost_usd=0.0,
     )
 
+    from app.agents.subagent import get_skill_registry
+
+    registry = get_skill_registry()
+    skill_versions: dict[str, str] = {}
+    for sk in ["extract-candidate-profile", "match-skills", "assess-job-fit", "plan-job-search"]:
+        meta = registry.get(sk)
+        if meta and meta.skill_version:
+            skill_versions[sk] = meta.skill_version
+
     return RunResult(
         status=run_status,
         outcome=RunOutcome.OK,
         warnings=[JobMatchWarning(code=w["code"], message=w["message"]) for w in warnings],
         items=final_items,
         profile=profile.model_dump() if hasattr(profile, "model_dump") else profile,
+        skill_versions=skill_versions,
         tokens_in=tokens_in,
         tokens_out=tokens_out,
         cost_usd=0.0,
     )
+
+
+run = run_pipeline

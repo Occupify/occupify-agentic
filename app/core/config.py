@@ -64,6 +64,7 @@ class Settings(BaseSettings):
     JOB_MATCH_MAX_OUTPUT_TOKENS: int = 300000
     JOB_MATCH_RUN_TIMEOUT_S: int = 900
     JOB_MATCH_LLM_CONCURRENCY: int = 4
+    JOB_MATCH_MAX_FILE_BYTES: int = 10 * 1024 * 1024
 
     @property
     def EMBEDDER_MODEL(self) -> str:

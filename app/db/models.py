@@ -33,6 +33,16 @@ class TSVectorType(TypeDecorator):
         return dialect.type_descriptor(Text())
 
 
+class TZDateTime(TypeDecorator):
+    impl = DateTime
+    cache_ok = True
+
+    def process_result_value(self, value: Any, dialect: Any) -> Any:
+        if value is not None and isinstance(value, datetime) and value.tzinfo is None:
+            return value.replace(tzinfo=UTC)
+        return value
+
+
 def utc_now() -> datetime:
     return datetime.now(UTC)
 
@@ -82,7 +92,7 @@ class ChatSession(Base):
     user_id: Mapped[str] = mapped_column(String(100), nullable=False)
     title: Mapped[str] = mapped_column(String(255), nullable=False)
     message_count: Mapped[int] = mapped_column(Integer, default=0)
-    busy_since: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
+    busy_since: Mapped[datetime | None] = mapped_column(TZDateTime(timezone=True), nullable=True)
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=utc_now)
     updated_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True), default=utc_now, onupdate=utc_now

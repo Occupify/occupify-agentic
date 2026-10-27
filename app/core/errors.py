@@ -22,6 +22,7 @@ class AppError(HTTPException):
             "statusCode": self.status_code,
             "message": self.message,
             "errorCode": self.error_code,
+            "error": {"code": self.error_code, "message": self.message},
         }
         if self.details is not None:
             data["details"] = self.details

@@ -3,10 +3,10 @@ from typing import Any
 
 from pydantic_ai.settings import ModelSettings
 
+from app.agents import subagent
 from app.agents.budget import RunBudget
 from app.agents.deps import AgentDeps
 from app.agents.runner import run_agent
-from app.agents.subagent import create_skill_agent
 from app.core.security import CurrentUser
 from app.features.job_match.ports import PipelineOptions
 from app.features.job_match.schemas import JobMatchWarning, RunOutcome
@@ -54,7 +54,7 @@ async def extract_profile(
     extract-candidate-profile skill agent under RunBudget constraints.
     """
     prompt_mode = options.prompt_mode if options else "skill"
-    agent = create_skill_agent(
+    agent = subagent.create_skill_agent(
         name="extract-candidate-profile",
         model_settings=ModelSettings(temperature=0.0),
         prompt_mode=prompt_mode,

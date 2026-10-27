@@ -6,17 +6,20 @@ os.environ.setdefault("TQDM_DISABLE", "1")
 os.environ.setdefault("HF_HUB_DISABLE_PROGRESS_BARS", "1")
 
 from contextlib import asynccontextmanager
+from pathlib import Path
 
 from fastapi import FastAPI, Request
 from fastapi.exceptions import RequestValidationError
 from fastapi.responses import JSONResponse
 
+from app.agents.skill_registry import validate_skills_directory
 from app.api import dev, health
 from app.core.config import get_settings
 from app.core.errors import AppError
 from app.core.logging import log_step, setup_logging
 from app.db.init import init_db
 from app.features.chat import router as chat_router
+from app.features.job_match import router as job_match_router
 from app.messaging.broker import close_broker, start_broker
 
 
@@ -28,6 +31,11 @@ async def lifespan(app: FastAPI):
     # Fail fast if ZAI_API_KEY is not set in non-test environment (F-09)
     if settings.APP_ENV != "test" and not settings.ZAI_API_KEY:
         raise RuntimeError("ZAI_API_KEY environment variable is required in non-test environments.")
+
+    # Validate skill registry on startup (T-20)
+    skills_dir = Path("skills")
+    if skills_dir.exists():
+        validate_skills_directory(skills_dir)
 
     log_step("app.startup", env=settings.APP_ENV, port=settings.APP_PORT, model=settings.GLM_MODEL)
 
@@ -66,6 +74,7 @@ def create_app() -> FastAPI:
                 "statusCode": 422,
                 "message": "Validation failed.",
                 "errorCode": "VALIDATION_ERROR",
+                "error": {"code": "VALIDATION_ERROR", "message": "Validation failed."},
                 "details": exc.errors(),
             },
         )
@@ -90,6 +99,7 @@ def create_app() -> FastAPI:
     # Mount routers
     app.include_router(health.router)
     app.include_router(chat_router.router)
+    app.include_router(job_match_router.router)
 
     if settings.APP_ENV in ("local", "test"):
         app.include_router(dev.router)

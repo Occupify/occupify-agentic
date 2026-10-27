@@ -3,10 +3,10 @@ from typing import Any
 
 from pydantic_ai.settings import ModelSettings
 
+from app.agents import subagent
 from app.agents.budget import RunBudget
 from app.agents.deps import AgentDeps
 from app.agents.runner import run_agent
-from app.agents.subagent import create_skill_agent
 from app.core.security import CurrentUser
 from app.features.job_match.normalize import normalize_skill_name
 from app.features.job_match.ports import PipelineOptions
@@ -113,7 +113,7 @@ async def match_skills_for_project(
     prompt = _build_skill_match_prompt(candidate_skills, project_jobs)
     prompt_mode = options.prompt_mode if options else "skill"
 
-    agent = create_skill_agent(
+    agent = subagent.create_skill_agent(
         name="match-skills",
         model_settings=ModelSettings(temperature=0.0),
         prompt_mode=prompt_mode,
