@@ -77,3 +77,28 @@ def test_no_overlap_with_reranker_failure_gives_no_match():
 
 
 from app.features.job_match.scoring import compute_project_ranking  # noqa: E402
+
+
+def test_compute_experience_score_levels():
+    from app.features.job_match.scoring import SCORING_VERSION, compute_experience_score
+
+    assert SCORING_VERSION == "v2"
+    # Same level -> 1.0
+    assert compute_experience_score("ENTRY", "ENTRY") == 1.0
+    assert compute_experience_score("INTERMEDIATE", "INTERMEDIATE") == 1.0
+    assert compute_experience_score("EXPERT", "EXPERT") == 1.0
+
+    # One step apart -> 0.5
+    assert compute_experience_score("ENTRY", "INTERMEDIATE") == 0.5
+    assert compute_experience_score("INTERMEDIATE", "ENTRY") == 0.5
+    assert compute_experience_score("INTERMEDIATE", "EXPERT") == 0.5
+    assert compute_experience_score("EXPERT", "INTERMEDIATE") == 0.5
+
+    # Two steps apart -> 0.0
+    assert compute_experience_score("ENTRY", "EXPERT") == 0.0
+    assert compute_experience_score("EXPERT", "ENTRY") == 0.0
+
+    # Unknown / None -> 1.0
+    assert compute_experience_score(None, "EXPERT") == 1.0
+    assert compute_experience_score("ENTRY", None) == 1.0
+    assert compute_experience_score(None, None) == 1.0

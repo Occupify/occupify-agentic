@@ -1,11 +1,20 @@
 from pathlib import Path
 
 import pytest
+
 from app.agents.capture import capture_model_requests
 from app.features.job_match.pipeline import run_pipeline
-
 from app.features.job_match.ports import PipelineOptions, RunState
 from tests.unit.job_match.fakes import FakeJobIndex
+
+
+@pytest.fixture(autouse=True)
+def default_skill_models():
+    from app.agents.subagent import override_skill_models
+    from tests.unit.job_match.fakes import default_test_overrides
+
+    with override_skill_models(default_test_overrides()):
+        yield
 
 
 @pytest.mark.asyncio

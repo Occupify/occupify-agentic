@@ -80,7 +80,22 @@ def validate_and_filter_assessment(
 
     for job_asmt in target_jobs:
         jid = job_asmt.job or job_asmt.job_id or ""
-        valid_set = valid_req_ids.get(jid, set())
+        valid_set = valid_req_ids.get(jid)
+        if valid_set is None:
+            for k, s in valid_req_ids.items():
+                if (
+                    jid.lower() in k.lower()
+                    or k.lower() in jid.lower()
+                    or k.lower().endswith(jid.lower().lstrip("j"))
+                    or jid.lower().endswith(k.lower().lstrip("j"))
+                ):
+                    valid_set = s
+                    break
+        if valid_set is None and len(valid_req_ids) == 1:
+            valid_set = next(iter(valid_req_ids.values()))
+        if valid_set is None:
+            valid_set = set()
+
         valid_reqs = [
             r for r in job_asmt.requirements if (r.ref in valid_set or r.req_id in valid_set)
         ]

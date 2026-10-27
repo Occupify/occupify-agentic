@@ -19,16 +19,53 @@ from app.features.job_match.schemas import HoursPerDayFilter
 logger = logging.getLogger(__name__)
 
 
+_index_building: bool = False
+_index_jobs_count: int = 0
+_index_empty: bool = True
+
+
+def set_index_building(val: bool) -> None:
+    global _index_building
+    _index_building = val
+
+
+def set_index_jobs_count(count: int) -> None:
+    global _index_jobs_count, _index_empty
+    _index_jobs_count = count
+    _index_empty = count == 0
+
+
+def set_index_empty(val: bool) -> None:
+    global _index_empty
+    _index_empty = val
+
+
 class PgJobIndex:
     """PostgreSQL-backed hybrid job search index using pgvector (HNSW) and full-text search (GIN)."""
 
-    def __init__(self, session: AsyncSession, embedder: Any = None):
+    def __init__(
+        self,
+        session: AsyncSession,
+        embedder: Any = None,
+        is_empty: bool | None = None,
+    ):
         self.session = session
         self.embedder = embedder
+        self._is_empty = is_empty
 
     def is_usable(self) -> bool:
-        """Synchronous check if store has an active session."""
-        return self.session is not None
+        """Synchronous check if store has an active session, embedder, and is not rebuilding or empty."""
+        if self.session is None:
+            return False
+        if self.embedder is None:
+            return False
+        if _index_building:
+            return False
+        if self._is_empty is True:
+            return False
+        if self._is_empty is None and _index_empty:
+            return False
+        return True
 
     async def upsert(self, rows: list[IndexRow]) -> UpsertStats:
         """Upserts a batch of IndexRows.
@@ -72,7 +109,7 @@ class PgJobIndex:
                     project_status=row.project_status,
                     job_status=row.job_status,
                     doc_text=row.doc_text,
-                    active=True,
+                    active=(row.project_status == "OPEN" and row.job_status == "RECRUITING"),
                     missed_sweeps=0,
                     content_hash=content_hash,
                     embedding=None,
@@ -102,7 +139,7 @@ class PgJobIndex:
                 existing.hours_per_day = row.hours_per_day
                 existing.project_status = row.project_status
                 existing.job_status = row.job_status
-                existing.active = True
+                existing.active = row.project_status == "OPEN" and row.job_status == "RECRUITING"
                 existing.missed_sweeps = 0
 
                 if content_changed:
@@ -120,6 +157,8 @@ class PgJobIndex:
                     updated += 1
 
         await self.session.commit()
+        if inserted > 0 or updated > 0:
+            set_index_jobs_count(max(1, inserted + updated))
         return UpsertStats(
             inserted=inserted,
             updated=updated,
@@ -244,7 +283,7 @@ class PgJobIndex:
             # In PG, use search_tsv @@ plainto_tsquery
             is_pg = self.session.bind and "postgresql" in str(self.session.bind.dialect.name)
             if is_pg:
-                ts_query = func.plainto_tsquery("simple", func.unaccent(lexical))
+                ts_query = func.websearch_to_tsquery("simple", func.unaccent(lexical))
                 rank_expr = func.ts_rank_cd(JobIndexRow.search_tsv, ts_query)
                 stmt = (
                     select(JobIndexRow.job_id, JobIndexRow.project_id, rank_expr.label("score"))

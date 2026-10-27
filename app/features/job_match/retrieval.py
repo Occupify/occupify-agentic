@@ -21,16 +21,23 @@ def build_queries(profile: CandidateProfile) -> tuple[str, list[str], str]:
     role_titles: list[str] = [r.title for r in profile.roles if hasattr(r, "title")]
     target_roles: list[str] = profile.target_roles or []
 
-    all_terms = target_roles + skill_names + role_titles
+    if target_roles:
+        all_terms = (target_roles * 2) + skill_names + role_titles
+    else:
+        all_terms = skill_names + role_titles
     q0 = " ".join(all_terms).strip()
 
     queries = [q0] if q0 else []
     for tr in target_roles:
-        if tr and tr not in queries:
-            queries.append(tr)
+        if tr:
+            if tr not in queries:
+                queries.append(tr)
+            tr_combo = f"{tr} {' '.join(skill_names[:4])}".strip()
+            if tr_combo not in queries:
+                queries.append(tr_combo)
 
     lexical_terms = [t.strip() for t in (skill_names + role_titles) if t.strip()]
-    lexical = " OR ".join(lexical_terms) if lexical_terms else ""
+    lexical = " or ".join(lexical_terms) if lexical_terms else ""
 
     return q0, queries, lexical
 

@@ -1,4 +1,5 @@
 import pytest
+
 from app.features.job_match.freshness import check_projects_freshness
 
 
@@ -98,3 +99,45 @@ async def test_core_timeout_keeps_items_unverified_partial():
     assert verified_items[0]["verified"] is False
     assert "JOBS_UNVERIFIED" in warnings
     assert is_partial is True
+
+
+@pytest.mark.asyncio
+async def test_freshness_drops_closed_and_refills_from_candidates():
+    class RefillRpc:
+        async def call(self, routing_key: str, args: dict):
+            pid = args.get("projectId")
+            if pid == "p1":
+                return {
+                    "ok": True,
+                    "data": {"status": "CLOSED", "jobs": [{"id": "j1", "status": "RECRUITING"}]},
+                }
+            elif pid in ("p2", "p3"):
+                return {
+                    "ok": True,
+                    "data": {
+                        "status": "OPEN",
+                        "jobs": [{"id": f"{pid}-j1", "status": "RECRUITING"}],
+                    },
+                }
+            return {"ok": False, "error": {"code": "PROJECT_NOT_FOUND"}}
+
+    shortlisted = [
+        {"project_id": "p1", "jobs": [{"job_id": "j1"}]},
+        {"project_id": "p2", "jobs": [{"job_id": "p2-j1"}]},
+    ]
+    all_candidates = [
+        {"project_id": "p1", "jobs": [{"job_id": "j1"}]},
+        {"project_id": "p2", "jobs": [{"job_id": "p2-j1"}]},
+        {"project_id": "p3", "jobs": [{"job_id": "p3-j1"}]},
+    ]
+
+    verified_items, warnings, is_partial = await check_projects_freshness(
+        shortlisted=shortlisted,
+        rpc=RefillRpc(),
+        limit=2,
+        all_candidates=all_candidates,
+    )
+
+    assert len(verified_items) == 2
+    pids = [item["project_id"] for item in verified_items]
+    assert pids == ["p2", "p3"]

@@ -5,6 +5,8 @@ os.environ.setdefault("PYDANTIC_AI_NO_BANNER", "1")
 os.environ.setdefault("TQDM_DISABLE", "1")
 os.environ.setdefault("HF_HUB_DISABLE_PROGRESS_BARS", "1")
 
+import asyncio
+import logging
 from contextlib import asynccontextmanager
 from pathlib import Path
 
@@ -18,9 +20,19 @@ from app.core.config import get_settings
 from app.core.errors import AppError
 from app.core.logging import log_step, setup_logging
 from app.db.init import init_db
+from app.db.session import get_sessionmaker
 from app.features.chat import router as chat_router
 from app.features.job_match import router as job_match_router
+from app.features.job_match.index import (
+    build_job_index,
+    start_embed_backlog_task,
+    start_sweep_task,
+)
 from app.messaging.broker import close_broker, start_broker
+from app.messaging.core_client import get_core_rpc
+from app.ml import get_embedder, load_models_in_background
+
+logger = logging.getLogger(__name__)
 
 
 @asynccontextmanager
@@ -45,9 +57,41 @@ async def lifespan(app: FastAPI):
     # Initialize messaging broker
     await start_broker()
 
+    # Background model loading
+    load_models_in_background()
+
+    # Initial index build and background sweep
+    sweep_task = None
+    embed_task = None
+    if settings.APP_ENV != "test":
+        session_maker = get_sessionmaker()
+        async with session_maker() as session:
+            try:
+                embedder = get_embedder()
+            except Exception:
+                embedder = None
+            core_rpc = get_core_rpc()
+            try:
+                await build_job_index(session, core_rpc, embedder)
+            except Exception as e:
+                logger.warning("Startup build_job_index error: %s", e)
+
+        sweep_task = asyncio.create_task(
+            start_sweep_task(session_maker, get_core_rpc(), settings.JOB_INDEX_SWEEP_S)
+        )
+        embed_task = asyncio.create_task(start_embed_backlog_task(session_maker, interval_s=10))
+
     yield
 
     # Teardown
+    for task in (sweep_task, embed_task):
+        if task:
+            task.cancel()
+            try:
+                await task
+            except asyncio.CancelledError:
+                pass
+
     await close_broker()
     log_step("app.shutdown")
 

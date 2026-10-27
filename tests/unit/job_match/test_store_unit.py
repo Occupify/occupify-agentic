@@ -40,13 +40,16 @@ def make_test_row(
 
 @pytest.mark.asyncio
 async def test_store_upsert_and_get_rows_sqlite(test_db: AsyncSession):
-    store = PgJobIndex(session=test_db, embedder=FakeEmbedder(dim=1024))
-    assert store.is_usable() is True
+    store = PgJobIndex(session=test_db, embedder=FakeEmbedder(dim=1024), is_empty=True)
+    assert store.is_usable() is False
 
     row = make_test_row()
     stats = await store.upsert([row])
     assert stats.inserted == 1
     assert stats.reembed_queued == 1
+    # After rows exist, store becomes usable
+    store_ready = PgJobIndex(session=test_db, embedder=FakeEmbedder(dim=1024), is_empty=False)
+    assert store_ready.is_usable() is True
 
     rows = await store.get_rows(["j-unit-1"])
     assert len(rows) == 1
@@ -69,6 +72,27 @@ async def test_store_upsert_and_get_rows_sqlite(test_db: AsyncSession):
     rows_after_miss2 = await store.get_rows(["j-unit-1"])
     assert rows_after_miss2[0].missed_sweeps == 2
     assert rows_after_miss2[0].active is False
+
+
+def test_is_usable_false_when_empty():
+    store = PgJobIndex(session="session", embedder="embedder", is_empty=True)
+    assert store.is_usable() is False
+
+
+def test_is_usable_false_when_rebuilding():
+    from app.features.job_match.index.store import set_index_building
+
+    set_index_building(True)
+    try:
+        store = PgJobIndex(session="session", embedder="embedder", is_empty=False)
+        assert store.is_usable() is False
+    finally:
+        set_index_building(False)
+
+
+def test_is_usable_false_when_embedder_missing():
+    store = PgJobIndex(session="session", embedder=None, is_empty=False)
+    assert store.is_usable() is False
 
 
 @pytest.mark.asyncio

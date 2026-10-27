@@ -2351,6 +2351,20 @@
     "b1000000-0000-0000-0000-000000000101": {
       "project_id": "a1000000-0000-0000-0000-000000000001",
       "title": "Senior UI/UX Lead Designer",
+      "family": "ui_ux",
+      "seniority": "EXPERT",
+      "core_skills": [
+        "Figma",
+        "Design System",
+        "User Flow",
+        "Fintech"
+      ],
+      "all_skills": [
+        "Figma",
+        "Design System",
+        "User Flow",
+        "Fintech"
+      ],
       "skills": [
         "Figma",
         "Design System",
@@ -2364,6 +2378,20 @@
     "b1000000-0000-0000-0000-000000000102": {
       "project_id": "a1000000-0000-0000-0000-000000000001",
       "title": "Mobile Interaction & Motion Designer",
+      "family": "ui_ux",
+      "seniority": "EXPERT",
+      "core_skills": [
+        "Micro-interactions",
+        "ProtoPie",
+        "Lottie",
+        "Mobile UX"
+      ],
+      "all_skills": [
+        "Micro-interactions",
+        "ProtoPie",
+        "Lottie",
+        "Mobile UX"
+      ],
       "skills": [
         "Micro-interactions",
         "ProtoPie",
@@ -2377,6 +2405,18 @@
     "b1000000-0000-0000-0000-000000000103": {
       "project_id": "a1000000-0000-0000-0000-000000000001",
       "title": "UX Researcher",
+      "family": "ui_ux",
+      "seniority": "EXPERT",
+      "core_skills": [
+        "UX Research",
+        "Usability Testing",
+        "Data Analysis"
+      ],
+      "all_skills": [
+        "UX Research",
+        "Usability Testing",
+        "Data Analysis"
+      ],
       "skills": [
         "UX Research",
         "Usability Testing",
@@ -2389,6 +2429,20 @@
     "b1000000-0000-0000-0000-000000000201": {
       "project_id": "a1000000-0000-0000-0000-000000000002",
       "title": "Senior UX Architect (Checkout)",
+      "family": "ui_ux",
+      "seniority": "INTERMEDIATE",
+      "core_skills": [
+        "E-Commerce UX",
+        "A/B Testing",
+        "Figma",
+        "Conversion Rate"
+      ],
+      "all_skills": [
+        "E-Commerce UX",
+        "A/B Testing",
+        "Figma",
+        "Conversion Rate"
+      ],
       "skills": [
         "E-Commerce UX",
         "A/B Testing",
@@ -2402,6 +2456,20 @@
     "b1000000-0000-0000-0000-000000000202": {
       "project_id": "a1000000-0000-0000-0000-000000000002",
       "title": "Visual Designer (Mega Sale)",
+      "family": "ui_ux",
+      "seniority": "INTERMEDIATE",
+      "core_skills": [
+        "Photoshop",
+        "Figma",
+        "Campaign Design",
+        "Visual Hierarchy"
+      ],
+      "all_skills": [
+        "Photoshop",
+        "Figma",
+        "Campaign Design",
+        "Visual Hierarchy"
+      ],
       "skills": [
         "Photoshop",
         "Figma",
@@ -2415,6 +2483,20 @@
     "b1000000-0000-0000-0000-000000000301": {
       "project_id": "a1000000-0000-0000-0000-000000000003",
       "title": "Backend Developer (Java Spring Boot)",
+      "family": "backend",
+      "seniority": "INTERMEDIATE",
+      "core_skills": [
+        "Java",
+        "Spring Boot",
+        "PostgreSQL",
+        "RESTful API"
+      ],
+      "all_skills": [
+        "Java",
+        "Spring Boot",
+        "PostgreSQL",
+        "RESTful API"
+      ],
       "skills": [
         "Java",
         "Spring Boot",
@@ -2428,6 +2510,20 @@
     "b1000000-0000-0000-0000-000000000302": {
       "project_id": "a1000000-0000-0000-0000-000000000003",
       "title": "DevOps Engineer (bán thời gian)",
+      "family": "backend",
+      "seniority": "INTERMEDIATE",
+      "core_skills": [
+        "Docker",
+        "Kubernetes",
+        "CI/CD",
+        "GitHub Actions"
+      ],
+      "all_skills": [
+        "Docker",
+        "Kubernetes",
+        "CI/CD",
+        "GitHub Actions"
+      ],
       "skills": [
         "Docker",
         "Kubernetes",
@@ -2441,6 +2537,21 @@
     "b1000000-0000-0000-0000-000000000401": {
       "project_id": "a1000000-0000-0000-0000-000000000004",
       "title": "Senior Node.js Engineer",
+      "family": "backend",
+      "seniority": "EXPERT",
+      "core_skills": [
+        "Node.js",
+        "NestJS",
+        "PostgreSQL",
+        "Redis"
+      ],
+      "all_skills": [
+        "Node.js",
+        "NestJS",
+        "PostgreSQL",
+        "Redis",
+        "TypeScript"
+      ],
       "skills": [
         "Node.js",
         "NestJS",
@@ -2455,6 +2566,18 @@
     "b1000000-0000-0000-0000-000000000402": {
       "project_id": "a1000000-0000-0000-0000-000000000004",
       "title": "QA Automation Engineer (API)",
+      "family": "backend",
+      "seniority": "EXPERT",
+      "core_skills": [
+        "Postman",
+        "Automation Testing",
+        "API Testing"
+      ],
+      "all_skills": [
+        "Postman",
+        "Automation Testing",
+        "API Testing"
+      ],
       "skills": [
         "Postman",
         "Automation Testing",
@@ -2467,6 +2590,20 @@
     "b1000000-0000-0000-0000-000000000501": {
       "project_id": "a1000000-0000-0000-0000-000000000005",
       "title": "React Native Developer",
+      "family": "frontend",
+      "seniority": "INTERMEDIATE",
+      "core_skills": [
+        "React Native",
+        "TypeScript",
+        "Redux",
+        "Firebase"
+      ],
+      "all_skills": [
+        "React Native",
+        "TypeScript",
+        "Redux",
+        "Firebase"
+      ],
       "skills": [
         "React Native",
         "TypeScript",
@@ -2480,6 +2617,20 @@
     "b1000000-0000-0000-0000-000000000601": {
       "project_id": "a1000000-0000-0000-0000-000000000006",
       "title": "Frontend Developer (React/Next.js)",
+      "family": "frontend",
+      "seniority": "ENTRY",
+      "core_skills": [
+        "React",
+        "Next.js",
+        "TypeScript",
+        "Tailwind CSS"
+      ],
+      "all_skills": [
+        "React",
+        "Next.js",
+        "TypeScript",
+        "Tailwind CSS"
+      ],
       "skills": [
         "React",
         "Next.js",
@@ -2493,6 +2644,20 @@
     "b1000000-0000-0000-0000-000000000701": {
       "project_id": "a1000000-0000-0000-0000-000000000007",
       "title": "Data Analyst (SQL & PowerBI)",
+      "family": "data_ai",
+      "seniority": "INTERMEDIATE",
+      "core_skills": [
+        "SQL",
+        "PowerBI",
+        "Python",
+        "Excel"
+      ],
+      "all_skills": [
+        "SQL",
+        "PowerBI",
+        "Python",
+        "Excel"
+      ],
       "skills": [
         "SQL",
         "PowerBI",
@@ -2506,6 +2671,22 @@
     "b1000000-0000-0000-0000-000000000801": {
       "project_id": "a1000000-0000-0000-0000-000000000008",
       "title": "AI Engineer (LLM & RAG)",
+      "family": "data_ai",
+      "seniority": "EXPERT",
+      "core_skills": [
+        "Python",
+        "LLM",
+        "RAG",
+        "LangChain"
+      ],
+      "all_skills": [
+        "Python",
+        "LLM",
+        "RAG",
+        "LangChain",
+        "FastAPI",
+        "Vector Database"
+      ],
       "skills": [
         "Python",
         "LLM",
@@ -2521,6 +2702,18 @@
     "b1000000-0000-0000-0000-000000000802": {
       "project_id": "a1000000-0000-0000-0000-000000000008",
       "title": "Data Annotator (tiếng Việt)",
+      "family": "data_ai",
+      "seniority": "EXPERT",
+      "core_skills": [
+        "Data Annotation",
+        "Vietnamese NLP",
+        "Excel"
+      ],
+      "all_skills": [
+        "Data Annotation",
+        "Vietnamese NLP",
+        "Excel"
+      ],
       "skills": [
         "Data Annotation",
         "Vietnamese NLP",
@@ -2533,6 +2726,21 @@
     "b1000000-0000-0000-0000-000000000901": {
       "project_id": "a1000000-0000-0000-0000-000000000009",
       "title": "Data Engineer",
+      "family": "data_ai",
+      "seniority": "EXPERT",
+      "core_skills": [
+        "Python",
+        "Apache Airflow",
+        "Apache Spark",
+        "AWS"
+      ],
+      "all_skills": [
+        "Python",
+        "Apache Airflow",
+        "Apache Spark",
+        "AWS",
+        "SQL"
+      ],
       "skills": [
         "Python",
         "Apache Airflow",
@@ -2547,6 +2755,18 @@
     "b1000000-0000-0000-0000-000000001001": {
       "project_id": "a1000000-0000-0000-0000-000000000010",
       "title": "QA Tester (Manual & Appium)",
+      "family": "mobile",
+      "seniority": "ENTRY",
+      "core_skills": [
+        "Manual Testing",
+        "Appium",
+        "Jira"
+      ],
+      "all_skills": [
+        "Manual Testing",
+        "Appium",
+        "Jira"
+      ],
       "skills": [
         "Manual Testing",
         "Appium",
@@ -2559,6 +2779,20 @@
     "b1000000-0000-0000-0000-000000001101": {
       "project_id": "a1000000-0000-0000-0000-000000000011",
       "title": "SEO Copywriter",
+      "family": "marketing_content",
+      "seniority": "ENTRY",
+      "core_skills": [
+        "SEO",
+        "Content Writing",
+        "Copywriting",
+        "Keyword Research"
+      ],
+      "all_skills": [
+        "SEO",
+        "Content Writing",
+        "Copywriting",
+        "Keyword Research"
+      ],
       "skills": [
         "SEO",
         "Content Writing",
@@ -2572,6 +2806,20 @@
     "b1000000-0000-0000-0000-000000001201": {
       "project_id": "a1000000-0000-0000-0000-000000000012",
       "title": "Graphic Designer (Banner & Social)",
+      "family": "ui_ux",
+      "seniority": "ENTRY",
+      "core_skills": [
+        "Photoshop",
+        "Illustrator",
+        "Social Media",
+        "Banner Ads"
+      ],
+      "all_skills": [
+        "Photoshop",
+        "Illustrator",
+        "Social Media",
+        "Banner Ads"
+      ],
       "skills": [
         "Photoshop",
         "Illustrator",
@@ -2585,6 +2833,20 @@
     "b1000000-0000-0000-0000-000000001301": {
       "project_id": "a1000000-0000-0000-0000-000000000013",
       "title": "Shopify Developer",
+      "family": "e_commerce",
+      "seniority": "INTERMEDIATE",
+      "core_skills": [
+        "Shopify",
+        "Liquid",
+        "JavaScript",
+        "HTML/CSS"
+      ],
+      "all_skills": [
+        "Shopify",
+        "Liquid",
+        "JavaScript",
+        "HTML/CSS"
+      ],
       "skills": [
         "Shopify",
         "Liquid",
@@ -2598,6 +2860,20 @@
     "b1000000-0000-0000-0000-000000001401": {
       "project_id": "a1000000-0000-0000-0000-000000000014",
       "title": "Design System Specialist (React & Figma Tokens)",
+      "family": "ui_ux",
+      "seniority": "INTERMEDIATE",
+      "core_skills": [
+        "Design Tokens",
+        "React",
+        "Storybook",
+        "Figma"
+      ],
+      "all_skills": [
+        "Design Tokens",
+        "React",
+        "Storybook",
+        "Figma"
+      ],
       "skills": [
         "Design Tokens",
         "React",
@@ -2611,6 +2887,20 @@
     "b1000000-0000-0000-0000-000000001501": {
       "project_id": "a1000000-0000-0000-0000-000000000015",
       "title": "Cloud/DevOps Engineer (AWS)",
+      "family": "devops_cloud",
+      "seniority": "EXPERT",
+      "core_skills": [
+        "AWS",
+        "Terraform",
+        "Docker",
+        "Kubernetes"
+      ],
+      "all_skills": [
+        "AWS",
+        "Terraform",
+        "Docker",
+        "Kubernetes"
+      ],
       "skills": [
         "AWS",
         "Terraform",
@@ -2624,6 +2914,18 @@
     "b1000000-0000-0000-0000-000000001601": {
       "project_id": "a1000000-0000-0000-0000-000000000016",
       "title": "Video Editor",
+      "family": "media",
+      "seniority": "ENTRY",
+      "core_skills": [
+        "Premiere Pro",
+        "After Effects",
+        "CapCut"
+      ],
+      "all_skills": [
+        "Premiere Pro",
+        "After Effects",
+        "CapCut"
+      ],
       "skills": [
         "Premiere Pro",
         "After Effects",
@@ -2636,6 +2938,18 @@
     "b1000000-0000-0000-0000-000000001701": {
       "project_id": "a1000000-0000-0000-0000-000000000017",
       "title": "Kế toán tổng hợp",
+      "family": "finance_accounting",
+      "seniority": "INTERMEDIATE",
+      "core_skills": [
+        "MISA",
+        "Kế toán thuế",
+        "Excel"
+      ],
+      "all_skills": [
+        "MISA",
+        "Kế toán thuế",
+        "Excel"
+      ],
       "skills": [
         "MISA",
         "Kế toán thuế",
@@ -2648,6 +2962,18 @@
     "b1000000-0000-0000-0000-000000001801": {
       "project_id": "a1000000-0000-0000-0000-000000000018",
       "title": "Biên dịch viên Anh - Việt (kỹ thuật)",
+      "family": "admin_va",
+      "seniority": "INTERMEDIATE",
+      "core_skills": [
+        "English",
+        "Technical Translation",
+        "Proofreading"
+      ],
+      "all_skills": [
+        "English",
+        "Technical Translation",
+        "Proofreading"
+      ],
       "skills": [
         "English",
         "Technical Translation",

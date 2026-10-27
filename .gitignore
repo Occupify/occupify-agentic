@@ -36,4 +36,4 @@ dist/
 models_cache/
 
 note.md
-docs/
+docs/evals/uc4/.eval_cache.json

@@ -17,6 +17,7 @@ from app.core.security import CurrentUser
 from app.db.models import JobMatchResult, JobMatchRun, utc_now
 from app.db.session import get_sessionmaker
 from app.features.job_match import pipeline
+from app.features.job_match.index.store import PgJobIndex
 from app.features.job_match.ports import PipelineOptions, RunResult, RunState
 from app.features.job_match.schemas import (
     ErrorCode,
@@ -26,6 +27,8 @@ from app.features.job_match.schemas import (
     RunStatus,
     WarningCode,
 )
+from app.messaging.core_client import get_core_rpc
+from app.ml import get_embedder
 
 logger = logging.getLogger(__name__)
 
@@ -67,15 +70,25 @@ async def execute_run(
     is_timeout = False
 
     try:
-        async with asyncio.timeout(timeout_s):
-            res = await pipeline.run(
-                state=state,
-                pdf_bytes=pdf_bytes,
-                user=user,
-                criteria=criteria,
-                lang=criteria.lang,
-                options=PipelineOptions(),
-            )
+        async with session_maker() as search_session:
+            try:
+                embedder = get_embedder()
+            except Exception:
+                embedder = None
+            store = PgJobIndex(session=search_session, embedder=embedder)
+            core_rpc = get_core_rpc()
+
+            async with asyncio.timeout(timeout_s):
+                res = await pipeline.run(
+                    state=state,
+                    pdf_bytes=pdf_bytes,
+                    user=user,
+                    criteria=criteria,
+                    lang=criteria.lang,
+                    store=store,
+                    core_rpc=core_rpc,
+                    options=PipelineOptions(),
+                )
     except TimeoutError:
         is_timeout = True
         logger.warning("Job match run %s timed out after %.2fs", run_id, timeout_s)

@@ -3,11 +3,11 @@ import logging
 from pathlib import Path
 
 import pytest
-from app.features.job_match.pipeline import run_pipeline
-from app.messaging.mock_core import MockCoreRpc
 
 from app.core.logging import JSONFormatter, bind_context
+from app.features.job_match.pipeline import run_pipeline
 from app.features.job_match.ports import PipelineOptions, RunState
+from app.messaging.mock_core import MockCoreRpc
 
 
 class LogCaptureHandler(logging.Handler):
@@ -31,6 +31,15 @@ def log_capture():
     root_logger.addHandler(handler)
     yield handler
     root_logger.removeHandler(handler)
+
+
+@pytest.fixture(autouse=True)
+def default_skill_models():
+    from app.agents.subagent import override_skill_models
+    from tests.unit.job_match.fakes import default_test_overrides
+
+    with override_skill_models(default_test_overrides()):
+        yield
 
 
 @pytest.mark.asyncio

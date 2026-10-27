@@ -1,3 +1,4 @@
+import asyncio
 import logging
 import re
 import uuid
@@ -5,9 +6,10 @@ from typing import Any
 
 import pypdfium2 as pdfium
 
-from app.agents.budget import RunBudget
+from app.agents.budget import RunBudget, StopReason
 from app.core.config import get_settings
 from app.core.logging import bind_context, log_step
+from app.core.pricing import calculate_token_cost
 from app.core.security import CurrentUser
 from app.features.job_match.assessment import assess_shortlisted_projects
 from app.features.job_match.criteria import matches as criteria_matches
@@ -25,22 +27,24 @@ from app.features.job_match.retrieval import build_queries, compute_exhausted, r
 from app.features.job_match.sanitize import sanitize_project
 from app.features.job_match.schemas import ErrorCode, JobMatchWarning, RunOutcome, RunStatus
 from app.features.job_match.scoring import (
+    compute_experience_score,
     compute_job_score,
     compute_project_scores,
 )
+from app.features.job_match.search_agent import maybe_search_more
 from app.features.job_match.skill_match import match_skills_for_project
+from app.features.job_match.validators import validate_v3_criteria
 from app.ml import get_embedder, get_reranker
 from app.privacy.gate import clean as privacy_clean
-from tests.unit.job_match.fakes import FakeJobIndex
 
 logger = logging.getLogger(__name__)
 
 
 def handle_budget_exceeded_at_stage(stage: str) -> str:
     """Returns the budget exceeded fallback action based on current pipeline stage."""
-    if stage in ("assessment", "skill_match", "s5b", "s9"):
+    if stage in ("assessment", "s9_assessment", "skill_match", "s5b_skill_match"):
         return "rules_fallback"
-    if stage == "search":
+    if stage in ("search", "s7_search_agent"):
         return "stop_budget"
     return "RUN_BUDGET_EXCEEDED"
 
@@ -164,10 +168,7 @@ async def run_pipeline(
         logger.warning("Failed to extract PDF text: %s", exc)
         raw_text = ""
 
-    from app.agents.subagent import _skill_model_overrides
-
-    is_profile_mocked = "extract-candidate-profile" in _skill_model_overrides.get()
-    if not is_profile_mocked and not _is_cv_precheck(raw_text):
+    if not _is_cv_precheck(raw_text):
         log_step(
             "job_match.end",
             run_id=run_id,
@@ -190,24 +191,21 @@ async def run_pipeline(
     try:
         cleaned_cv = clean_cv(raw_text, source="cv", is_file=True)
     except Exception as exc:
-        if is_profile_mocked:
-            cleaned_cv = raw_text
-        else:
-            logger.warning("Privacy gate failed: %s", type(exc).__name__)
-            log_step(
-                "job_match.end",
-                run_id=run_id,
-                status=RunStatus.FAILED.value,
-                error_code=ErrorCode.PII_REMOVAL_FAILED.value,
-                tokens_in=0,
-                tokens_out=0,
-                cost_usd=0.0,
-            )
-            return RunResult(
-                status=RunStatus.FAILED,
-                error_code=ErrorCode.PII_REMOVAL_FAILED,
-                message=f"Privacy gate removal failed: {type(exc).__name__}",
-            )
+        logger.warning("Privacy gate failed: %s", type(exc).__name__)
+        log_step(
+            "job_match.end",
+            run_id=run_id,
+            status=RunStatus.FAILED.value,
+            error_code=ErrorCode.PII_REMOVAL_FAILED.value,
+            tokens_in=0,
+            tokens_out=0,
+            cost_usd=0.0,
+        )
+        return RunResult(
+            status=RunStatus.FAILED,
+            error_code=ErrorCode.PII_REMOVAL_FAILED,
+            message=f"Privacy gate removal failed: {type(exc).__name__}",
+        )
 
     # -------------------------------------------------------------
     # S2: Profile Extraction
@@ -269,15 +267,10 @@ async def run_pipeline(
     # -------------------------------------------------------------
     set_stage("s4_retrieval")
 
-    # If store is not explicitly provided, build a usable FakeJobIndex from mock core projects if available
     if store is None:
-        all_rows = []
-        if core_rpc and hasattr(core_rpc, "_projects") and core_rpc._projects:
-            for p in core_rpc._projects:
-                all_rows.extend(sanitize_project(p))
-        store = FakeJobIndex(rows=all_rows)
-
-    is_store_usable = store.is_usable() if hasattr(store, "is_usable") else True
+        is_store_usable = False
+    else:
+        is_store_usable = store.is_usable() if hasattr(store, "is_usable") else True
 
     import os
 
@@ -311,6 +304,27 @@ async def run_pipeline(
         fused_hits = rrf_fuse(dense_lists + [lex_hits], k=60)
         top_hits = fused_hits[: options.pool_size]
         pool_rows = await store.get_rows([h.job_id for h in top_hits])
+
+        # Check for INDEX_STALE (AC-8, 21-plan §2.3)
+        if hasattr(store, "meta"):
+            try:
+                m = await store.meta()
+                if m and m.built_at:
+                    from datetime import UTC, datetime
+
+                    b_at = m.built_at if m.built_at.tzinfo else m.built_at.replace(tzinfo=UTC)
+                    age = (datetime.now(UTC) - b_at).total_seconds()
+                    if age > 2 * settings.JOB_INDEX_SWEEP_S:
+                        if not any(w["code"] == "INDEX_STALE" for w in warnings):
+                            warnings.append(
+                                {
+                                    "code": "INDEX_STALE",
+                                    "message": "Search index sweep is older than expected.",
+                                }
+                            )
+            except Exception:
+                pass
+
     else:
         # Fallback to core.project.search
         warnings.append(
@@ -340,6 +354,7 @@ async def run_pipeline(
                     pool_rows.append(sr)
         exhausted = True
     state.exhausted = exhausted
+    state.pool_job_ids = [r.job_id for r in pool_rows]
 
     # Group pool rows by project_id
     project_pool: dict[str, list[IndexRow]] = {}
@@ -380,16 +395,27 @@ async def run_pipeline(
     scored_projects: list[dict[str, Any]] = []
     all_pool_missing_skills: list[str] = []
 
+    sm_sem = asyncio.Semaphore(4)
+
+    async def _match_single_project(pid_item: str, rows: list[IndexRow]):
+        async with sm_sem:
+            job_skills_dict = {r.job_id: r.skills for r in rows}
+            res, sm_w = await match_skills_for_project(
+                project_id=pid_item,
+                project_jobs=job_skills_dict,
+                profile=profile,
+                budget=budget,
+                options=options,
+                parent_run_id=run_id,
+            )
+            return pid_item, res, sm_w
+
+    match_tasks = [_match_single_project(pid, p_rows) for pid, p_rows in project_pool.items()]
+    matched_results_list = await asyncio.gather(*match_tasks) if match_tasks else []
+    match_by_project = {pid_item: (res, sm_w) for pid_item, res, sm_w in matched_results_list}
+
     for pid, p_rows in project_pool.items():
-        job_skills_dict = {r.job_id: r.skills for r in p_rows}
-        match_result, sm_warns = await match_skills_for_project(
-            project_id=pid,
-            project_jobs=job_skills_dict,
-            profile=profile,
-            budget=budget,
-            options=options,
-            parent_run_id=run_id,
-        )
+        match_result, sm_warns = match_by_project[pid]
         for sm_w in sm_warns:
             if not any(w["code"] == sm_w for w in warnings):
                 warnings.append({"code": sm_w, "message": "Skill matching used code fallback."})
@@ -413,7 +439,11 @@ async def run_pipeline(
                 except Exception:
                     r_score = None
 
-            e_score = 1.0  # Experience match
+            # Experience match (ADR-001 / design §6)
+            profile_lvl = getattr(profile, "experience_level", None)
+            project_lvl = getattr(r, "experience_level", None)
+            e_score = compute_experience_score(profile_lvl, project_lvl)
+
             m_score, fits = compute_job_score(
                 r=r_score,
                 c=coverage,
@@ -433,17 +463,6 @@ async def run_pipeline(
                     )
                 else:
                     formatted_matched.append({"name": str(m), "inferred": False})
-
-            # Format requirements
-            formatted_reqs = []
-            for idx, req_str in enumerate(r.requirements, 1):
-                formatted_reqs.append(
-                    {
-                        "text": req_str,
-                        "status": "met",
-                        "note": "Evaluated during matching.",
-                    }
-                )
 
             evaluated_jobs.append(
                 {
@@ -465,7 +484,7 @@ async def run_pipeline(
                     "matchedSkills": formatted_matched,
                     "missing_skills": raw_missing,
                     "missingSkills": raw_missing,
-                    "requirements": formatted_reqs,
+                    "requirements": r.requirements or [],
                     "summary": f"Job fit score: {m_score}.",
                     "assessment": "llm",
                 }
@@ -490,20 +509,32 @@ async def run_pipeline(
     # -------------------------------------------------------------
     set_stage("s6_scoring")
     fitting_projects = [p for p in scored_projects if p["has_fits"]]
+    state.fitting_projects_count = len(fitting_projects)
     if not fitting_projects:
         # NO_MATCH outcome
         from collections import Counter
 
         counter = Counter(all_pool_missing_skills)
         top_missing = [s for s, _ in counter.most_common(5)]
+        tokens_in = budget.usage.input_tokens
+        tokens_out = budget.usage.output_tokens
+        state.tokens_in = tokens_in
+        state.tokens_out = tokens_out
+        cost_info = calculate_token_cost(
+            settings.GLM_MODEL,
+            tokens_in=tokens_in,
+            tokens_out=tokens_out,
+        )
+        cost_usd = cost_info.get("cost_usd", 0.0)
+        state.cost_usd = cost_usd
         log_step(
             "job_match.end",
             run_id=run_id,
             status=RunStatus.SUCCEEDED.value,
             outcome=RunOutcome.NO_MATCH.value,
-            tokens_in=budget.usage.total_tokens,
-            tokens_out=budget.usage.output_tokens,
-            cost_usd=0.0,
+            tokens_in=tokens_in,
+            tokens_out=tokens_out,
+            cost_usd=cost_usd,
         )
         return RunResult(
             status=RunStatus.SUCCEEDED,
@@ -513,9 +544,36 @@ async def run_pipeline(
             items=[],
         )
 
+    # -------------------------------------------------------------
+    # S7: Search Agent (AC-15, AC-16)
+    # -------------------------------------------------------------
+    target_k = min(10, options.list_size) if options.list_size else 10
+    if options.search_agent and len(fitting_projects) < target_k and not state.exhausted:
+        set_stage("s7_search_agent")
+        called, stop_reason = await maybe_search_more(
+            state=state,
+            budget=budget,
+            options=options,
+            goal=target_k,
+            user=user,
+            parent_run_id=run_id,
+        )
+        if stop_reason and stop_reason != StopReason.GOAL_REACHED:
+            run_status = RunStatus.PARTIAL
+            state.stop_reason = (
+                stop_reason.value if hasattr(stop_reason, "value") else str(stop_reason)
+            )
+            if not any(w["code"] == "SEARCH_STOPPED_EARLY" for w in warnings):
+                warnings.append(
+                    {
+                        "code": "SEARCH_STOPPED_EARLY",
+                        "message": f"Search agent stopped early: {state.stop_reason}.",
+                    }
+                )
+
     # Sort descending by matchScore
     scored_projects.sort(key=lambda p: p["matchScore"], reverse=True)
-    shortlisted = scored_projects[:10]
+    shortlisted = scored_projects[:target_k]
 
     # -------------------------------------------------------------
     # S8: Freshness check against core
@@ -526,6 +584,8 @@ async def run_pipeline(
         v_items, f_warns, is_partial = await check_projects_freshness(
             shortlisted=shortlisted,
             rpc=core_rpc,
+            limit=target_k,
+            all_candidates=scored_projects,
         )
         verified_shortlisted = v_items
         for fw in f_warns:
@@ -538,6 +598,23 @@ async def run_pipeline(
                 )
         if is_partial:
             run_status = RunStatus.PARTIAL
+
+    # Check criteria.hours_per_day warning HOURS_UNKNOWN (AC-11)
+    if criteria.hours_per_day is not None:
+        has_unknown_hours = False
+        for p in verified_shortlisted:
+            pid = p.get("project_id") or p.get("projectId")
+            p_rows = project_pool.get(pid, [])
+            if any(r.hours_per_day is None for r in p_rows):
+                has_unknown_hours = True
+                break
+        if has_unknown_hours and not any(w["code"] == "HOURS_UNKNOWN" for w in warnings):
+            warnings.append(
+                {
+                    "code": "HOURS_UNKNOWN",
+                    "message": "Hours-per-day filter set, but some matched projects have unknown hours.",
+                }
+            )
 
     # -------------------------------------------------------------
     # S9: Fit Assessment
@@ -562,9 +639,20 @@ async def run_pipeline(
     set_stage("s10_finalize")
     final_items: list[dict[str, Any]] = []
 
-    for rank, p in enumerate(assessed_projects[:10], start=1):
+    for rank, p in enumerate(assessed_projects[:target_k], start=1):
         formatted_jobs = []
         for j in p.get("jobs", []):
+            raw_req_checks = j.get("requirement_checks") or []
+            req_checks = []
+            for rc in raw_req_checks:
+                req_checks.append(
+                    {
+                        "text": rc.get("text", ""),
+                        "status": rc.get("status", "unclear"),
+                        "note": rc.get("note", ""),
+                    }
+                )
+            asmt_mode = j.get("assessment", "llm" if req_checks else "rules")
             formatted_jobs.append(
                 {
                     "jobId": j.get("job_id") or j.get("jobId"),
@@ -575,9 +663,9 @@ async def run_pipeline(
                     "matchScore": j.get("match_score") or j.get("matchScore", 0),
                     "matchedSkills": j.get("matchedSkills") or j.get("matched_skills", []),
                     "missingSkills": j.get("missingSkills") or j.get("missing_skills", []),
-                    "requirements": j.get("requirements", []),
+                    "requirements": req_checks,
                     "summary": j.get("summary", ""),
-                    "assessment": j.get("assessment", "llm"),
+                    "assessment": asmt_mode,
                 }
             )
 
@@ -592,12 +680,21 @@ async def run_pipeline(
             }
         )
 
+    # Validator V3: drop jobs and projects that fail criteria
+    final_items = validate_v3_criteria(final_items, criteria)
+
     # Update state
     tokens_in = budget.usage.input_tokens
     tokens_out = budget.usage.output_tokens
     state.tokens_in = tokens_in
     state.tokens_out = tokens_out
-    state.cost_usd = 0.0
+    cost_info = calculate_token_cost(
+        settings.GLM_MODEL,
+        tokens_in=tokens_in,
+        tokens_out=tokens_out,
+    )
+    cost_usd = cost_info.get("cost_usd", 0.0)
+    state.cost_usd = cost_usd
 
     log_step(
         "job_match.end",
@@ -605,7 +702,7 @@ async def run_pipeline(
         status=run_status.value,
         tokens_in=tokens_in,
         tokens_out=tokens_out,
-        cost_usd=0.0,
+        cost_usd=cost_usd,
     )
 
     from app.agents.subagent import get_skill_registry
@@ -626,7 +723,7 @@ async def run_pipeline(
         skill_versions=skill_versions,
         tokens_in=tokens_in,
         tokens_out=tokens_out,
-        cost_usd=0.0,
+        cost_usd=cost_usd,
     )
 
 

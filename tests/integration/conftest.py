@@ -3,6 +3,7 @@ import os
 import pytest
 from sqlalchemy import text
 from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker, create_async_engine
+from sqlalchemy.pool import NullPool
 
 from app.db.init import init_db
 from app.db.session import set_engine
@@ -20,7 +21,7 @@ def pg_url():
 
 @pytest.fixture(scope="session")
 async def pg_engine(pg_url):
-    engine = create_async_engine(pg_url, echo=False)
+    engine = create_async_engine(pg_url, echo=False, poolclass=NullPool)
     set_engine(engine)
     await init_db()
     yield engine

@@ -128,6 +128,7 @@ async def assess_single_project(
                 if target_jobs:
                     for ja in target_jobs:
                         key = ja.job or ja.job_id
+                        clean_summary = clean_output_pii(ja.summary or "")
                         # Map J1/J2 alias back to actual jid if needed
                         matched_jid = None
                         if key in valid_req_ids:
@@ -138,17 +139,37 @@ async def assess_single_project(
                                     matched_jid = j.get("job_id") or j.get("id")
                                     break
                         if not matched_jid:
+                            for j in jobs:
+                                actual_id = j.get("job_id") or j.get("id") or ""
+                                if (
+                                    key.lower() in actual_id.lower()
+                                    or actual_id.lower().endswith(key.lower().lstrip("j"))
+                                    or key.lower().lstrip("j") in actual_id.lower()
+                                ):
+                                    matched_jid = actual_id
+                                    break
+                        if not matched_jid and len(jobs) == 1:
+                            matched_jid = jobs[0].get("job_id") or jobs[0].get("id")
+                        if not matched_jid:
                             matched_jid = key
 
                         enforced_reqs = enforce_emptied_requirements_unclear(
                             ja.requirements, job_req_inputs.get(matched_jid, [])
                         )
-                        clean_summary = clean_output_pii(ja.summary)
+                        ref_to_text = {
+                            item["id"]: item["text"] for item in job_req_inputs.get(matched_jid, [])
+                        }
+                        reqs = []
+                        for r in enforced_reqs:
+                            d = r.model_dump()
+                            cid = d.get("ref") or d.get("req_id")
+                            d["text"] = ref_to_text.get(cid, "")
+                            reqs.append(d)
 
                         asmt_dict[matched_jid] = {
                             "assessment": "llm",
                             "summary": clean_summary,
-                            "requirements": [r.model_dump() for r in enforced_reqs],
+                            "requirements": reqs,
                         }
                     success = True
                     break
@@ -164,7 +185,13 @@ async def assess_single_project(
         warnings.append("ASSESSMENT_FALLBACK")
         rules_asmt = _build_rules_fallback(project_jobs_req_texts, lang=lang)
         for jid, data in rules_asmt.items():
-            reqs = [r.model_dump() if hasattr(r, "model_dump") else r for r in data["requirements"]]
+            ref_to_text = {item["id"]: item["text"] for item in job_req_inputs.get(jid, [])}
+            reqs = []
+            for r in data["requirements"]:
+                d = r.model_dump() if hasattr(r, "model_dump") else dict(r)
+                cid = d.get("ref") or d.get("req_id")
+                d["text"] = ref_to_text.get(cid, "")
+                reqs.append(d)
             asmt_dict[jid] = {
                 "assessment": "rules",
                 "summary": data["summary"],

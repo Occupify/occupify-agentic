@@ -5,11 +5,14 @@ from pathlib import Path
 # Ensure repo root is on sys.path
 sys.path.insert(0, str(Path(__file__).resolve().parents[2]))
 
+import pypdfium2
+import yaml
 from reportlab.lib.pagesizes import letter
 from reportlab.lib.styles import ParagraphStyle, getSampleStyleSheet
 from reportlab.platypus import Paragraph, SimpleDocTemplate, Spacer
 
 from app.documents.fetch import validate_pdf_bytes
+from evals.uc4.render.layouts import render_layout_to_pdf
 
 
 def render_markdown_to_pdf(markdown_text: str, output_path: Path) -> bytes:
@@ -98,12 +101,6 @@ def render_markdown_to_pdf(markdown_text: str, output_path: Path) -> bytes:
     return pdf_bytes
 
 
-import yaml
-import pypdfium2
-
-from evals.uc4.render.layouts import render_layout_to_pdf
-
-
 def parse_frontmatter_and_body(text: str) -> tuple[dict, str]:
     if text.startswith("---"):
         parts = text.split("---", 2)
@@ -150,12 +147,18 @@ def main():
             doc = pypdfium2.PdfDocument(pdf_bytes)
             for page in doc:
                 text_layer = page.get_textpage().get_text_range().strip()
-                assert not text_layer, f"Scanned PDF {pdf_file.name} has non-empty text layer: {text_layer[:50]}"
-            print(f"Rendered {pdf_file.name} [{layout}]: {len(pdf_bytes)} bytes (Verified: ZERO text layer).")
+                assert not text_layer, (
+                    f"Scanned PDF {pdf_file.name} has non-empty text layer: {text_layer[:50]}"
+                )
+            print(
+                f"Rendered {pdf_file.name} [{layout}]: {len(pdf_bytes)} bytes (Verified: ZERO text layer)."
+            )
         else:
             page_count = validate_pdf_bytes(pdf_bytes, pdf_file.name)
             assert page_count >= 1, f"Generated PDF {pdf_file.name} has 0 pages"
-            print(f"Rendered {pdf_file.name} [{layout}]: {len(pdf_bytes)} bytes ({page_count} pages validated).")
+            print(
+                f"Rendered {pdf_file.name} [{layout}]: {len(pdf_bytes)} bytes ({page_count} pages validated)."
+            )
 
     # 3. Ensure fixture invoice exists
     fixture_dir = Path(__file__).resolve().parents[2] / "tests" / "fixtures" / "job_match"
@@ -182,4 +185,3 @@ def main():
 
 if __name__ == "__main__":
     main()
-

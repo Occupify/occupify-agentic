@@ -47,6 +47,11 @@ class SearchAgentHarness:
             self.budget.usage.requests = (getattr(self.budget.usage, "requests", 0) or 0) + count
 
     def check_call_and_record(self, query: str, skills: list[str]) -> CallCheckResult:
+        if self.budget:
+            self.budget.usage.tool_calls = (getattr(self.budget.usage, "tool_calls", 0) or 0) + 1
+            if self.budget.usage.tool_calls > self.budget.max_tool_calls:
+                raise HarnessStop(StopReason.BUDGET_TOOL_CALLS)
+
         # 1. Parameter validation
         if not query and not skills:
             self.reject_count += 1
@@ -109,9 +114,20 @@ async def search_more(
     if harness:
         check = harness.check_call_and_record(query, skills)
         if check.status != "ok":
+            if harness.reject_count >= 3:
+                raise HarnessStop(StopReason.INVALID_TOOL_USE)
             return {"status": check.status, "message": check.message}
 
-    return {"status": ToolState.OK, "new_jobs": 0, "total_fitting": 0}
+        if harness.reject_count >= 3:
+            raise HarnessStop(StopReason.INVALID_TOOL_USE)
+
+        harness.record_search_round_result(current_fitting=harness.last_fitting_count)
+
+    return {
+        "status": ToolState.OK,
+        "new_jobs": 0,
+        "total_fitting": harness.last_fitting_count if harness else 0,
+    }
 
 
 async def maybe_search_more(
@@ -119,6 +135,9 @@ async def maybe_search_more(
     budget: RunBudget,
     options: PipelineOptions,
     goal: int = 5,
+    user: Any = None,
+    parent_run_id: str | None = None,
+    prompt: str = "",
 ) -> tuple[bool, StopReason | None]:
     """
     Evaluates whether the search agent should be invoked:
@@ -133,5 +152,39 @@ async def maybe_search_more(
     if state.exhausted:
         return False, None
 
-    # Invocation condition met
-    return False, None
+    from app.agents import subagent
+    from app.agents.deps import CurrentUser
+    from app.agents.runner import run_agent
+
+    harness = SearchAgentHarness(goal=goal, budget=budget)
+    harness.last_fitting_count = state.fitting_projects_count
+
+    deps = AgentDeps(
+        user=user or CurrentUser(user_id="system", email="system@example.com", role="USER"),
+        session_id=parent_run_id or "search_agent",
+        agent_role="search",
+        parent_run_id=parent_run_id,
+    )
+    deps.search_harness = harness
+
+    agent = subagent.create_skill_agent(
+        name="plan-job-search",
+        tools=[search_more],
+    )
+
+    try:
+        await run_agent(
+            agent=agent,
+            prompt=prompt
+            or f"Current fitting projects: {state.fitting_projects_count}, goal: {goal}.",
+            deps=deps,
+            use_case="job_match",
+            agent_role="search",
+            parent_run_id=parent_run_id,
+        )
+        if state.fitting_projects_count >= goal:
+            return True, StopReason.GOAL_REACHED
+        return True, StopReason.MODEL_DONE
+    except Exception as exc:
+        stop_reason = map_exception_to_stop_reason(exc)
+        return True, stop_reason

@@ -105,6 +105,7 @@ class RunState:
         self.tokens_out: int = 0
         self.cost_usd: float = 0.0
         self.stages: list[dict[str, Any]] = []
+        self.pool_job_ids: list[str] = []
 
 
 class RunResult(BaseModel):

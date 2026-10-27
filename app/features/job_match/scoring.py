@@ -1,7 +1,36 @@
 from collections import Counter
 from typing import Any
 
-SCORING_VERSION = "v1"
+SCORING_VERSION = "v2"
+
+
+def compute_experience_score(
+    profile_level: str | None,
+    project_level: str | None,
+) -> float:
+    """
+    Computes experience score e (ADR-001 / design §6):
+    - 1.0 if profile level equals project level
+    - 0.5 if one step apart (ENTRY <-> INTERMEDIATE <-> EXPERT)
+    - 0.0 otherwise (e.g. ENTRY vs EXPERT)
+    - 1.0 if either is unknown (None or unrecognized)
+    """
+    if not profile_level or not project_level:
+        return 1.0
+
+    levels = {"ENTRY": 1, "INTERMEDIATE": 2, "EXPERT": 3}
+    p_lvl = levels.get(str(profile_level).upper().strip())
+    prj_lvl = levels.get(str(project_level).upper().strip())
+    if p_lvl is None or prj_lvl is None:
+        return 1.0
+
+    diff = abs(p_lvl - prj_lvl)
+    if diff == 0:
+        return 1.0
+    elif diff == 1:
+        return 0.5
+    else:
+        return 0.0
 
 
 def compute_job_score(
