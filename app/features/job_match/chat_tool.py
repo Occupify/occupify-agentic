@@ -24,6 +24,55 @@ from app.messaging.core_client import get_core_rpc
 logger = logging.getLogger(__name__)
 
 
+def _format_skills(skills: list[Any]) -> str:
+    if not skills:
+        return "Đang cập nhật"
+    formatted: list[str] = []
+    for s in skills:
+        if isinstance(s, dict):
+            name = s.get("name") or s.get("skill") or s.get("title") or ""
+            if name:
+                formatted.append(str(name))
+        elif s:
+            formatted.append(str(s))
+    return ", ".join(formatted) if formatted else "Đang cập nhật"
+
+
+def _format_salary(j: dict[str, Any] | Any) -> str:
+    if isinstance(j, dict):
+        b_min = j.get("budgetMin") or j.get("budget_min")
+        b_max = j.get("budgetMax") or j.get("budget_max")
+        s_type = j.get("salaryType") or j.get("salary_type")
+        raw_sal = j.get("salary")
+    else:
+        b_min = getattr(j, "budget_min", None) or getattr(j, "budgetMin", None)
+        b_max = getattr(j, "budget_max", None) or getattr(j, "budgetMax", None)
+        s_type = getattr(j, "salary_type", None) or getattr(j, "salaryType", None)
+        raw_sal = getattr(j, "salary", "")
+
+    if raw_sal:
+        return str(raw_sal)
+
+    try:
+        f_min = float(b_min) if b_min is not None else None
+        f_max = float(b_max) if b_max is not None else None
+    except (ValueError, TypeError):
+        f_min, f_max = None, None
+
+    if f_min is not None or f_max is not None:
+        if f_min is not None and f_max is not None:
+            sal_str = f"{f_min:,.0f} - {f_max:,.0f} VND"
+        elif f_min is not None:
+            sal_str = f"Từ {f_min:,.0f} VND"
+        else:
+            sal_str = f"Đến {f_max:,.0f} VND"
+        if s_type:
+            sal_str += f" ({s_type})"
+        return sal_str
+
+    return ""
+
+
 def render_job_match_markdown(
     items: list[Any],
     criteria_applied: dict[str, Any],
@@ -94,22 +143,9 @@ def render_job_match_markdown(
                     j_title = j.get("title") or j.get("job_title", "Vị trí tuyển dụng")
                     j_score = j.get("matchScore") or j.get("match_score", score)
                     pct = int(round(j_score * 100)) if j_score <= 1.0 else int(round(j_score))
-                    b_min = j.get("budgetMin") or j.get("budget_min")
-                    b_max = j.get("budgetMax") or j.get("budget_max")
-                    s_type = j.get("salaryType") or j.get("salary_type")
-                    if b_min or b_max:
-                        if b_min and b_max:
-                            salary = f"{b_min:,.0f} - {b_max:,.0f} VND"
-                        elif b_min:
-                            salary = f"Từ {b_min:,.0f} VND"
-                        else:
-                            salary = f"Đến {b_max:,.0f} VND"
-                        if s_type:
-                            salary += f" ({s_type})"
-                    else:
-                        salary = j.get("salary", "")
+                    salary = _format_salary(j)
                     skills = j.get("matchedSkills") or j.get("matched_skills") or j.get("skills", [])
-                    skills_str = ", ".join(skills) if skills else "Đang cập nhật"
+                    skills_str = _format_skills(skills)
                     assessment = j.get("summary") or j.get("assessment", "")
 
                     if is_vi:
@@ -130,9 +166,9 @@ def render_job_match_markdown(
             else:
                 pct = int(round(score * 100)) if score <= 1.0 else int(round(score))
                 job_title = item.get("job_title") or item.get("title", "Vị trí tuyển dụng")
-                salary = item.get("salary", "")
+                salary = _format_salary(item)
                 skills = item.get("matched_skills") or item.get("skills", [])
-                skills_str = ", ".join(skills) if skills else "Đang cập nhật"
+                skills_str = _format_skills(skills)
                 assessment = item.get("assessment", "")
 
                 if is_vi:
@@ -156,9 +192,9 @@ def render_job_match_markdown(
             pct = int(round(score * 100)) if score <= 1.0 else int(round(score))
             job_title = getattr(item, "job_title", "Vị trí tuyển dụng")
             proj_title = getattr(item, "project_title", "Dự án")
-            salary = getattr(item, "salary", "")
+            salary = _format_salary(item)
             skills = getattr(item, "matched_skills", []) or getattr(item, "skills", [])
-            skills_str = ", ".join(skills) if skills else "Đang cập nhật"
+            skills_str = _format_skills(skills)
             assessment = getattr(item, "assessment", "")
 
             if is_vi:
@@ -375,7 +411,10 @@ async def match_jobs_for_cv(
         }
         for idx, it in enumerate(run_res.items, start=1)
     ]
-    missing_skills = (run_res.missing_skills or [])[:5]
+    missing_skills = [
+        m.get("name") or str(m) if isinstance(m, dict) else str(m)
+        for m in (run_res.missing_skills or [])[:5]
+    ]
     warnings_list = [
         w.get("code") if isinstance(w, dict) else str(w) for w in (run_res.warnings or [])
     ]
