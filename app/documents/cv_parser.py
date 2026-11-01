@@ -219,7 +219,7 @@ def _parse_education(lines: list[str]) -> list[dict]:
             current['institution'] = s
         elif any(kw in s_lower for kw in DEGREE_KW) and not current['degree']:
             current['degree'] = s
-        elif ',' in s and any(c in s_lower for c in ['vietnam', 'viet nam', 'city', 'usa', 'state', 'district']) and not current['location']:
+        elif ',' in s and any(c in s_lower for c in ['vietnam', 'viet nam', 'city', 'district']) and not current['location']:
             current['location'] = s
         elif not current['institution']:
             current['institution'] = s
