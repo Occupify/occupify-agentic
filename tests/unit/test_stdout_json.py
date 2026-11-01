@@ -11,15 +11,15 @@ from app.core.security import CurrentUser
 from tests.unit.test_documents import generate_sample_pdf
 
 
-@pytest.mark.docling
+@pytest.mark.doctr
 @pytest.mark.asyncio
 async def test_stdout_only_json_lines(capsys, test_db, monkeypatch):
-    monkeypatch.setattr(extract_mod.get_settings(), "PDF_EXTRACTOR", "docling")
+    monkeypatch.setattr(extract_mod.get_settings(), "PDF_EXTRACTOR", "doctr")
     content = generate_sample_pdf(
         pages=1, text="Nguyen Van A\n## Experience\nSenior Backend Engineer"
     )
     text, pages, extractor = extract_mod.extract_pdf_text(content)
-    assert extractor == "docling"
+    assert extractor == "doctr"
     assert "Senior Backend Engineer" in text
 
     user = CurrentUser(user_id="user-stdout", role="ROLE_USER")

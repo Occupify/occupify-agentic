@@ -33,7 +33,7 @@ class Settings(BaseSettings):
     # PDF documents
     PDF_MAX_BYTES: int = 10485760  # 10 MB
     PDF_MAX_PAGES: int = 20
-    PDF_EXTRACTOR: str = "docling"
+    PDF_EXTRACTOR: str = "doctr"
     OCR_LANGS: str = "vie,eng"
 
     # Database

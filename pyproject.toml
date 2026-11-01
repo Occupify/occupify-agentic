@@ -15,7 +15,7 @@ dependencies = [
   "sqlalchemy[asyncio]",
   "asyncpg",
   "httpx",
-  "docling",
+  "python-doctr",
   "pypdfium2",
   "pgvector",
   "sentence-transformers",
@@ -59,6 +59,6 @@ pythonpath = ["."]
 timeout = 120
 markers = [
   "integration: needs Postgres + RabbitMQ",
-  "docling: loads Docling models",
+  "doctr: loads docTR models",
   "ml: real ML model checks (embedder, reranker)",
 ]

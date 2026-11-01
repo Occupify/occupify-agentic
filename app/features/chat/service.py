@@ -30,8 +30,7 @@ from app.core.security import CurrentUser
 from app.db.repositories.chat import ChatRepository
 from app.db.repositories.documents import DocumentRepository
 from app.documents.cv_text import prepare_cv_text
-from app.documents.extract import extract_pdf_text
-from app.documents.fetch import validate_pdf_bytes
+from app.documents.extract import extract_pdf_text, validate_pdf_bytes
 from app.features.chat.agent import chat_agent
 from app.features.chat.schemas import (
     AttachmentInfo,

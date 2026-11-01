@@ -1,90 +1,68 @@
 import hashlib
+import json
 import logging
-import os
+import sys
 import time
 from io import BytesIO
+from pathlib import Path
+from typing import Any
 
 import pypdfium2 as pdfium
+from doctr.io import DocumentFile
+from doctr.models import ocr_predictor
+from fastapi import UploadFile
 
 from app.core.config import get_settings
+from app.core.errors import FileInvalidError
 from app.core.logging import log_step
+from app.documents.cv_parser import parse_cv
+
+_ocr_model = None
 
 
-class PdfiumExtractor:
-    @staticmethod
-    def extract(content: bytes) -> tuple[str, int]:
-        """Extracts text from PDF using pypdfium2. Returns (text, page_count)."""
-        doc = pdfium.PdfDocument(BytesIO(content))
-        page_count = len(doc)
-        pages_text: list[str] = []
-
-        for i in range(page_count):
-            page = doc[i]
-            text_page = page.get_textpage()
-            text = text_page.get_text_range()
-            if text and text.strip():
-                pages_text.append(text.strip())
-
-        return "\n\n".join(pages_text), page_count
+def get_ocr_model():
+    """Lazy loader for docTR OCR model to avoid slow startup."""
+    global _ocr_model
+    if _ocr_model is None:
+        _ocr_model = ocr_predictor(det_arch="db_resnet50", reco_arch="crnn_vgg16_bn", pretrained=True)
+    return _ocr_model
 
 
-class DoclingExtractor:
-    _converter = None
+def extract_cv(
+    file_input: bytes | str | Path, hide_personal_info: bool = True
+) -> tuple[dict[str, Any], list[str], int]:
+    """
+    Extracts structured CV data using docTR OCR predictor and cv_parser.
+    Returns (cv_dict, all_lines, page_count).
+    """
+    model = get_ocr_model()
+    doc = DocumentFile.from_pdf(file_input)
+    page_count = len(doc)
+    result = model(doc)
 
-    @classmethod
-    def get_converter(cls):
-        if cls._converter is None:
-            try:
-                from docling.datamodel.base_models import InputFormat
-                from docling.datamodel.pipeline_options import (
-                    PdfPipelineOptions,
-                    TesseractCliOcrOptions,
-                )
-                from docling.document_converter import DocumentConverter, PdfFormatOption
+    all_lines: list[str] = []
+    for page in result.pages:
+        for block in page.blocks:
+            for line in block.lines:
+                text = " ".join(word.value for word in line.words).strip()
+                if text:
+                    all_lines.append(text)
 
-                settings = get_settings()
-                artifacts_path = os.getenv("DOCLING_ARTIFACTS_PATH")
-                pipeline_options = PdfPipelineOptions()
-                if artifacts_path and os.path.exists(artifacts_path):
-                    pipeline_options.artifacts_path = artifacts_path
-                pipeline_options.do_ocr = True
+    cv_data = parse_cv(all_lines, hide_personal_info=hide_personal_info)
+    return cv_data, all_lines, page_count
 
-                ocr_langs = [
-                    lang.strip() for lang in settings.OCR_LANGS.split(",") if lang.strip()
-                ] or ["vie", "eng"]
-                pipeline_options.ocr_options = TesseractCliOcrOptions(lang=ocr_langs)
 
-                cls._converter = DocumentConverter(
-                    format_options={
-                        InputFormat.PDF: PdfFormatOption(pipeline_options=pipeline_options)
-                    }
-                )
-            except Exception as e:
-                log_step(
-                    "docling.init_failed", level=logging.WARNING, error=str(e), fallback="pdfium"
-                )
-                cls._converter = False
-        return cls._converter
-
-    @classmethod
-    def extract(cls, content: bytes) -> tuple[str, int]:
-        converter = cls.get_converter()
-        if not converter:
-            log_step(
-                "docling.fallback",
-                level=logging.WARNING,
-                reason="converter_not_available",
-                fallback="pdfium",
-            )
-            return PdfiumExtractor.extract(content)
-
-        from docling.datamodel.document import DocumentStream
-
-        stream = DocumentStream(name="document.pdf", stream=BytesIO(content))
-        conv_res = converter.convert(stream)
-        text = conv_res.document.export_to_markdown()
-        pages = len(conv_res.document.pages) if hasattr(conv_res.document, "pages") else 1
-        return text, pages
+def _extract_pdfium_text(content: bytes) -> tuple[str, int]:
+    """Fallback text extractor using pypdfium2."""
+    doc = pdfium.PdfDocument(BytesIO(content))
+    page_count = len(doc)
+    pages_text: list[str] = []
+    for page in doc:
+        text_page = page.get_textpage()
+        text = text_page.get_text_range()
+        if text and text.strip():
+            pages_text.append(text.strip())
+    return "\n\n".join(pages_text), page_count
 
 
 def extract_pdf_text(content: bytes) -> tuple[str, int, str]:
@@ -97,16 +75,17 @@ def extract_pdf_text(content: bytes) -> tuple[str, int, str]:
     extractor_used = settings.PDF_EXTRACTOR.lower()
     sha_prefix = hashlib.sha256(content).hexdigest()[:8]
 
-    if extractor_used == "docling":
+    if extractor_used == "doctr":
         try:
-            text, pages = DoclingExtractor.extract(content)
+            _, lines, pages = extract_cv(content)
+            text = "\n".join(lines)
         except Exception as e:
-            log_step("docling.fallback", level=logging.WARNING, reason=str(e), fallback="pdfium")
+            log_step("doctr.fallback", level=logging.WARNING, reason=str(e), fallback="pdfium")
             extractor_used = "pdfium"
-            text, pages = PdfiumExtractor.extract(content)
+            text, pages = _extract_pdfium_text(content)
     else:
         extractor_used = "pdfium"
-        text, pages = PdfiumExtractor.extract(content)
+        text, pages = _extract_pdfium_text(content)
 
     duration_ms = int((time.perf_counter() - start_time) * 1000)
     log_step(
@@ -119,3 +98,17 @@ def extract_pdf_text(content: bytes) -> tuple[str, int, str]:
     )
 
     return text, pages, extractor_used
+
+
+if __name__ == "__main__":
+    if len(sys.argv) > 1:
+        target = Path(sys.argv[1])
+        cv, lines, pages = extract_cv(str(target) if target.exists() else target)
+        print(f"Extracted {pages} page(s), {len(lines)} lines")
+        out_path = Path(sys.argv[2]) if len(sys.argv) > 2 else target.parent / f"{target.stem}.json"
+        with open(out_path, "w", encoding="utf-8") as f:
+            json.dump(cv, f, indent=2, ensure_ascii=False)
+        print(f"Saved result to {out_path}")
+        print(json.dumps(cv, indent=2, ensure_ascii=False))
+    else:
+        print("Usage: python -m app.documents.extract <path_to_pdf> [output_path.json]")
