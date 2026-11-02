@@ -136,49 +136,23 @@ pipeline {
             steps {
                 sh '''
                     set -eu
+                    export HOME=/home/occupify
+                    export XDG_RUNTIME_DIR=/run/user/$(id -u)
+                    export DBUS_SESSION_BUS_ADDRESS="unix:path=$XDG_RUNTIME_DIR/bus"
 
-                    echo ">> Deploying occupify-agentic with Podman..."
+                    cd /home/occupify/.config/systemd/user/git-ops
 
-                    OCCUPIFY_UID=$(id -u occupify)
-                    GITOPS_DIR="/home/occupify/.config/systemd/user/git-ops"
+                    echo ">> Pulling latest image..."
+                    podman pull "${FULL_IMAGE}:latest"
 
-                    if [ ! -d "$GITOPS_DIR" ]; then
-                        echo "ERROR: GitOps directory not found: $GITOPS_DIR"
-                        exit 1
-                    fi
+                    echo ">> Restarting Occupify Agentic..."
+                    systemctl --user restart occupify-be-agentic.service
 
-                    echo ">> Running deployment as occupify..."
+                    sleep 5
 
-                    sudo -u occupify env \
-                        HOME=/home/occupify \
-                        XDG_RUNTIME_DIR="/run/user/$OCCUPIFY_UID" \
-                        DBUS_SESSION_BUS_ADDRESS="unix:path=/run/user/$OCCUPIFY_UID/bus" \
-                        FULL_IMAGE="${FULL_IMAGE}" \
-                        bash -c '
-                            set -eu
-
-                            cd /home/occupify/.config/systemd/user/git-ops
-
-                            echo ">> Pulling latest image from GHCR..."
-                            podman pull "${FULL_IMAGE}:latest"
-
-                            echo ">> Reloading user systemd..."
-                            systemctl --user daemon-reload
-
-                            echo ">> Restarting Occupify Agentic..."
-                            systemctl --user restart occupify-be-agentic.service
-
-                            echo ">> Waiting for service..."
-                            sleep 5
-
-                            echo ">> Service status:"
-                            systemctl --user --no-pager --full status occupify-be-agentic.service
-
-                            echo ">> Container status:"
-                            podman ps -a --filter name=occupify-agentic
-                        '
-
-                    echo ">> Deployment completed."
+                    systemctl --user is-active occupify-be-agentic.service
+                    podman ps -a --filter name=occupify-agentic
+                    podman logs --tail 50 occupify-agentic
                 '''
             }
         }
