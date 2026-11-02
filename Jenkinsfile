@@ -28,8 +28,8 @@ pipeline {
 
                 sh '''
                     set -eu
-                    command -v podman
-                    podman --version
+                    command -v docker
+                    docker --version
                     command -v uv
                     uv --version
                 '''
@@ -81,7 +81,7 @@ pipeline {
                 dir("${env.SERVICE_DIR}") {
                     sh '''
                         set -eu
-                        podman build \
+                        docker build \
                             -t "${FULL_IMAGE}:${BUILD_NUMBER}" \
                             -t "${FULL_IMAGE}:latest" \
                             .
@@ -110,15 +110,15 @@ pipeline {
                     sh '''
                         set -eu
 
-                        printf '%s' "$GHCR_TOKEN" |
-                            podman login "$REGISTRY" \
+                        printf '%s' "$GHCR_TOKEN" | \
+                            docker login "$REGISTRY" \
                                 --username "$GHCR_USERNAME" \
                                 --password-stdin
 
-                        podman push "${FULL_IMAGE}:${BUILD_NUMBER}"
-                        podman push "${FULL_IMAGE}:latest"
+                        docker push "${FULL_IMAGE}:${BUILD_NUMBER}"
+                        docker push "${FULL_IMAGE}:latest"
 
-                        podman logout "$REGISTRY"
+                        docker logout "$REGISTRY"
                     '''
                 }
             }
@@ -126,7 +126,11 @@ pipeline {
 
         stage('Deploy (Local GitOps)') {
             when {
-                branch 'main'
+                expression {
+                    env.BRANCH_NAME == 'main' ||
+                    env.GIT_BRANCH == 'origin/main' ||
+                    env.GIT_BRANCH == 'main'
+                }
             }
 
             steps {
@@ -147,9 +151,9 @@ pipeline {
                         cd "$GITOPS_DIR"
                         make be-agentic
                     else
-                        echo ">> Deploying with Podman and systemd..."
+                        echo ">> Deploying with Docker and systemd..."
 
-                        podman pull "${FULL_IMAGE}:latest"
+                        docker pull "${FULL_IMAGE}:latest"
 
                         export XDG_RUNTIME_DIR="/run/user/$(id -u)"
                         export DBUS_SESSION_BUS_ADDRESS="unix:path=/run/user/$(id -u)/bus"
@@ -159,7 +163,7 @@ pipeline {
                     fi
 
                     echo ">> Container status:"
-                    podman ps --filter name=occupify-agentic
+                    docker ps --filter name=occupify-agentic
                 '''
             }
         }
