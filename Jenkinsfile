@@ -8,7 +8,7 @@ pipeline {
     }
 
     options {
-        timeout(time: 25, unit: 'MINUTES')
+        timeout(time: 60, unit: 'MINUTES')
         disableConcurrentBuilds()
         buildDiscarder(logRotator(numToKeepStr: '10'))
     }
@@ -137,33 +137,39 @@ pipeline {
                 sh '''
                     set -eu
 
-                    echo ">> Deploying occupify-agentic..."
+                    echo ">> Deploying occupify-agentic with Podman..."
 
-                    GITOPS_DIR=""
-                    if [ -d "/home/occupify/occupify-gitops" ]; then
-                        GITOPS_DIR="/home/occupify/occupify-gitops"
-                    elif [ -d "$HOME/occupify-gitops" ]; then
-                        GITOPS_DIR="$HOME/occupify-gitops"
+                    GITOPS_DIR="/home/occupify/.config/systemd/user"
+
+                    if [ ! -d "$GITOPS_DIR" ]; then
+                        echo "ERROR: GitOps directory not found: $GITOPS_DIR"
+                        exit 1
                     fi
 
-                    if [ -n "$GITOPS_DIR" ]; then
-                        echo ">> Running GitOps deployment..."
-                        cd "$GITOPS_DIR"
-                        make be-agentic
-                    else
-                        echo ">> Deploying with Docker and systemd..."
+                    cd "$GITOPS_DIR"
 
-                        docker pull "${FULL_IMAGE}:latest"
+                    echo ">> Pulling latest image from GHCR..."
+                    podman pull "${FULL_IMAGE}:latest"
 
-                        export XDG_RUNTIME_DIR="/run/user/$(id -u)"
-                        export DBUS_SESSION_BUS_ADDRESS="unix:path=/run/user/$(id -u)/bus"
+                    echo ">> Reloading user systemd..."
+                    export XDG_RUNTIME_DIR="/run/user/$(id -u)"
+                    export DBUS_SESSION_BUS_ADDRESS="unix:path${XDG_RUNTIME_DIR}/bus"
 
-                        systemctl --user daemon-reload
-                        systemctl --user restart occupify-be-agentic
-                    fi
+                    systemctl --user daemon-reload
+
+                    echo ">> Restarting Occupify Agentic..."
+                    systemctl --user restart occupify-be-agentic
+
+                    echo ">> Waiting for service..."
+                    sleep 5
+
+                    echo ">> Service status:"
+                    systemctl --user --no-pager --full status occupify-be-agentic
 
                     echo ">> Container status:"
-                    docker ps --filter name=occupify-agentic
+                    podman ps -a --filter name=occupify-agentic
+
+                    echo ">> Deployment completed."
                 '''
             }
         }
