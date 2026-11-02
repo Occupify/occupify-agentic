@@ -24,7 +24,9 @@ def get_ocr_model():
     """Lazy loader for docTR OCR model to avoid slow startup."""
     global _ocr_model
     if _ocr_model is None:
-        _ocr_model = ocr_predictor(det_arch="db_resnet50", reco_arch="crnn_vgg16_bn", pretrained=True)
+        _ocr_model = ocr_predictor(
+            det_arch="db_resnet50", reco_arch="crnn_vgg16_bn", pretrained=True
+        )
     return _ocr_model
 
 
