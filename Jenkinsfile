@@ -22,9 +22,17 @@ pipeline {
                     } else {
                         env.SERVICE_DIR = '.'
                     }
-                    // Guarantee image name is always strictly lowercase for GHCR/Docker
+
                     env.FULL_IMAGE = "${env.REGISTRY}/${env.IMAGE_NAME}".toLowerCase()
                 }
+
+                sh '''
+                    set -eu
+                    command -v podman
+                    podman --version
+                    command -v uv
+                    uv --version
+                '''
             }
         }
 
@@ -48,36 +56,71 @@ pipeline {
         stage('Unit Tests') {
             steps {
                 dir("${env.SERVICE_DIR}") {
-                    sh 'mkdir -p reports'
-                    sh 'uv run pytest --junitxml=reports/junit.xml --cov=app tests/unit/'
+                    sh '''
+                        mkdir -p reports
+                        uv run pytest \
+                            --junitxml=reports/junit.xml \
+                            --cov=app \
+                            tests/unit/
+                    '''
                 }
             }
+
             post {
                 always {
                     dir("${env.SERVICE_DIR}") {
-                        junit testResults: 'reports/junit.xml', allowEmptyResults: true
+                        junit testResults: 'reports/junit.xml',
+                              allowEmptyResults: true
                     }
                 }
             }
         }
 
-        stage('Build Docker Image') {
+        stage('Build Image') {
             steps {
                 dir("${env.SERVICE_DIR}") {
-                    sh "docker build -t ${env.FULL_IMAGE}:${BUILD_NUMBER} -t ${env.FULL_IMAGE}:latest ."
+                    sh '''
+                        set -eu
+                        podman build \
+                            -t "${FULL_IMAGE}:${BUILD_NUMBER}" \
+                            -t "${FULL_IMAGE}:latest" \
+                            .
+                    '''
                 }
             }
         }
 
         stage('Push Image') {
             when {
-                branch 'main'
+                expression {
+                    env.BRANCH_NAME == 'main' ||
+                    env.GIT_BRANCH == 'origin/main' ||
+                    env.GIT_BRANCH == 'main'
+                }
             }
+
             steps {
-                sh """
-                    docker push ${env.FULL_IMAGE}:${BUILD_NUMBER}
-                    docker push ${env.FULL_IMAGE}:latest
-                """
+                withCredentials([
+                    usernamePassword(
+                        credentialsId: 'ghcr-credentials',
+                        usernameVariable: 'GHCR_USERNAME',
+                        passwordVariable: 'GHCR_TOKEN'
+                    )
+                ]) {
+                    sh '''
+                        set -eu
+
+                        printf '%s' "$GHCR_TOKEN" |
+                            podman login "$REGISTRY" \
+                                --username "$GHCR_USERNAME" \
+                                --password-stdin
+
+                        podman push "${FULL_IMAGE}:${BUILD_NUMBER}"
+                        podman push "${FULL_IMAGE}:latest"
+
+                        podman logout "$REGISTRY"
+                    '''
+                }
             }
         }
 
@@ -85,10 +128,13 @@ pipeline {
             when {
                 branch 'main'
             }
+
             steps {
                 sh '''
-                    echo ">> Deploying occupify-agentic on local server..."
-                    
+                    set -eu
+
+                    echo ">> Deploying occupify-agentic..."
+
                     GITOPS_DIR=""
                     if [ -d "/home/occupify/occupify-gitops" ]; then
                         GITOPS_DIR="/home/occupify/occupify-gitops"
@@ -97,30 +143,39 @@ pipeline {
                     fi
 
                     if [ -n "$GITOPS_DIR" ]; then
-                        echo ">> Running make be-agentic in $GITOPS_DIR..."
-                        cd "$GITOPS_DIR" && make be-agentic
+                        echo ">> Running GitOps deployment..."
+                        cd "$GITOPS_DIR"
+                        make be-agentic
                     else
-                        echo ">> Restarting occupify-be-agentic via systemd..."
+                        echo ">> Deploying with Podman and systemd..."
+
+                        podman pull "${FULL_IMAGE}:latest"
+
                         export XDG_RUNTIME_DIR="/run/user/$(id -u)"
                         export DBUS_SESSION_BUS_ADDRESS="unix:path=/run/user/$(id -u)/bus"
-                        podman pull "${FULL_IMAGE}:latest"
+
                         systemctl --user daemon-reload
                         systemctl --user restart occupify-be-agentic
                     fi
 
-                    echo ">> Checking container status:"
-                    podman ps --filter name=occupify-agentic || true
+                    echo ">> Container status:"
+                    podman ps --filter name=occupify-agentic
                 '''
             }
         }
     }
 
     post {
-        failure {
-            echo "CI/CD Pipeline failed on build ${BUILD_NUMBER}"
+        always {
+            echo "Pipeline completed: build ${BUILD_NUMBER}"
         }
+
+        failure {
+            echo "CI/CD pipeline failed on build ${BUILD_NUMBER}"
+        }
+
         success {
-            echo "CI/CD Pipeline succeeded: occupify-agentic deployed via local GitOps."
+            echo "CI/CD pipeline succeeded: occupify-agentic"
         }
     }
 }
