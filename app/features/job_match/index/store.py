@@ -3,7 +3,7 @@ import logging
 from pathlib import Path
 from typing import Any, Literal
 
-from sqlalchemy import and_, func, or_, select, text
+from sqlalchemy import and_, delete, func, or_, select, text
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.config import get_settings
@@ -251,3 +251,114 @@ class PgJobIndex:
             built_at=meta_row.built_at,
             jobs_n=jobs_n,
         )
+
+
+async def upsert_jobs(
+    session: AsyncSession,
+    rows: list[IndexRow],
+    vectors: list[list[float]],
+) -> int:
+    """Atomically upserts IndexRows and their vector embeddings into job_index."""
+    if not rows:
+        return 0
+    if len(rows) != len(vectors):
+        raise ValueError("Mismatch between rows and vectors length")
+
+    is_pg = session.bind and "postgresql" in str(session.bind.dialect.name)
+
+    if is_pg:
+        from sqlalchemy.dialects.postgresql import insert as pg_insert
+
+        for row, vec in zip(rows, vectors, strict=True):
+            insert_stmt = pg_insert(JobIndexRow).values(
+                job_id=row.job_id,
+                project_id=row.project_id,
+                project_title=row.project_title,
+                project_description=row.project_description,
+                job_title=row.job_title,
+                job_description=row.job_description,
+                skills=row.skills,
+                requirements=row.requirements,
+                salary_type=row.salary_type or "MONTHLY",
+                budget_min=row.budget_min,
+                budget_max=row.budget_max,
+                experience_level=row.experience_level or "ENTRY",
+                period=row.period or "MONTHLY",
+                hours_per_day=row.hours_per_day,
+                project_status=row.project_status,
+                job_status=row.job_status,
+                doc_text=row.doc_text,
+                embedding=vec,
+                search_tsv=func.to_tsvector("simple", func.unaccent(row.doc_text)),
+            )
+            upsert_stmt = insert_stmt.on_conflict_do_update(
+                index_elements=[JobIndexRow.job_id],
+                set_={
+                    "project_id": insert_stmt.excluded.project_id,
+                    "project_title": insert_stmt.excluded.project_title,
+                    "project_description": insert_stmt.excluded.project_description,
+                    "job_title": insert_stmt.excluded.job_title,
+                    "job_description": insert_stmt.excluded.job_description,
+                    "skills": insert_stmt.excluded.skills,
+                    "requirements": insert_stmt.excluded.requirements,
+                    "salary_type": insert_stmt.excluded.salary_type,
+                    "budget_min": insert_stmt.excluded.budget_min,
+                    "budget_max": insert_stmt.excluded.budget_max,
+                    "experience_level": insert_stmt.excluded.experience_level,
+                    "period": insert_stmt.excluded.period,
+                    "hours_per_day": insert_stmt.excluded.hours_per_day,
+                    "project_status": insert_stmt.excluded.project_status,
+                    "job_status": insert_stmt.excluded.job_status,
+                    "doc_text": insert_stmt.excluded.doc_text,
+                    "embedding": insert_stmt.excluded.embedding,
+                    "search_tsv": func.to_tsvector(
+                        "simple", func.unaccent(insert_stmt.excluded.doc_text)
+                    ),
+                },
+            )
+            await session.execute(upsert_stmt)
+    else:
+        jids = [r.job_id for r in rows]
+        await session.execute(delete(JobIndexRow).where(JobIndexRow.job_id.in_(jids)))
+        for row, vec in zip(rows, vectors, strict=True):
+            session.add(
+                JobIndexRow(
+                    job_id=row.job_id,
+                    project_id=row.project_id,
+                    project_title=row.project_title,
+                    project_description=row.project_description,
+                    job_title=row.job_title,
+                    job_description=row.job_description,
+                    skills=row.skills,
+                    requirements=row.requirements,
+                    salary_type=row.salary_type or "MONTHLY",
+                    budget_min=row.budget_min,
+                    budget_max=row.budget_max,
+                    experience_level=row.experience_level or "ENTRY",
+                    period=row.period or "MONTHLY",
+                    hours_per_day=row.hours_per_day,
+                    project_status=row.project_status,
+                    job_status=row.job_status,
+                    doc_text=row.doc_text,
+                    embedding=vec,
+                )
+            )
+
+    await session.commit()
+    return len(rows)
+
+
+async def delete_jobs_by_project(session: AsyncSession, project_id: str) -> int:
+    """Removes all jobs for a project from job_index."""
+    stmt = delete(JobIndexRow).where(JobIndexRow.project_id == project_id)
+    res = await session.execute(stmt)
+    await session.commit()
+    return getattr(res, "rowcount", 0) or 0
+
+
+async def delete_job_by_id(session: AsyncSession, job_id: str) -> int:
+    """Removes a single job from job_index."""
+    stmt = delete(JobIndexRow).where(JobIndexRow.job_id == job_id)
+    res = await session.execute(stmt)
+    await session.commit()
+    return getattr(res, "rowcount", 0) or 0

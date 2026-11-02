@@ -5,6 +5,7 @@ os.environ.setdefault("PYDANTIC_AI_NO_BANNER", "1")
 os.environ.setdefault("TQDM_DISABLE", "1")
 os.environ.setdefault("HF_HUB_DISABLE_PROGRESS_BARS", "1")
 
+import asyncio
 import logging
 from contextlib import asynccontextmanager
 from pathlib import Path
@@ -49,14 +50,25 @@ async def lifespan(app: FastAPI):
 
     # Initialize messaging broker only when CORE_RPC_MODE != mock
     if settings.CORE_RPC_MODE != "mock":
+        import app.messaging.consumers  # noqa: F401
+
         await start_broker()
 
     # Background model loading
     load_models_in_background()
 
+    # Launch background batch sync for job index (non-blocking)
+    sync_task = None
+    if settings.APP_ENV != "test":
+        from app.features.job_match.index.sync import sync_all_jobs_in_background
+
+        sync_task = asyncio.create_task(sync_all_jobs_in_background())
+
     yield
 
     # Teardown
+    if sync_task and not sync_task.done():
+        sync_task.cancel()
     if settings.CORE_RPC_MODE != "mock":
         await close_broker()
     log_step("app.shutdown")
