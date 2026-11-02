@@ -136,23 +136,48 @@ pipeline {
             steps {
                 sh '''
                     set -eu
-                    export HOME=/home/occupify
-                    export XDG_RUNTIME_DIR=/run/user/$(id -u)
-                    export DBUS_SESSION_BUS_ADDRESS="unix:path=$XDG_RUNTIME_DIR/bus"
 
-                    cd /home/occupify/.config/systemd/user/git-ops
+                    echo ">> Checking deployment user..."
+                    id occupify
 
-                    echo ">> Pulling latest image..."
-                    podman pull "${FULL_IMAGE}:latest"
+                    echo ">> Pulling image and restarting service..."
 
-                    echo ">> Restarting Occupify Agentic..."
-                    systemctl --user restart occupify-be-agentic.service
+                    sudo -iu occupify bash -lc '
+                        set -eu
 
-                    sleep 5
+                        export HOME=/home/occupify
+                        export XDG_RUNTIME_DIR=/run/user/1002
+                        export DBUS_SESSION_BUS_ADDRESS=unix:path=/run/user/1002/bus
 
-                    systemctl --user is-active occupify-be-agentic.service
-                    podman ps -a --filter name=occupify-agentic
-                    podman logs --tail 50 occupify-agentic
+                        if [ "$(id -u)" -ne 1002 ]; then
+                            echo "ERROR: Deployment must run as UID 1002"
+                            exit 1
+                        fi
+
+                        if [ ! -d "$XDG_RUNTIME_DIR" ]; then
+                            echo "ERROR: Missing runtime directory: $XDG_RUNTIME_DIR"
+                            exit 1
+                        fi
+
+                        cd /home/occupify/.config/systemd/user/git-ops
+
+                        echo ">> Pulling latest image..."
+                        podman pull "${FULL_IMAGE}:latest"
+
+                        echo ">> Restarting Occupify Agentic..."
+                        systemctl --user restart occupify-be-agentic.service
+
+                        sleep 5
+
+                        echo ">> Checking service status..."
+                        systemctl --user is-active occupify-be-agentic.service
+
+                        echo ">> Container status..."
+                        podman ps -a --filter name=occupify-agentic
+
+                        echo ">> Recent container logs..."
+                        podman logs --tail 50 occupify-agentic
+                    '
                 '''
             }
         }
