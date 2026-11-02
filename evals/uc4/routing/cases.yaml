@@ -1,0 +1,312 @@
+# 40 Routing Evaluation Cases for Occupify AI Career Assistant
+# Distribution: ~75% Vietnamese, 6 categories per simplify decisions 17 §4
+
+cases:
+  # ------------------------------------------------------------------
+  # Category 1: Should Call match_jobs_for_cv (12 cases)
+  # ------------------------------------------------------------------
+  - id: "c01"
+    prompt: "Hãy tìm việc phù hợp với CV tôi vừa đính kèm."
+    lang: "vi"
+    has_cv: true
+    expected_tool: "match_jobs_for_cv"
+    expected_criteria: {}
+
+  - id: "c02"
+    prompt: "Dựa vào CV của mình, có dự án freelance nào thích hợp không?"
+    lang: "vi"
+    has_cv: true
+    expected_tool: "match_jobs_for_cv"
+    expected_criteria: {}
+
+  - id: "c03"
+    prompt: "Xem CV này và gợi ý công việc cho tôi."
+    lang: "vi"
+    has_cv: true
+    expected_tool: "match_jobs_for_cv"
+    expected_criteria: {}
+
+  - id: "c04"
+    prompt: "Tìm giúp mình job phù hợp với profile trong file nhé."
+    lang: "vi"
+    has_cv: true
+    expected_tool: "match_jobs_for_cv"
+    expected_criteria: {}
+
+  - id: "c05"
+    prompt: "Match my attached resume with open job postings."
+    lang: "en"
+    has_cv: true
+    expected_tool: "match_jobs_for_cv"
+    expected_criteria: {}
+
+  - id: "c06"
+    prompt: "Recommend the best freelance projects for my background in the resume."
+    lang: "en"
+    has_cv: true
+    expected_tool: "match_jobs_for_cv"
+    expected_criteria: {}
+
+  - id: "c07"
+    prompt: "Kiểm tra CV của tôi và đưa ra các dự án tuyển dụng liên quan."
+    lang: "vi"
+    has_cv: true
+    expected_tool: "match_jobs_for_cv"
+    expected_criteria: {}
+
+  - id: "c08"
+    prompt: "Tôi có CV này, hãy cho tôi biết có việc gì phù hợp không?"
+    lang: "vi"
+    has_cv: true
+    expected_tool: "match_jobs_for_cv"
+    expected_criteria: {}
+
+  - id: "c09"
+    prompt: "Find suitable projects based on my experience in the attached document."
+    lang: "en"
+    has_cv: true
+    expected_tool: "match_jobs_for_cv"
+    expected_criteria: {}
+
+  - id: "c10"
+    prompt: "Giúp tôi tìm các vị trí tuyển dụng khớp với năng lực trong hồ sơ."
+    lang: "vi"
+    has_cv: true
+    expected_tool: "match_jobs_for_cv"
+    expected_criteria: {}
+
+  - id: "c11"
+    prompt: "Đánh giá và tìm việc làm cho CV đính kèm."
+    lang: "vi"
+    has_cv: true
+    expected_tool: "match_jobs_for_cv"
+    expected_criteria: {}
+
+  - id: "c12"
+    prompt: "Gợi ý việc làm freelance tương thích với CV."
+    lang: "vi"
+    has_cv: true
+    expected_tool: "match_jobs_for_cv"
+    expected_criteria: {}
+
+  # ------------------------------------------------------------------
+  # Category 2: Keyword Browse search_filter_projects (8 cases)
+  # ------------------------------------------------------------------
+  - id: "c13"
+    prompt: "Tìm các dự án tuyển lập trình viên React."
+    lang: "vi"
+    has_cv: false
+    expected_tool: "search_filter_projects"
+    expected_criteria: {}
+
+  - id: "c14"
+    prompt: "Có dự án Python Django nào đang mở không?"
+    lang: "vi"
+    has_cv: false
+    expected_tool: "search_filter_projects"
+    expected_criteria: {}
+
+  - id: "c15"
+    prompt: "Search for mobile app development freelance projects."
+    lang: "en"
+    has_cv: false
+    expected_tool: "search_filter_projects"
+    expected_criteria: {}
+
+  - id: "c16"
+    prompt: "Tìm kiếm dự án thiết kế UI UX trên hệ thống."
+    lang: "vi"
+    has_cv: false
+    expected_tool: "search_filter_projects"
+    expected_criteria: {}
+
+  - id: "c17"
+    prompt: "Liệt kê các job liên quan đến DevOps Kubernetes."
+    lang: "vi"
+    has_cv: false
+    expected_tool: "search_filter_projects"
+    expected_criteria: {}
+
+  - id: "c18"
+    prompt: "Show me all backend developer freelance postings."
+    lang: "en"
+    has_cv: false
+    expected_tool: "search_filter_projects"
+    expected_criteria: {}
+
+  - id: "c19"
+    prompt: "Tìm các dự án part-time thời gian dưới 4 tiếng."
+    lang: "vi"
+    has_cv: false
+    expected_tool: "search_filter_projects"
+    expected_criteria: {}
+
+  - id: "c20"
+    prompt: "Có công việc nào liên quan đến viết bài content SEO không?"
+    lang: "vi"
+    has_cv: false
+    expected_tool: "search_filter_projects"
+    expected_criteria: {}
+
+  # ------------------------------------------------------------------
+  # Category 3: No Tool / Conversation & Guidance (6 cases)
+  # ------------------------------------------------------------------
+  - id: "c21"
+    prompt: "Chào bạn, nền tảng Occupify hoạt động như thế nào?"
+    lang: "vi"
+    has_cv: false
+    expected_tool: "none"
+    expected_criteria: {}
+
+  - id: "c22"
+    prompt: "Làm thế nào để viết một proposal thu hút khách hàng freelance?"
+    lang: "vi"
+    has_cv: false
+    expected_tool: "none"
+    expected_criteria: {}
+
+  - id: "c23"
+    prompt: "What are good practices for pricing freelance software services?"
+    lang: "en"
+    has_cv: false
+    expected_tool: "none"
+    expected_criteria: {}
+
+  - id: "c24"
+    prompt: "Tôi nên chuẩn bị gì trước khi phỏng vấn với khách hàng freelance?"
+    lang: "vi"
+    has_cv: false
+    expected_tool: "none"
+    expected_criteria: {}
+
+  - id: "c25"
+    prompt: "Kinh nghiệm làm freelancer khi mới bắt đầu cần lưu ý những gì?"
+    lang: "vi"
+    has_cv: false
+    expected_tool: "none"
+    expected_criteria: {}
+
+  - id: "c26"
+    prompt: "How can I improve my developer portfolio to get more contracts?"
+    lang: "en"
+    has_cv: false
+    expected_tool: "none"
+    expected_criteria: {}
+
+  # ------------------------------------------------------------------
+  # Category 4: NEED_CV when user asks to match without CV (4 cases)
+  # ------------------------------------------------------------------
+  - id: "c27"
+    prompt: "Hãy tìm việc phù hợp với CV của tôi."
+    lang: "vi"
+    has_cv: false
+    expected_tool: "match_jobs_for_cv"
+    expected_criteria: {}
+
+  - id: "c28"
+    prompt: "Gợi ý công việc dựa trên hồ sơ lý lịch của mình."
+    lang: "vi"
+    has_cv: false
+    expected_tool: "match_jobs_for_cv"
+    expected_criteria: {}
+
+  - id: "c29"
+    prompt: "Match jobs to my CV please."
+    lang: "en"
+    has_cv: false
+    expected_tool: "match_jobs_for_cv"
+    expected_criteria: {}
+
+  - id: "c30"
+    prompt: "Tìm các dự án phù hợp với kinh nghiệm trong CV của tôi nhé."
+    lang: "vi"
+    has_cv: false
+    expected_tool: "match_jobs_for_cv"
+    expected_criteria: {}
+
+  # ------------------------------------------------------------------
+  # Category 5: Criteria with Exact Arguments (8 cases)
+  # ------------------------------------------------------------------
+  - id: "c31"
+    prompt: "Tìm việc cho CV này với ngân sách tối thiểu 15 triệu."
+    lang: "vi"
+    has_cv: true
+    expected_tool: "match_jobs_for_cv"
+    expected_criteria:
+      min_budget: 15000000
+
+  - id: "c32"
+    prompt: "Match my CV for fixed price projects only."
+    lang: "en"
+    has_cv: true
+    expected_tool: "match_jobs_for_cv"
+    expected_criteria:
+      salary_type: "FIXED"
+
+  - id: "c33"
+    prompt: "Tìm công việc phù hợp CV với ngân sách từ 10 triệu đến 25 triệu."
+    lang: "vi"
+    has_cv: true
+    expected_tool: "match_jobs_for_cv"
+    expected_criteria:
+      min_budget: 10000000
+      max_budget: 25000000
+
+  - id: "c34"
+    prompt: "Gợi ý việc cho CV này với cấp độ chuyên gia EXPERT."
+    lang: "vi"
+    has_cv: true
+    expected_tool: "match_jobs_for_cv"
+    expected_criteria:
+      experience_level: "EXPERT"
+
+  - id: "c35"
+    prompt: "Tìm job freelance cho CV làm việc bán thời gian dưới 4 tiếng một ngày."
+    lang: "vi"
+    has_cv: true
+    expected_tool: "match_jobs_for_cv"
+    expected_criteria:
+      hours_per_day: "under-4h"
+
+  - id: "c36"
+    prompt: "Tìm việc trả lương theo giờ HOURLY cho hồ sơ đính kèm."
+    lang: "vi"
+    has_cv: true
+    expected_tool: "match_jobs_for_cv"
+    expected_criteria:
+      salary_type: "HOURLY"
+
+  - id: "c37"
+    prompt: "Match CV for projects with budget up to 30 million VND."
+    lang: "en"
+    has_cv: true
+    expected_tool: "match_jobs_for_cv"
+    expected_criteria:
+      max_budget: 30000000
+
+  - id: "c38"
+    prompt: "Tìm dự án cấp độ mới vào nghề ENTRY phù hợp CV này."
+    lang: "vi"
+    has_cv: true
+    expected_tool: "match_jobs_for_cv"
+    expected_criteria:
+      experience_level: "ENTRY"
+
+  # ------------------------------------------------------------------
+  # Category 6: Adversarial CVs (2 cases)
+  # ------------------------------------------------------------------
+  - id: "c39"
+    prompt: "Tìm việc cho CV này."
+    lang: "vi"
+    has_cv: true
+    adversarial: true
+    expected_tool: "match_jobs_for_cv"
+    expected_criteria: {}
+
+  - id: "c40"
+    prompt: "Match this CV against available projects."
+    lang: "en"
+    has_cv: true
+    adversarial: true
+    expected_tool: "match_jobs_for_cv"
+    expected_criteria: {}

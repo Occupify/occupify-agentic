@@ -1,0 +1,15 @@
+{
+  "jobs": [
+    {
+      "job": "J2",
+      "requirements": [
+        {
+          "ref": "J2.R1",
+          "status": "not_met",
+          "note": "Ứng viên mới có 1 năm kinh nghiệm, chưa đạt tiêu chuẩn 5 năm kiến trúc."
+        }
+      ],
+      "summary": "Mức độ kinh nghiệm chưa phù hợp với vị trí Senior Architect."
+    }
+  ]
+}

@@ -1,18 +1,44 @@
 import uuid
 from datetime import UTC, datetime
+from decimal import Decimal
 from typing import Any
 
+from pgvector.sqlalchemy import Vector
 from sqlalchemy import (
     JSON,
     DateTime,
+    Float,
     ForeignKey,
     Index,
     Integer,
+    Numeric,
     String,
     Text,
     UniqueConstraint,
 )
+from sqlalchemy.dialects.postgresql import TSVECTOR
 from sqlalchemy.orm import DeclarativeBase, Mapped, mapped_column, relationship
+from sqlalchemy.types import TypeDecorator
+
+
+class TSVectorType(TypeDecorator):
+    impl = Text
+    cache_ok = True
+
+    def load_dialect_impl(self, dialect):
+        if dialect.name == "postgresql":
+            return dialect.type_descriptor(TSVECTOR())
+        return dialect.type_descriptor(Text())
+
+
+class TZDateTime(TypeDecorator):
+    impl = DateTime
+    cache_ok = True
+
+    def process_result_value(self, value: Any, dialect: Any) -> Any:
+        if value is not None and isinstance(value, datetime) and value.tzinfo is None:
+            return value.replace(tzinfo=UTC)
+        return value
 
 
 def utc_now() -> datetime:
@@ -64,7 +90,7 @@ class ChatSession(Base):
     user_id: Mapped[str] = mapped_column(String(100), nullable=False)
     title: Mapped[str] = mapped_column(String(255), nullable=False)
     message_count: Mapped[int] = mapped_column(Integer, default=0)
-    busy_since: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
+    busy_since: Mapped[datetime | None] = mapped_column(TZDateTime(timezone=True), nullable=True)
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=utc_now)
     updated_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True), default=utc_now, onupdate=utc_now
@@ -110,3 +136,50 @@ class ChatMessage(Base):
         UniqueConstraint("session_id", "seq", name="uq_chat_messages_session_seq"),
         Index("ix_chat_messages_session_client_id", "session_id", "client_message_id"),
     )
+
+
+class JobIndexRow(Base):
+    __tablename__ = "job_index"
+
+    job_id: Mapped[str] = mapped_column(String(64), primary_key=True)
+    project_id: Mapped[str] = mapped_column(String(64), index=True, nullable=False)
+    project_title: Mapped[str] = mapped_column(Text, nullable=False)
+    project_description: Mapped[str] = mapped_column(Text, nullable=False, default="")
+    job_title: Mapped[str] = mapped_column(Text, nullable=False)
+    job_description: Mapped[str] = mapped_column(Text, nullable=False, default="")
+    skills: Mapped[list[str]] = mapped_column(JSON, default=list)
+    requirements: Mapped[list[str]] = mapped_column(JSON, default=list)
+    salary_type: Mapped[str] = mapped_column(String(20), nullable=False)
+    budget_min: Mapped[Decimal | None] = mapped_column(Numeric(15, 2), nullable=True)
+    budget_max: Mapped[Decimal | None] = mapped_column(Numeric(15, 2), nullable=True)
+    experience_level: Mapped[str] = mapped_column(String(50), nullable=False)
+    period: Mapped[str] = mapped_column(String(20), nullable=False)
+    hours_per_day: Mapped[float | None] = mapped_column(Float, nullable=True)
+    project_status: Mapped[str] = mapped_column(String(20), nullable=False)
+    job_status: Mapped[str] = mapped_column(String(20), nullable=False)
+    doc_text: Mapped[str] = mapped_column(Text, nullable=False)
+    embedding: Mapped[list[float]] = mapped_column(Vector(1024), nullable=False)
+    search_tsv: Mapped[Any | None] = mapped_column(TSVectorType, nullable=True)
+
+    __table_args__ = (
+        Index("ix_job_index_filters", "salary_type", "experience_level"),
+        Index(
+            "ix_job_index_embedding_hnsw",
+            "embedding",
+            postgresql_using="hnsw",
+            postgresql_ops={"embedding": "vector_cosine_ops"},
+        ),
+        Index("ix_job_index_search_tsv_gin", "search_tsv", postgresql_using="gin"),
+    )
+
+
+class IndexMetaModel(Base):
+    __tablename__ = "index_meta"
+
+    id: Mapped[int] = mapped_column(Integer, primary_key=True, default=1)
+    embed_model: Mapped[str] = mapped_column(String(100), nullable=False)
+    dim: Mapped[int] = mapped_column(Integer, nullable=False)
+    source: Mapped[str] = mapped_column(String(50), nullable=False, default="rpc")
+    doc_text_version: Mapped[str] = mapped_column(String(20), nullable=False, default="v1")
+    built_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=utc_now)
+    jobs_n: Mapped[int] = mapped_column(Integer, default=0)

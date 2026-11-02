@@ -5,7 +5,16 @@ from pydantic_ai import RunContext
 
 from app.agents.deps import AgentDeps
 from app.features.projects.schemas import ProjectFilterParams, ProjectGetParams
-from app.messaging.rpc import RpcClient
+from app.messaging.core_client import get_core_rpc
+
+
+def strip_employer_recursive(obj: Any) -> Any:
+    """Recursively removes any 'employer' key from dicts and lists."""
+    if isinstance(obj, dict):
+        return {k: strip_employer_recursive(v) for k, v in obj.items() if k != "employer"}
+    elif isinstance(obj, list):
+        return [strip_employer_recursive(item) for item in obj]
+    return obj
 
 
 async def search_filter_projects(
@@ -26,6 +35,7 @@ async def search_filter_projects(
 
     payload = {
         "keyword": params.keyword,
+        "skills": params.skills,
         "status": params.status.value if params.status else None,
         "employerId": params.employer_id,
         "period": params.period.value if params.period else None,
@@ -38,14 +48,14 @@ async def search_filter_projects(
     }
     payload = {k: v for k, v in payload.items() if v is not None}
 
-    rpc = getattr(ctx.deps, "rpc", None) or RpcClient()
+    rpc = getattr(ctx.deps, "rpc", None) or get_core_rpc()
     response = await rpc.call("core.project.search", payload)
 
     if not response.get("ok"):
         err = response.get("error", {})
         return f"Failed to search projects: {err.get('message', 'Service error')} (code: {err.get('code', 'RPC_ERROR')})"
 
-    return response.get("data", {})
+    return strip_employer_recursive(response.get("data", {}))
 
 
 async def get_project_detail(
@@ -64,11 +74,11 @@ async def get_project_detail(
     except ValueError:
         return f"Validation error: '{params.project_id}' is not a valid UUID format (expected standard UUID string e.g. '123e4567-e89b-12d3-a456-426614174000')."
 
-    rpc = getattr(ctx.deps, "rpc", None) or RpcClient()
+    rpc = getattr(ctx.deps, "rpc", None) or get_core_rpc()
     response = await rpc.call("core.project.get", {"projectId": clean_id})
 
     if not response.get("ok"):
         err = response.get("error", {})
         return f"Could not retrieve project details for ID '{clean_id}': {err.get('message', 'Project not found')} (code: {err.get('code', 'RPC_ERROR')})"
 
-    return response.get("data", {})
+    return strip_employer_recursive(response.get("data", {}))

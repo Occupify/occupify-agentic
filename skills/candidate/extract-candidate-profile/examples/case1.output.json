@@ -1,0 +1,25 @@
+{
+  "status": "ok",
+  "language": "vi",
+  "skills": [
+    {"name": "Java", "source": "stated", "from_section": "Kỹ năng chuyên môn"},
+    {"name": "Spring Boot", "source": "stated", "from_section": "Kỹ năng chuyên môn"},
+    {"name": "PostgreSQL", "source": "stated", "from_section": "Kỹ năng chuyên môn"},
+    {"name": "Redis", "source": "stated", "from_section": "Kỹ năng chuyên môn"},
+    {"name": "Docker", "source": "stated", "from_section": "Kỹ năng chuyên môn"}
+  ],
+  "roles": [
+    {
+      "title": "Backend Developer",
+      "start": "2022-01",
+      "end": "present",
+      "skills_used": ["Java", "Spring Boot", "PostgreSQL", "Redis", "Docker"],
+      "summary": "Phát triển RESTful APIs cho cổng thanh toán điện tử tại FinTech ABC"
+    }
+  ],
+  "domains": ["Fintech"],
+  "target_roles": ["Backend Developer", "Java Developer"],
+  "experience_level": "INTERMEDIATE",
+  "experience_level_reason": "Có hơn 2 năm kinh nghiệm thực tế phát triển hệ thống backend",
+  "total_years": 2.5
+}

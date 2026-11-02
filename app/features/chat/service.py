@@ -29,7 +29,8 @@ from app.core.logging import log_step
 from app.core.security import CurrentUser
 from app.db.repositories.chat import ChatRepository
 from app.db.repositories.documents import DocumentRepository
-from app.documents.extract import extract_pdf_text, validate_pdf_bytes
+from app.documents.cv_text import prepare_cv_text
+from app.documents.extract import validate_pdf_bytes
 from app.features.chat.agent import chat_agent
 from app.features.chat.schemas import (
     AttachmentInfo,
@@ -37,6 +38,11 @@ from app.features.chat.schemas import (
     TokenUsage,
 )
 from app.privacy.gate import clean
+
+
+class AgentStreamProgress:
+    def __init__(self, stage: str):
+        self.stage = stage
 
 
 class ChatService:
@@ -53,7 +59,16 @@ class ChatService:
         context: str | None,
         session_id: str | None,
         files: Sequence[UploadFile] | None,
-    ) -> tuple[str, bool, str, list[AttachmentInfo], list[Any]]:
+    ) -> tuple[
+        str,
+        bool,
+        str,
+        list[AttachmentInfo],
+        list[Any],
+        datetime | None,
+        list[str],
+        list[dict[str, Any]],
+    ]:
         # 1. Validation of limits
         if len(message) > self.settings.CHAT_MAX_MESSAGE_CHARS:
             raise AppError(
@@ -86,6 +101,8 @@ class ChatService:
         try:
             # 3. Process attachments: capped read & threadpool extraction
             attachments_info: list[AttachmentInfo] = []
+            persisted_attachments: list[dict[str, Any]] = []
+            turn_documents: list[str] = []
             prompt_file_blocks: list[str] = []
 
             if files:
@@ -99,28 +116,11 @@ class ChatService:
                         )
                     page_count = validate_pdf_bytes(content, filename)
                     sha256_hash = hashlib.sha256(content).hexdigest()
+                    turn_documents.append(sha256_hash)
 
-                    cached_doc = await self.doc_repo.get_by_sha256(sha256_hash)
-                    if cached_doc:
-                        cleaned_file_text = cached_doc.cleaned_text
-                        removed_counts = cached_doc.removed_counts
-                    else:
-                        raw_text, extracted_pages, extractor_name = await asyncio.to_thread(
-                            extract_pdf_text, content
-                        )
-                        cleaned_file_text, removed_counts = clean(
-                            raw_text,
-                            source=f"Attachment {idx}",
-                            is_file=True,
-                            known_email=user.email,
-                        )
-                        await self.doc_repo.save_document(
-                            sha256_hash=sha256_hash,
-                            extractor=extractor_name,
-                            page_count=extracted_pages,
-                            cleaned_text=cleaned_file_text,
-                            removed_counts=removed_counts,
-                        )
+                    cv_obj = await prepare_cv_text(content, user=user, session=self.db)
+                    cleaned_file_text = cv_obj.text
+                    removed_counts = cv_obj.removed
 
                     attachments_info.append(
                         AttachmentInfo(
@@ -128,6 +128,14 @@ class ChatService:
                             pages=page_count,
                             removed=removed_counts,
                         )
+                    )
+                    persisted_attachments.append(
+                        {
+                            "fileName": filename,
+                            "pages": page_count,
+                            "removed": removed_counts,
+                            "sha256": sha256_hash,
+                        }
                     )
                     prompt_file_blocks.append(
                         f"--- BEGIN ATTACHED FILE: Attachment {idx} ---\n"
@@ -175,7 +183,16 @@ class ChatService:
             # 7. Load all previous model messages
             history = await self.chat_repo.get_all_model_messages(session_id)
 
-            return session_id, new_session, final_prompt, attachments_info, history, lock_token
+            return (
+                session_id,
+                new_session,
+                final_prompt,
+                attachments_info,
+                history,
+                lock_token,
+                turn_documents,
+                persisted_attachments,
+            )
         except Exception:
             if session_id and lock_token is not None:
                 await self.chat_repo.clear_busy(session_id, user.user_id, token=lock_token)
@@ -199,14 +216,18 @@ class ChatService:
                 messages, _ = await self.chat_repo.get_messages(session_id, user.user_id, 1, 100)
                 for msg in messages:
                     if msg.seq == existing_user_msg.seq + 1:
+                        clean_atts = [
+                            AttachmentInfo(**{k: v for k, v in a.items() if k != "sha256"})
+                            if isinstance(a, dict)
+                            else AttachmentInfo(**a)
+                            for a in (existing_user_msg.attachments or [])
+                        ]
                         return ChatReplyData(
                             sessionId=session_id,
                             newSession=False,
                             messageId=msg.id,
                             reply=msg.display_text,
-                            attachments=[
-                                AttachmentInfo(**a) for a in existing_user_msg.attachments
-                            ],
+                            attachments=clean_atts,
                             model=self.settings.GLM_MODEL,
                             usage=TokenUsage(tokensIn=msg.tokens_in, tokensOut=msg.tokens_out),
                         )
@@ -221,6 +242,8 @@ class ChatService:
                 attachments_info,
                 history,
                 lock_token,
+                turn_documents,
+                persisted_attachments,
             ) = await self._prepare_turn(
                 user=user,
                 message=message,
@@ -233,6 +256,7 @@ class ChatService:
                 user=user,
                 session_id=active_session_id,
                 db=self.db,
+                turn_documents=turn_documents,
             )
 
             run_output = await run_agent(
@@ -243,18 +267,25 @@ class ChatService:
                 history=history,
             )
 
+            final_reply = run_output.output
+            if deps.job_match_block:
+                final_reply += deps.job_match_block
+
+            total_tokens_in = run_output.tokens_in + deps.pipeline_tokens_in
+            total_tokens_out = run_output.tokens_out + deps.pipeline_tokens_out
+
             user_msg, asst_msg = await self.chat_repo.save_turn(
                 session_id=active_session_id,
                 user_id=user.user_id,
                 user_display_text=message,
-                assistant_display_text=run_output.output,
+                assistant_display_text=final_reply,
                 user_model_messages=run_output.user_model_messages,
                 assistant_model_messages=run_output.assistant_model_messages,
-                attachments=[a.model_dump() for a in attachments_info],
+                attachments=persisted_attachments,
                 client_message_id=client_message_id,
                 run_id=run_output.run_id,
-                tokens_in=run_output.tokens_in,
-                tokens_out=run_output.tokens_out,
+                tokens_in=total_tokens_in,
+                tokens_out=total_tokens_out,
                 status="complete",
             )
 
@@ -262,12 +293,12 @@ class ChatService:
                 sessionId=active_session_id,
                 newSession=new_session,
                 messageId=asst_msg.id,
-                reply=run_output.output,
+                reply=final_reply,
                 attachments=attachments_info,
                 model=run_output.model,
                 usage=TokenUsage(
-                    tokensIn=run_output.tokens_in,
-                    tokensOut=run_output.tokens_out,
+                    tokensIn=total_tokens_in,
+                    tokensOut=total_tokens_out,
                 ),
             )
 
@@ -293,7 +324,13 @@ class ChatService:
                 messages, _ = await self.chat_repo.get_messages(session_id, user.user_id, 1, 100)
                 for msg in messages:
                     if msg.seq == existing_user_msg.seq + 1:
-                        yield f"event: meta\ndata: {json.dumps({'sessionId': session_id, 'newSession': False, 'messageId': msg.id, 'attachments': existing_user_msg.attachments or []})}\n\n"
+                        clean_atts = [
+                            {k: v for k, v in a.items() if k != "sha256"}
+                            if isinstance(a, dict)
+                            else a
+                            for a in (existing_user_msg.attachments or [])
+                        ]
+                        yield f"event: meta\ndata: {json.dumps({'sessionId': session_id, 'newSession': False, 'messageId': msg.id, 'attachments': clean_atts})}\n\n"
                         yield f"event: delta\ndata: {json.dumps({'text': msg.display_text})}\n\n"
                         yield f"event: done\ndata: {json.dumps({'model': self.settings.GLM_MODEL, 'usage': {'tokensIn': msg.tokens_in, 'tokensOut': msg.tokens_out}})}\n\n"
                         return
@@ -316,6 +353,8 @@ class ChatService:
                 attachments_info,
                 history,
                 lock_token,
+                turn_documents,
+                persisted_attachments,
             ) = await self._prepare_turn(
                 user=user,
                 message=message,
@@ -324,14 +363,19 @@ class ChatService:
                 files=files,
             )
 
+            queue: asyncio.Queue[object] = asyncio.Queue()
+            _DONE = object()
+
+            async def on_progress(stage: str) -> None:
+                await queue.put(AgentStreamProgress(stage=stage))
+
             deps = AgentDeps(
                 user=user,
                 session_id=active_session_id,
                 db=self.db,
+                turn_documents=turn_documents,
+                on_progress=on_progress,
             )
-
-            queue: asyncio.Queue[object] = asyncio.Queue()
-            _DONE = object()
 
             async def producer():
                 try:
@@ -370,7 +414,10 @@ class ChatService:
                 if isinstance(item, Exception):
                     raise item
 
-                if isinstance(item, AgentStreamMeta):
+                if isinstance(item, AgentStreamProgress):
+                    yield f"event: progress\ndata: {json.dumps({'stage': item.stage})}\n\n"
+
+                elif isinstance(item, AgentStreamMeta):
                     last_run_id = item.run_id
                     meta_payload = {
                         "sessionId": active_session_id,
@@ -387,21 +434,29 @@ class ChatService:
 
                 elif isinstance(item, AgentStreamDone):
                     last_run_id = item.run_id
-                    tokens_in = item.tokens_in
-                    tokens_out = item.tokens_out
+                    if deps.job_match_block:
+                        full_output_chunks.append(deps.job_match_block)
+                        yield f"event: delta\ndata: {json.dumps({'text': deps.job_match_block})}\n\n"
+
+                    final_assistant_text = item.output
+                    if deps.job_match_block:
+                        final_assistant_text += deps.job_match_block
+
+                    tokens_in = item.tokens_in + deps.pipeline_tokens_in
+                    tokens_out = item.tokens_out + deps.pipeline_tokens_out
 
                     await self.chat_repo.save_turn(
                         session_id=active_session_id,
                         user_id=user.user_id,
                         user_display_text=message,
-                        assistant_display_text=item.output,
+                        assistant_display_text=final_assistant_text,
                         user_model_messages=item.user_model_messages,
                         assistant_model_messages=item.assistant_model_messages,
-                        attachments=[a.model_dump(by_alias=True) for a in attachments_info],
+                        attachments=persisted_attachments,
                         client_message_id=client_message_id,
                         run_id=item.run_id,
-                        tokens_in=item.tokens_in,
-                        tokens_out=item.tokens_out,
+                        tokens_in=tokens_in,
+                        tokens_out=tokens_out,
                         status="complete",
                         asst_message_id=turn_message_id,
                     )
@@ -409,8 +464,8 @@ class ChatService:
                     done_payload = {
                         "model": item.model,
                         "usage": {
-                            "tokensIn": item.tokens_in,
-                            "tokensOut": item.tokens_out,
+                            "tokensIn": tokens_in,
+                            "tokensOut": tokens_out,
                         },
                     }
                     yield f"event: done\ndata: {json.dumps(done_payload)}\n\n"
@@ -437,7 +492,7 @@ class ChatService:
                             assistant_display_text=partial_text,
                             user_model_messages=[],
                             assistant_model_messages=[],
-                            attachments=[a.model_dump(by_alias=True) for a in attachments_info],
+                            attachments=persisted_attachments,
                             client_message_id=client_message_id,
                             run_id=last_run_id,
                             tokens_in=tokens_in,

@@ -135,3 +135,55 @@ All `/ai/chat/*` calls need the `X-User-Id` header (set by the gateway in produc
 | `make up` fails with `no space left on device` | remove old unused images (`podman image prune`) and retry |
 | `/ui` returns 404 | `APP_ENV` is not `local`; or, in containers, the image is old: run `make up` again |
 | Replies are slow to start | z.ai sometimes queues requests; try another paid model in `GLM_MODEL` |
+
+## UC4 · CV Job Matching
+
+UC4 performs candidate-job matching using a hybrid pipeline:
+1. **CV Ingestion & Profiling:** Extracts text, redacts PII (`privacy.gate.clean`), structures candidate profile using the `extract-candidate-profile` skill.
+2. **Hybrid Retrieval:** Query generation, dense vector search (`BAAI/bge-m3` via pgvector HNSW), BM25 full-text search (`tsvector` via GIN), fused with Reciprocal Rank Fusion (RRF `k=60`).
+3. **Skill Verification & Re-ranking:** Verifies candidate vs required skills (`match-skills`), assesses job fit (`assess-job-fit`), applies cross-encoder reranker (`BAAI/bge-reranker-v2-m3`).
+4. **Agentic Search:** If candidate has low or missing fit, `plan-job-search` expands search queries within budget caps.
+
+### Settings (`.env`)
+- `CORE_RPC_MODE`: `live` (RabbitMQ RPC to `occupify-core`) or `mock` (in-memory mock with catalog JSON).
+- `CORE_MOCK_PATH`: path to mock projects catalog (e.g. `evals/uc4/data/catalog_scale_clean.json`).
+- `ML_ENABLED`: `true` for local dense embeddings & reranking, `false` for unit testing fallback.
+- `EMBEDDER_MODEL`: `BAAI/bge-m3` (1024-dim dense embeddings).
+- `RERANKER_MODEL`: `BAAI/bge-reranker-v2-m3`.
+- `JOB_MATCH_TOOL_TIMEOUT_S`: Maximum tool runtime (default 200s).
+- `JOB_MATCH_LLM_CONCURRENCY`: Concurrency limit for model calls (default 4).
+
+### Skill Library & Verification
+- Skills reside in `skills/` with `SKILL.md` frontmatter.
+- Check skill library validity: `make skills-check`
+- Regenerate skill catalog: `make skills-catalog`
+
+### Showcase Runbook
+Follow these steps to run the complete end-to-end showcase:
+1. Start the infra:
+   ```bash
+   make infra
+   ```
+2. Set `CORE_MOCK_PATH=evals/uc4/data/catalog_scale_clean.json` in `.env`. The app and the migration must use the **same** file; otherwise the source guard makes the index unusable.
+3. Run the job index migration:
+   ```bash
+   make migrate-jobs
+   ```
+4. Start the service:
+   ```bash
+   make run
+   ```
+   Wait until `/ready` shows `models_loaded: true` and `index: ok`.
+5. Open the web chat UI, or use the curl example in stream mode with a synthetic persona PDF from `evals/uc4/personas/`:
+   ```bash
+   curl -N -X POST http://localhost:8186/ai/chat/messages \
+     -H "X-User-Id: test-user" \
+     -F "message=Tìm cho mình công việc phù hợp với CV này" \
+     -F "stream=true" \
+     -F "files=@evals/uc4/personas/cv-a.pdf"
+   ```
+
+### Database & Image Notes
+- `make reset-db`: Drops container volumes and recreates `postgres-agentic` with `vector` and `unaccent` extensions.
+- Docker image: Uses CPU-only PyTorch and pre-downloads `bge-m3` and `bge-reranker-v2-m3` with `allow_patterns` (excluding ONNX and images) and `HF_HUB_OFFLINE=1`.
+

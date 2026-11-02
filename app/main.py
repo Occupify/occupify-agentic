@@ -5,12 +5,16 @@ os.environ.setdefault("PYDANTIC_AI_NO_BANNER", "1")
 os.environ.setdefault("TQDM_DISABLE", "1")
 os.environ.setdefault("HF_HUB_DISABLE_PROGRESS_BARS", "1")
 
+import logging
 from contextlib import asynccontextmanager
+from pathlib import Path
 
 from fastapi import FastAPI, Request
 from fastapi.exceptions import RequestValidationError
+from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse
 
+from app.agents.skill_registry import validate_skills_directory
 from app.api import dev, health
 from app.core.config import get_settings
 from app.core.errors import AppError
@@ -18,6 +22,9 @@ from app.core.logging import log_step, setup_logging
 from app.db.init import init_db
 from app.features.chat import router as chat_router
 from app.messaging.broker import close_broker, start_broker
+from app.ml import load_models_in_background
+
+logger = logging.getLogger(__name__)
 
 
 @asynccontextmanager
@@ -29,18 +36,29 @@ async def lifespan(app: FastAPI):
     if settings.APP_ENV != "test" and not settings.ZAI_API_KEY:
         raise RuntimeError("ZAI_API_KEY environment variable is required in non-test environments.")
 
+    # Validate skill registry on startup (T-20, C-12)
+    skills_dir = Path(settings.SKILLS_DIR)
+    if not skills_dir.exists():
+        raise RuntimeError(f"Skills directory is missing: {settings.SKILLS_DIR}")
+    validate_skills_directory(skills_dir)
+
     log_step("app.startup", env=settings.APP_ENV, port=settings.APP_PORT, model=settings.GLM_MODEL)
 
     # Initialize DB (tables + cleanup). Fail startup if tables cannot be initialized (F-20)
     await init_db()
 
-    # Initialize messaging broker
-    await start_broker()
+    # Initialize messaging broker only when CORE_RPC_MODE != mock
+    if settings.CORE_RPC_MODE != "mock":
+        await start_broker()
+
+    # Background model loading
+    load_models_in_background()
 
     yield
 
     # Teardown
-    await close_broker()
+    if settings.CORE_RPC_MODE != "mock":
+        await close_broker()
     log_step("app.shutdown")
 
 
@@ -51,6 +69,20 @@ def create_app() -> FastAPI:
         description="Lightweight Python service hosting AI agents for Occupify",
         version="0.1.0",
         lifespan=lifespan,
+    )
+
+    app.add_middleware(
+        CORSMiddleware,
+        allow_origins=[
+            "http://localhost:3000",
+            "http://localhost:5173",
+            "http://127.0.0.1:3000",
+            "http://127.0.0.1:5173",
+        ],
+        allow_origin_regex=r"^https?://(localhost|127\.0\.0\.1)(:[0-9]+)?$",
+        allow_credentials=True,
+        allow_methods=["*"],
+        allow_headers=["*"],
     )
 
     # Custom exception handlers
@@ -66,6 +98,7 @@ def create_app() -> FastAPI:
                 "statusCode": 422,
                 "message": "Validation failed.",
                 "errorCode": "VALIDATION_ERROR",
+                "error": {"code": "VALIDATION_ERROR", "message": "Validation failed."},
                 "details": exc.errors(),
             },
         )

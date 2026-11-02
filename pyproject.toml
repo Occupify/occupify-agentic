@@ -17,6 +17,11 @@ dependencies = [
   "httpx",
   "python-doctr",
   "pypdfium2",
+  "pgvector",
+  "sentence-transformers",
+  "pyyaml",
+  "torch",
+  "torchvision",
 ]
 
 [dependency-groups]
@@ -24,6 +29,7 @@ dev = [
   "pytest",
   "pytest-asyncio",
   "pytest-cov",
+  "pytest-timeout",
   "respx",
   "ruff",
   "reportlab",
@@ -50,7 +56,9 @@ ignore = ["E501"]
 [tool.pytest.ini_options]
 asyncio_mode = "auto"
 pythonpath = ["."]
+timeout = 120
 markers = [
   "integration: needs Postgres + RabbitMQ",
   "doctr: loads docTR models",
+  "ml: real ML model checks (embedder, reranker)",
 ]

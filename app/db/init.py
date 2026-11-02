@@ -1,6 +1,6 @@
 from datetime import UTC, datetime
 
-from sqlalchemy import update
+from sqlalchemy import text, update
 
 from app.core.logging import log_step
 from app.db.models import AgentRun, Base, ChatSession
@@ -10,12 +10,21 @@ from app.db.session import get_engine, get_sessionmaker
 async def init_db() -> None:
     """
     Initializes the database:
+    - Runs CREATE EXTENSION IF NOT EXISTS vector/unaccent on PostgreSQL
     - Runs Base.metadata.create_all() (creates missing tables without migrations)
     - Updates stale 'running' AgentRun rows to 'failed'
     - Clears stale 'busy_since' flags on ChatSession rows
     """
     engine = get_engine()
     async with engine.begin() as conn:
+        if conn.dialect.name == "postgresql":
+            await conn.execute(text("CREATE EXTENSION IF NOT EXISTS vector;"))
+            await conn.execute(text("CREATE EXTENSION IF NOT EXISTS unaccent;"))
+            await conn.execute(
+                text(
+                    "ALTER TABLE IF EXISTS index_meta ADD COLUMN IF NOT EXISTS doc_text_version VARCHAR(20) DEFAULT 'v1' NOT NULL;"
+                )
+            )
         await conn.run_sync(Base.metadata.create_all)
 
     sessionmaker = get_sessionmaker()

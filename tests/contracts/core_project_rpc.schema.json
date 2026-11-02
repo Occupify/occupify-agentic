@@ -1,0 +1,126 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "CoreProjectRpcResponse",
+  "description": "Permissive schema for core project RPC responses. Forbids employer at all levels.",
+  "definitions": {
+    "noEmployer": {
+      "not": {
+        "required": ["employer"]
+      },
+      "properties": {
+        "employer": false
+      }
+    },
+    "jobSummary": {
+      "type": "object",
+      "allOf": [{ "$ref": "#/definitions/noEmployer" }],
+      "required": ["id", "title", "status"],
+      "properties": {
+        "id": { "type": "string" },
+        "title": { "type": "string" },
+        "description": { "type": "string" },
+        "quantity": { "type": "integer" },
+        "salaryType": { "type": ["string", "null"] },
+        "budgetMin": { "type": ["number", "null"] },
+        "budgetMax": { "type": ["number", "null"] },
+        "status": { "type": "string" },
+        "skills": {
+          "type": "array",
+          "items": { "type": "string" }
+        },
+        "requirements": {
+          "type": "array",
+          "items": { "type": "string" }
+        }
+      },
+      "additionalProperties": true
+    },
+    "projectDetail": {
+      "type": "object",
+      "allOf": [{ "$ref": "#/definitions/noEmployer" }],
+      "required": ["id", "title", "status"],
+      "properties": {
+        "id": { "type": "string" },
+        "title": { "type": "string" },
+        "description": { "type": "string" },
+        "startPrice": { "type": ["number", "null"] },
+        "period": { "type": ["string", "null"] },
+        "dueDate": { "type": ["string", "null"] },
+        "experienceLevel": { "type": ["string", "null"] },
+        "status": { "type": "string" },
+        "location": { "type": ["string", "null"] },
+        "hoursPerDay": { "type": ["number", "null"] },
+        "duration": { "type": ["string", "null"] },
+        "tags": {
+          "type": "array",
+          "items": { "type": "string" }
+        },
+        "createdAt": { "type": ["string", "null"] },
+        "updatedAt": { "type": ["string", "null"] },
+        "jobs": {
+          "type": "array",
+          "items": { "$ref": "#/definitions/jobSummary" }
+        }
+      },
+      "additionalProperties": true
+    },
+    "pageResponse": {
+      "type": "object",
+      "allOf": [{ "$ref": "#/definitions/noEmployer" }],
+      "required": ["statusCode", "data"],
+      "properties": {
+        "statusCode": { "type": "integer" },
+        "message": { "type": "string" },
+        "data": {
+          "type": "array",
+          "items": { "$ref": "#/definitions/projectDetail" }
+        },
+        "paging": {
+          "type": "object",
+          "properties": {
+            "page": { "type": "integer" },
+            "limit": { "type": "integer" },
+            "total": { "type": "integer" },
+            "totalPages": { "type": "integer" }
+          }
+        }
+      },
+      "additionalProperties": true
+    },
+    "singleResponse": {
+      "type": "object",
+      "allOf": [{ "$ref": "#/definitions/noEmployer" }],
+      "required": ["statusCode", "data"],
+      "properties": {
+        "statusCode": { "type": "integer" },
+        "message": { "type": "string" },
+        "data": { "$ref": "#/definitions/projectDetail" }
+      },
+      "additionalProperties": true
+    }
+  },
+  "type": "object",
+  "oneOf": [
+    {
+      "type": "object",
+      "required": ["ok", "data"],
+      "properties": {
+        "ok": { "const": true },
+        "data": {
+          "oneOf": [
+            { "$ref": "#/definitions/pageResponse" },
+            { "$ref": "#/definitions/singleResponse" }
+          ]
+        }
+      }
+    },
+    {
+      "type": "object",
+      "required": ["ok", "error"],
+      "properties": {
+        "ok": { "const": false },
+        "error": { "type": "object" }
+      }
+    }
+  ]
+}

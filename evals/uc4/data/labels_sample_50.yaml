@@ -1,0 +1,610 @@
+- persona: p-07
+  job_id: g027-j01
+  project_title: 'Dự án Ui Ux #27'
+  job_title: Entry Ui Ux Specialist
+  family: ui_ux
+  seniority: ENTRY
+  core_skills:
+  - UI/UX
+  computed_grade: 1
+  is_hard_negative: false
+  owner_verification: 'PENDING (Rule validated: >=90% target)'
+- persona: cv-c
+  job_id: g164-j03
+  project_title: 'Dự án Data Ai #164'
+  job_title: Entry Data Ai Specialist
+  family: data_ai
+  seniority: ENTRY
+  core_skills:
+  - Airflow
+  - Kafka
+  - Data Analysis
+  computed_grade: 1
+  is_hard_negative: false
+  owner_verification: 'PENDING (Rule validated: >=90% target)'
+- persona: l-07
+  job_id: g207-j03
+  project_title: 'Dự án Ui Ux #207'
+  job_title: Expert Ui Ux Specialist
+  family: ui_ux
+  seniority: EXPERT
+  core_skills:
+  - Typography
+  - Usability Testing
+  - User Research
+  - Figma
+  computed_grade: 1
+  is_hard_negative: false
+  owner_verification: 'PENDING (Rule validated: >=90% target)'
+- persona: l-03
+  job_id: g072-j04
+  project_title: 'Project Frontend #72'
+  job_title: Intermediate Frontend Specialist
+  family: frontend
+  seniority: INTERMEDIATE
+  core_skills:
+  - Vue 3
+  - UI Architecture
+  - Next.js
+  computed_grade: 1
+  is_hard_negative: false
+  owner_verification: 'PENDING (Rule validated: >=90% target)'
+- persona: p-12
+  job_id: g222-j04
+  project_title: 'Dự án Frontend #222'
+  job_title: Expert Frontend Specialist
+  family: frontend
+  seniority: EXPERT
+  core_skills:
+  - HTML5
+  - Zustand
+  - UI Architecture
+  computed_grade: 1
+  is_hard_negative: false
+  owner_verification: 'PENDING (Rule validated: >=90% target)'
+- persona: p-06
+  job_id: g089-j02
+  project_title: 'Dự án Finance Accounting #89'
+  job_title: Expert Finance Accounting Specialist
+  family: finance_accounting
+  seniority: EXPERT
+  core_skills:
+  - Financial Reporting
+  - Excel
+  computed_grade: 1
+  is_hard_negative: false
+  owner_verification: 'PENDING (Rule validated: >=90% target)'
+- persona: p-04
+  job_id: g092-j01
+  project_title: 'Dự án Frontend #92'
+  job_title: Expert Frontend Specialist
+  family: frontend
+  seniority: EXPERT
+  core_skills:
+  - Vue.js
+  - Webpack
+  - Zustand
+  computed_grade: 1
+  is_hard_negative: false
+  owner_verification: 'PENDING (Rule validated: >=90% target)'
+- persona: p-12
+  job_id: g231-j03
+  project_title: 'Dự án Backend #231'
+  job_title: Intermediate Backend Specialist
+  family: backend
+  seniority: INTERMEDIATE
+  core_skills:
+  - NestJS
+  - Golang
+  - Express.js
+  computed_grade: 1
+  is_hard_negative: false
+  owner_verification: 'PENDING (Rule validated: >=90% target)'
+- persona: p-01
+  job_id: g105-j01
+  project_title: 'Dự án Devops Cloud #105'
+  job_title: Expert Devops Cloud Specialist
+  family: devops_cloud
+  seniority: EXPERT
+  core_skills: &id001
+  - GCP
+  computed_grade: 1
+  is_hard_negative: false
+  owner_verification: 'PENDING (Rule validated: >=90% target)'
+- persona: p-12
+  job_id: g235-j02
+  project_title: 'Dự án Devops Cloud #235'
+  job_title: Expert Devops Cloud Specialist
+  family: devops_cloud
+  seniority: EXPERT
+  core_skills:
+  - Nginx
+  - Docker
+  computed_grade: 1
+  is_hard_negative: false
+  owner_verification: 'PENDING (Rule validated: >=90% target)'
+- persona: p-08
+  job_id: g241-j02
+  project_title: 'Project Backend #241'
+  job_title: Intermediate Backend Specialist
+  family: backend
+  seniority: INTERMEDIATE
+  core_skills:
+  - RESTful API
+  - GraphQL
+  - ASP.NET Core
+  computed_grade: 1
+  is_hard_negative: false
+  owner_verification: 'PENDING (Rule validated: >=90% target)'
+- persona: cv-d
+  job_id: g001-j03
+  project_title: 'Project Backend #1'
+  job_title: React Native & JS Developer
+  family: frontend
+  seniority: INTERMEDIATE
+  core_skills:
+  - JavaScript
+  - Node.js
+  - React Native
+  computed_grade: 1
+  is_hard_negative: true
+  owner_verification: 'PENDING (Rule validated: >=90% target)'
+- persona: cv-h
+  job_id: g033-j02
+  project_title: 'Dự án Mobile #33'
+  job_title: Expert Mobile Specialist
+  family: mobile
+  seniority: EXPERT
+  core_skills:
+  - iOS
+  - Mobile App Development
+  computed_grade: 1
+  is_hard_negative: false
+  owner_verification: 'PENDING (Rule validated: >=90% target)'
+- persona: x-01
+  job_id: g077-j01
+  project_title: 'Dự án Ui Ux #77'
+  job_title: Expert Ui Ux Specialist
+  family: ui_ux
+  seniority: EXPERT
+  core_skills:
+  - Graphic Design
+  - Design Tokens
+  - Photoshop
+  - User Flow
+  computed_grade: 1
+  is_hard_negative: false
+  owner_verification: 'PENDING (Rule validated: >=90% target)'
+- persona: p-12
+  job_id: g007-j01
+  project_title: 'Dự án Ui Ux #7'
+  job_title: Lập trình viên C/C++ Nhúng
+  family: backend
+  seniority: ENTRY
+  core_skills:
+  - C
+  - C++
+  - Embedded Systems
+  computed_grade: 1
+  is_hard_negative: true
+  owner_verification: 'PENDING (Rule validated: >=90% target)'
+- persona: l-04
+  job_id: g044-j03
+  project_title: 'Project Data Ai #44'
+  job_title: Intermediate Data Ai Specialist
+  family: data_ai
+  seniority: INTERMEDIATE
+  core_skills: &id002
+  - Apache Spark
+  - Data Pipelines
+  computed_grade: 1
+  is_hard_negative: false
+  owner_verification: 'PENDING (Rule validated: >=90% target)'
+- persona: p-05
+  job_id: g140-j01
+  project_title: 'Project Admin Va #140'
+  job_title: Entry Admin Va Specialist
+  family: admin_va
+  seniority: ENTRY
+  core_skills:
+  - Biên dịch tiếng Anh
+  - Customer Support
+  - Scheduling
+  - Data Entry
+  computed_grade: 1
+  is_hard_negative: false
+  owner_verification: 'PENDING (Rule validated: >=90% target)'
+- persona: p-06
+  job_id: g198-j04
+  project_title: 'Dự án Marketing Content #198'
+  job_title: Intermediate Marketing Content Specialist
+  family: marketing_content
+  seniority: INTERMEDIATE
+  core_skills:
+  - Google Ads
+  - Brand Strategy
+  - Copywriting
+  - Facebook Ads
+  computed_grade: 1
+  is_hard_negative: false
+  owner_verification: 'PENDING (Rule validated: >=90% target)'
+- persona: p-06
+  job_id: g170-j03
+  project_title: 'Dự án Admin Va #170'
+  job_title: Intermediate Admin Va Specialist
+  family: admin_va
+  seniority: INTERMEDIATE
+  core_skills:
+  - Customer Support
+  computed_grade: 1
+  is_hard_negative: false
+  owner_verification: 'PENDING (Rule validated: >=90% target)'
+- persona: cv-d
+  job_id: g057-j01
+  project_title: 'Project Ui Ux #57'
+  job_title: Entry Ui Ux Specialist
+  family: ui_ux
+  seniority: ENTRY
+  core_skills:
+  - Usability Testing
+  computed_grade: 1
+  is_hard_negative: false
+  owner_verification: 'PENDING (Rule validated: >=90% target)'
+- persona: l-08
+  job_id: g003-j04
+  project_title: 'Project Mobile #3'
+  job_title: Print & Banner Graphic Designer
+  family: ui_ux
+  seniority: EXPERT
+  core_skills:
+  - Photoshop
+  - Illustrator
+  - Graphic Design
+  computed_grade: 1
+  is_hard_negative: true
+  owner_verification: 'PENDING (Rule validated: >=90% target)'
+- persona: p-08
+  job_id: g007-j03
+  project_title: 'Dự án Ui Ux #7'
+  job_title: Java Spring Boot Developer
+  family: backend
+  seniority: EXPERT
+  core_skills:
+  - Java
+  - Spring Boot
+  - JPA/Hibernate
+  computed_grade: 1
+  is_hard_negative: true
+  owner_verification: 'PENDING (Rule validated: >=90% target)'
+- persona: p-12
+  job_id: g234-j02
+  project_title: 'Dự án Data Ai #234'
+  job_title: Intermediate Data Ai Specialist
+  family: data_ai
+  seniority: INTERMEDIATE
+  core_skills:
+  - Kafka
+  - Airflow
+  computed_grade: 1
+  is_hard_negative: false
+  owner_verification: 'PENDING (Rule validated: >=90% target)'
+- persona: p-06
+  job_id: g078-j04
+  project_title: 'Dự án Marketing Content #78'
+  job_title: Entry Marketing Content Specialist
+  family: marketing_content
+  seniority: ENTRY
+  core_skills:
+  - Content Writing
+  computed_grade: 1
+  is_hard_negative: false
+  owner_verification: 'PENDING (Rule validated: >=90% target)'
+- persona: l-04
+  job_id: g122-j03
+  project_title: 'Project Frontend #122'
+  job_title: Intermediate Frontend Specialist
+  family: frontend
+  seniority: INTERMEDIATE
+  core_skills:
+  - Vue 3
+  - HTML5
+  - Vite
+  computed_grade: 1
+  is_hard_negative: false
+  owner_verification: 'PENDING (Rule validated: >=90% target)'
+- persona: p-05
+  job_id: g237-j02
+  project_title: 'Dự án Ui Ux #237'
+  job_title: Expert Ui Ux Specialist
+  family: ui_ux
+  seniority: EXPERT
+  core_skills:
+  - Illustrator
+  computed_grade: 1
+  is_hard_negative: false
+  owner_verification: 'PENDING (Rule validated: >=90% target)'
+- persona: l-08
+  job_id: g112-j03
+  project_title: 'Project Frontend #112'
+  job_title: Intermediate Frontend Specialist
+  family: frontend
+  seniority: INTERMEDIATE
+  core_skills:
+  - Vue.js
+  - JavaScript
+  - Zustand
+  computed_grade: 1
+  is_hard_negative: false
+  owner_verification: 'PENDING (Rule validated: >=90% target)'
+- persona: l-02
+  job_id: g251-j02
+  project_title: 'Dự án Backend #251'
+  job_title: Expert Backend Specialist
+  family: backend
+  seniority: EXPERT
+  core_skills:
+  - Redis
+  - FastAPI
+  - Node.js
+  computed_grade: 1
+  is_hard_negative: false
+  owner_verification: 'PENDING (Rule validated: >=90% target)'
+- persona: l-03
+  job_id: g104-j04
+  project_title: 'Dự án Data Ai #104'
+  job_title: Intermediate Data Ai Specialist
+  family: data_ai
+  seniority: INTERMEDIATE
+  core_skills:
+  - Data Analysis
+  - Tableau
+  computed_grade: 1
+  is_hard_negative: false
+  owner_verification: 'PENDING (Rule validated: >=90% target)'
+- persona: p-04
+  job_id: g084-j02
+  project_title: 'Dự án Data Ai #84'
+  job_title: Entry Data Ai Specialist
+  family: data_ai
+  seniority: ENTRY
+  core_skills:
+  - Kafka
+  - Scikit-learn
+  - Pandas
+  - Snowflake
+  computed_grade: 1
+  is_hard_negative: false
+  owner_verification: 'PENDING (Rule validated: >=90% target)'
+- persona: l-04
+  job_id: g045-j04
+  project_title: 'Dự án Devops Cloud #45'
+  job_title: Entry Devops Cloud Specialist
+  family: devops_cloud
+  seniority: ENTRY
+  core_skills:
+  - CI/CD
+  - GCP
+  computed_grade: 1
+  is_hard_negative: false
+  owner_verification: 'PENDING (Rule validated: >=90% target)'
+- persona: l-05
+  job_id: g152-j03
+  project_title: 'Project Frontend #152'
+  job_title: Entry Frontend Specialist
+  family: frontend
+  seniority: ENTRY
+  core_skills:
+  - CSS3
+  computed_grade: 1
+  is_hard_negative: false
+  owner_verification: 'PENDING (Rule validated: >=90% target)'
+- persona: cv-h
+  job_id: g221-j04
+  project_title: 'Dự án Backend #221'
+  job_title: Expert Backend Specialist
+  family: backend
+  seniority: EXPERT
+  core_skills:
+  - Redis
+  - Django
+  computed_grade: 1
+  is_hard_negative: false
+  owner_verification: 'PENDING (Rule validated: >=90% target)'
+- persona: l-07
+  job_id: g148-j01
+  project_title: 'Project Marketing Content #148'
+  job_title: Intermediate Marketing Content Specialist
+  family: marketing_content
+  seniority: INTERMEDIATE
+  core_skills:
+  - Content Writing
+  - Viết bài SEO
+  - Social Media Management
+  computed_grade: 1
+  is_hard_negative: false
+  owner_verification: 'PENDING (Rule validated: >=90% target)'
+- persona: l-04
+  job_id: g091-j03
+  project_title: 'Dự án Backend #91'
+  job_title: Expert Backend Specialist
+  family: backend
+  seniority: EXPERT
+  core_skills:
+  - Kafka
+  - PostgreSQL
+  computed_grade: 2
+  is_hard_negative: false
+  owner_verification: 'PENDING (Rule validated: >=90% target)'
+- persona: l-08
+  job_id: g028-j01
+  project_title: 'Dự án Marketing Content #28'
+  job_title: Entry Marketing Content Specialist
+  family: marketing_content
+  seniority: ENTRY
+  core_skills:
+  - Google Ads
+  - Brand Strategy
+  - Content Writing
+  computed_grade: 1
+  is_hard_negative: false
+  owner_verification: 'PENDING (Rule validated: >=90% target)'
+- persona: p-06
+  job_id: g209-j01
+  project_title: 'Dự án Finance Accounting #209'
+  job_title: Entry Finance Accounting Specialist
+  family: finance_accounting
+  seniority: ENTRY
+  core_skills:
+  - MISA
+  - Excel
+  - Corporate Tax
+  computed_grade: 1
+  is_hard_negative: false
+  owner_verification: 'PENDING (Rule validated: >=90% target)'
+- persona: l-01
+  job_id: g195-j01
+  project_title: 'Dự án Devops Cloud #195'
+  job_title: Entry Devops Cloud Specialist
+  family: devops_cloud
+  seniority: ENTRY
+  core_skills:
+  - GCP
+  computed_grade: 1
+  is_hard_negative: false
+  owner_verification: 'PENDING (Rule validated: >=90% target)'
+- persona: l-08
+  job_id: g247-j03
+  project_title: 'Dự án Ui Ux #247'
+  job_title: Expert Ui Ux Specialist
+  family: ui_ux
+  seniority: EXPERT
+  core_skills:
+  - Illustrator
+  - User Research
+  computed_grade: 1
+  is_hard_negative: false
+  owner_verification: 'PENDING (Rule validated: >=90% target)'
+- persona: p-04
+  job_id: g255-j01
+  project_title: 'Dự án Devops Cloud #255'
+  job_title: Expert Devops Cloud Specialist
+  family: devops_cloud
+  seniority: EXPERT
+  core_skills:
+  - Terraform
+  computed_grade: 1
+  is_hard_negative: false
+  owner_verification: 'PENDING (Rule validated: >=90% target)'
+- persona: l-02
+  job_id: g252-j02
+  project_title: 'Dự án Frontend #252'
+  job_title: Entry Frontend Specialist
+  family: frontend
+  seniority: ENTRY
+  core_skills:
+  - ReactJS
+  computed_grade: 1
+  is_hard_negative: false
+  owner_verification: 'PENDING (Rule validated: >=90% target)'
+- persona: p-11
+  job_id: g131-j01
+  project_title: 'Dự án Backend #131'
+  job_title: Intermediate Backend Specialist
+  family: backend
+  seniority: INTERMEDIATE
+  core_skills:
+  - PostgreSQL
+  - Express.js
+  computed_grade: 2
+  is_hard_negative: false
+  owner_verification: 'PENDING (Rule validated: >=90% target)'
+- persona: l-06
+  job_id: g081-j02
+  project_title: 'Project Backend #81'
+  job_title: Entry Backend Specialist
+  family: backend
+  seniority: ENTRY
+  core_skills:
+  - Node.js
+  computed_grade: 1
+  is_hard_negative: false
+  owner_verification: 'PENDING (Rule validated: >=90% target)'
+- persona: p-11
+  job_id: g105-j01
+  project_title: 'Dự án Devops Cloud #105'
+  job_title: Expert Devops Cloud Specialist
+  family: devops_cloud
+  seniority: EXPERT
+  core_skills: *id001
+  computed_grade: 1
+  is_hard_negative: false
+  owner_verification: 'PENDING (Rule validated: >=90% target)'
+- persona: p-10
+  job_id: g024-j03
+  project_title: 'Dự án Data Ai #24'
+  job_title: Intermediate Data Ai Specialist
+  family: data_ai
+  seniority: INTERMEDIATE
+  core_skills:
+  - Tableau
+  computed_grade: 1
+  is_hard_negative: false
+  owner_verification: 'PENDING (Rule validated: >=90% target)'
+- persona: l-02
+  job_id: g045-j01
+  project_title: 'Dự án Devops Cloud #45'
+  job_title: Entry Devops Cloud Specialist
+  family: devops_cloud
+  seniority: ENTRY
+  core_skills:
+  - K8s
+  - GCP
+  computed_grade: 1
+  is_hard_negative: false
+  owner_verification: 'PENDING (Rule validated: >=90% target)'
+- persona: p-05
+  job_id: g150-j01
+  project_title: 'Dự án Admin Va #150'
+  job_title: Expert Admin Va Specialist
+  family: admin_va
+  seniority: EXPERT
+  core_skills:
+  - Chăm sóc khách hàng
+  - Data Entry
+  - Office Administration
+  computed_grade: 1
+  is_hard_negative: false
+  owner_verification: 'PENDING (Rule validated: >=90% target)'
+- persona: cv-h
+  job_id: g071-j01
+  project_title: 'Project Backend #71'
+  job_title: Intermediate Backend Specialist
+  family: backend
+  seniority: INTERMEDIATE
+  core_skills:
+  - RabbitMQ
+  computed_grade: 1
+  is_hard_negative: false
+  owner_verification: 'PENDING (Rule validated: >=90% target)'
+- persona: cv-c
+  job_id: g044-j03
+  project_title: 'Project Data Ai #44'
+  job_title: Intermediate Data Ai Specialist
+  family: data_ai
+  seniority: INTERMEDIATE
+  core_skills: *id002
+  computed_grade: 1
+  is_hard_negative: false
+  owner_verification: 'PENDING (Rule validated: >=90% target)'
+- persona: p-08
+  job_id: g151-j04
+  project_title: 'Dự án Backend #151'
+  job_title: Intermediate Backend Specialist
+  family: backend
+  seniority: INTERMEDIATE
+  core_skills:
+  - ASP.NET Core
+  - Node.js
+  computed_grade: 1
+  is_hard_negative: false
+  owner_verification: 'PENDING (Rule validated: >=90% target)'

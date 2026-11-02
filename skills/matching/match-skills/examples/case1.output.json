@@ -1,0 +1,16 @@
+{
+  "verdicts": [
+    {"ref": "J1.S1", "verdict": "equivalent", "cv_skill": "ReactJS"},
+    {"ref": "J1.S2", "verdict": "exact", "cv_skill": "TypeScript"},
+    {"ref": "J1.S3", "verdict": "equivalent", "cv_skill": "TailwindCSS"},
+    {"ref": "J1.S4", "verdict": "missing", "cv_skill": null}
+  ],
+  "job_verdicts": {
+    "J1": [
+      {"job_skill": "React", "verdict": "equivalent", "cv_skill": "ReactJS"},
+      {"job_skill": "TypeScript", "verdict": "exact", "cv_skill": "TypeScript"},
+      {"job_skill": "Tailwind CSS", "verdict": "equivalent", "cv_skill": "TailwindCSS"},
+      {"job_skill": "Docker", "verdict": "missing", "cv_skill": null}
+    ]
+  }
+}

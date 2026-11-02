@@ -6,7 +6,7 @@ from collections.abc import AsyncIterator
 from dataclasses import dataclass
 from typing import Any
 
-from pydantic_ai import Agent, capture_run_messages
+from pydantic_ai import Agent, _agent_graph, capture_run_messages
 from pydantic_ai.exceptions import (
     ContentFilterError,
     ModelContextWindowExceededError,
@@ -16,10 +16,12 @@ from pydantic_ai.exceptions import (
     UnexpectedModelBehavior,
     UsageLimitExceeded,
 )
-from pydantic_ai.messages import ModelMessagesTypeAdapter, repair_messages
+from pydantic_ai.messages import ModelMessagesTypeAdapter, TextPart, repair_messages
 from pydantic_ai.settings import ModelSettings
 from pydantic_ai.usage import RunUsage, UsageLimits
 
+from app.agents.budget import BudgetExceeded, HarnessStop
+from app.agents.capture import record_captured_request
 from app.agents.deps import AgentDeps
 from app.core.config import get_settings
 from app.core.errors import (
@@ -28,7 +30,7 @@ from app.core.errors import (
     ContentFilteredError,
     LlmUnavailableError,
 )
-from app.core.logging import bind_context, log_step
+from app.core.logging import _context, bind_context, get_current_context, log_step
 from app.core.pricing import calculate_token_cost
 from app.db.repositories.runs import RunRepository
 from app.llm.glm import get_model_settings
@@ -36,7 +38,7 @@ from app.llm.glm import get_model_settings
 
 @dataclass
 class AgentRunOutput:
-    output: str
+    output: Any
     user_model_messages: list[Any]
     assistant_model_messages: list[Any]
     tokens_in: int
@@ -207,6 +209,10 @@ async def _setup_run(
     use_case: str,
     prompt: str,
     history: list[Any] | None,
+    usage_limits: UsageLimits | None = None,
+    agent_role: str | None = None,
+    parent_run_id: str | None = None,
+    redact_errors: bool = False,
 ) -> _RunContext:
     settings = get_settings()
     trace_id = str(uuid.uuid4())
@@ -229,17 +235,21 @@ async def _setup_run(
                 500, "Failed to load conversation history.", "HISTORY_PARSE_FAILED"
             ) from exc
 
+    effective_role = agent_role or getattr(deps, "agent_role", "primary")
+    effective_parent_run_id = parent_run_id or getattr(deps, "parent_run_id", None)
+
     bind_context(
         trace_id=trace_id,
         run_id=run_id,
-        parent_run_id=getattr(deps, "parent_run_id", None),
-        agent_role=getattr(deps, "agent_role", "primary"),
+        parent_run_id=effective_parent_run_id,
+        agent_role=effective_role,
         use_case=use_case,
         user_id=deps.user.user_id,
         session_id=deps.session_id,
+        redact_errors=redact_errors,
     )
 
-    usage_limits = UsageLimits(request_limit=settings.GLM_MAX_REQUESTS_PER_RUN)
+    limits = usage_limits or UsageLimits(request_limit=settings.GLM_MAX_REQUESTS_PER_RUN)
     model_settings = get_model_settings()
     start_time = time.perf_counter()
 
@@ -249,7 +259,7 @@ async def _setup_run(
         model_name=model_name,
         validated_history=validated_history,
         steps_log=[],
-        usage_limits=usage_limits,
+        usage_limits=limits,
         model_settings=model_settings,
         start_time=start_time,
     )
@@ -257,8 +267,8 @@ async def _setup_run(
     ctx.record_step(
         "run.start",
         model=model_name,
-        agent_role=getattr(deps, "agent_role", "primary"),
-        parent_run_id=getattr(deps, "parent_run_id", None),
+        agent_role=effective_role,
+        parent_run_id=effective_parent_run_id,
         history_messages=len(validated_history),
         prompt_chars=len(prompt),
     )
@@ -322,20 +332,27 @@ async def _finish_run_failed(
     ctx: _RunContext,
     exc: Exception,
     usage: Any = None,
+    redact_errors: bool = False,
 ) -> None:
     duration_ms = int((time.perf_counter() - ctx.start_time) * 1000)
     safe_err = type(exc).__name__
     err_msg = str(exc) or getattr(exc, "message", "") or safe_err
     err_code = getattr(exc, "error_code", None) or getattr(exc, "code", None) or safe_err
 
-    extra_err_fields: dict[str, Any] = {
-        "error_type": safe_err,
-        "error_message": err_msg,
-        "error_code": str(err_code),
-    }
+    if redact_errors:
+        extra_err_fields: dict[str, Any] = {
+            "error_type": safe_err,
+            "error_code": str(err_code),
+        }
+    else:
+        extra_err_fields = {
+            "error_type": safe_err,
+            "error_message": err_msg,
+            "error_code": str(err_code),
+        }
     if hasattr(exc, "status_code"):
         extra_err_fields["status_code"] = getattr(exc, "status_code")
-    if hasattr(exc, "body") and getattr(exc, "body") is not None:
+    if not redact_errors and hasattr(exc, "body") and getattr(exc, "body") is not None:
         extra_err_fields["error_body"] = str(getattr(exc, "body"))[:500]
 
     u = _extract_usage_fields(usage, ctx.model_name)
@@ -349,9 +366,10 @@ async def _finish_run_failed(
 
     if deps.db:
         repo = RunRepository(deps.db)
+        save_msg = f"{safe_err}: {err_code}" if redact_errors else f"{safe_err}: {err_msg[:450]}"
         await repo.finish_failed(
             run_id=ctx.run_id,
-            error_message=f"{safe_err}: {err_msg[:450]}",
+            error_message=save_msg,
             latency_ms=duration_ms,
             steps=ctx.steps_log,
         )
@@ -363,62 +381,101 @@ async def run_agent(
     deps: AgentDeps,
     use_case: str,
     history: list[Any] | None = None,
+    usage: RunUsage | None = None,
+    usage_limits: UsageLimits | None = None,
+    agent_role: str | None = None,
+    parent_run_id: str | None = None,
+    redact_errors: bool = False,
 ) -> AgentRunOutput:
-    ctx = await _setup_run(deps, use_case, prompt, history)
-    last_usage = None
-    with capture_run_messages() as captured_messages:
-        try:
-            ctx.record_step(
-                "llm.request",
-                model=ctx.model_name,
-                message_count=len(ctx.validated_history) + 1,
-            )
-            res = await agent.run(
-                prompt,
-                message_history=ctx.validated_history,
-                deps=deps,
-                usage_limits=ctx.usage_limits,
-                model_settings=ctx.model_settings,
-            )
-            last_usage = getattr(res, "usage", None)
-            all_new = res.new_messages()
-            _check_context_window(all_new)
+    saved_context = get_current_context()
+    try:
+        record_captured_request(prompt)
+        ctx = await _setup_run(
+            deps,
+            use_case,
+            prompt,
+            history,
+            usage_limits=usage_limits,
+            agent_role=agent_role,
+            parent_run_id=parent_run_id,
+            redact_errors=redact_errors,
+        )
+        last_usage = None
+        with capture_run_messages() as captured_messages:
+            try:
+                ctx.record_step(
+                    "llm.request",
+                    model=ctx.model_name,
+                    message_count=len(ctx.validated_history) + 1,
+                )
+                res = await agent.run(
+                    prompt,
+                    message_history=ctx.validated_history,
+                    deps=deps,
+                    usage=usage,
+                    usage_limits=ctx.usage_limits,
+                    model_settings=ctx.model_settings,
+                )
+                last_usage = getattr(res, "usage", None)
+                all_new = res.new_messages()
+                _check_context_window(all_new)
 
-            usage = last_usage
-            u = _extract_usage_fields(usage, ctx.model_name)
-            ctx.record_step("llm.response", **u)
+                usage_result = last_usage
+                u = _extract_usage_fields(usage_result, ctx.model_name)
+                ctx.record_step("llm.response", **u)
 
-            user_msgs = all_new[:1] if all_new else []
-            asst_msgs = all_new[1:] if len(all_new) > 1 else []
+                user_msgs = all_new[:1] if all_new else []
+                asst_msgs = all_new[1:] if len(all_new) > 1 else []
 
-            user_json = (
-                ModelMessagesTypeAdapter.dump_python(user_msgs, mode="json") if user_msgs else []
-            )
-            asst_json = (
-                ModelMessagesTypeAdapter.dump_python(asst_msgs, mode="json") if asst_msgs else []
-            )
+                user_json = (
+                    ModelMessagesTypeAdapter.dump_python(user_msgs, mode="json")
+                    if user_msgs
+                    else []
+                )
+                asst_json = (
+                    ModelMessagesTypeAdapter.dump_python(asst_msgs, mode="json")
+                    if asst_msgs
+                    else []
+                )
 
-            duration_ms, u = await _finish_run_success(deps, ctx, usage)
+                duration_ms, u = await _finish_run_success(deps, ctx, usage_result)
 
-            return AgentRunOutput(
-                output=res.output if isinstance(res.output, str) else str(res.output),
-                user_model_messages=user_json,
-                assistant_model_messages=asst_json,
-                tokens_in=u["tokens_in"],
-                tokens_out=u["tokens_out"],
-                run_id=ctx.run_id,
-                model=ctx.model_name,
-                latency_ms=duration_ms,
-                cost_usd=u.get("cost_usd", 0.0),
-                cost_vnd=u.get("cost_vnd", 0.0),
-            )
+                return AgentRunOutput(
+                    output=res.output,
+                    user_model_messages=user_json,
+                    assistant_model_messages=asst_json,
+                    tokens_in=u["tokens_in"],
+                    tokens_out=u["tokens_out"],
+                    run_id=ctx.run_id,
+                    model=ctx.model_name,
+                    latency_ms=duration_ms,
+                    cost_usd=u.get("cost_usd", 0.0),
+                    cost_vnd=u.get("cost_vnd", 0.0),
+                )
 
-        except Exception as exc:
-            usage_to_log = last_usage or _extract_usage_from_messages(captured_messages)
-            await _finish_run_failed(deps, ctx, exc, usage=usage_to_log)
-            if isinstance(exc, AppError):
-                raise exc
-            raise _map_llm_exception(exc) from exc
+            except Exception as exc:
+                usage_to_log = last_usage or _extract_usage_from_messages(captured_messages)
+                await _finish_run_failed(
+                    deps, ctx, exc, usage=usage_to_log, redact_errors=redact_errors
+                )
+                if isinstance(exc, HarnessStop):
+                    raise exc
+                if isinstance(exc, UsageLimitExceeded):
+                    msg = str(exc).lower()
+                    if "tool_call" in msg:
+                        kind = "tool_calls"
+                    elif "input_token" in msg:
+                        kind = "input_tokens"
+                    elif "output_token" in msg or "response_token" in msg:
+                        kind = "output_tokens"
+                    else:
+                        kind = "requests"
+                    raise BudgetExceeded(kind) from exc
+                if isinstance(exc, AppError):
+                    raise exc
+                raise _map_llm_exception(exc) from exc
+    finally:
+        _context.set(saved_context)
 
 
 async def stream_agent(
@@ -440,19 +497,39 @@ async def stream_agent(
             )
             full_output_chunks: list[str] = []
 
-            async with agent.run_stream(
+            async with agent.iter(
                 prompt,
                 message_history=ctx.validated_history,
                 deps=deps,
                 usage_limits=ctx.usage_limits,
                 model_settings=ctx.model_settings,
-            ) as res:
-                async for chunk in res.stream_text(delta=True, debounce_by=None):
-                    full_output_chunks.append(chunk)
-                    yield AgentStreamDelta(content=chunk)
+            ) as agent_run:
+                streamed_this_turn = False
+                async for node in agent_run:
+                    if isinstance(node, _agent_graph.ModelRequestNode):
+                        model = getattr(agent, "model", None)
+                        if hasattr(agent_run.ctx.deps, "model"):
+                            model = agent_run.ctx.deps.model
+                        has_fn = getattr(model, "function", None) is not None
+                        has_stream_fn = getattr(model, "stream_function", None) is not None
+                        can_stream = not (has_fn and not has_stream_fn)
+                        if can_stream:
+                            async with node.stream(agent_run.ctx) as s:
+                                async for chunk in s.stream_text(delta=True, debounce_by=None):
+                                    full_output_chunks.append(chunk)
+                                    yield AgentStreamDelta(content=chunk)
+                            streamed_this_turn = True
+                        else:
+                            streamed_this_turn = False
+                    elif isinstance(node, _agent_graph.CallToolsNode):
+                        if not streamed_this_turn:
+                            for part in node.model_response.parts:
+                                if isinstance(part, TextPart) and part.content:
+                                    full_output_chunks.append(part.content)
+                                    yield AgentStreamDelta(content=part.content)
 
-                all_new = res.new_messages()
-                last_usage = getattr(res, "usage", None)
+                all_new = agent_run.new_messages()
+                last_usage = agent_run.usage
                 _check_context_window(all_new)
 
                 usage = last_usage

@@ -1,12 +1,80 @@
 import time
+from contextlib import contextmanager
+from contextvars import ContextVar
+from pathlib import Path
 from typing import Any
 
 from pydantic_ai import Agent, RunContext
 
 from app.agents.deps import AgentDeps
+from app.agents.skill_registry import SkillRegistry
 from app.core.logging import get_current_context, log_step
 from app.core.pricing import calculate_token_cost
 from app.llm.glm import get_model
+
+_skill_model_overrides: ContextVar[dict[str, Any]] = ContextVar(
+    "_skill_model_overrides", default={}
+)
+_global_registry: SkillRegistry | None = None
+
+
+def get_skill_registry() -> SkillRegistry:
+    global _global_registry
+    if _global_registry is None:
+        _global_registry = SkillRegistry()
+        skills_path = Path("skills")
+        if skills_path.exists():
+            _global_registry.scan(skills_path)
+    return _global_registry
+
+
+@contextmanager
+def override_skill_models(overrides: dict[str, Any]):
+    current = dict(_skill_model_overrides.get())
+    current.update(overrides)
+    token = _skill_model_overrides.set(current)
+    try:
+        yield
+    finally:
+        _skill_model_overrides.reset(token)
+
+
+def create_skill_agent(
+    name: str,
+    tools: list[Any] | None = None,
+    model_settings: Any = None,
+    prompt_mode: str = "skill",
+    model: Any = None,
+) -> Agent:
+    if model is None:
+        overrides = _skill_model_overrides.get()
+        if name in overrides:
+            model = overrides[name]
+        else:
+            model = get_model()
+
+    registry = get_skill_registry()
+    meta = registry.get(name)
+    output_type = meta.output_type if meta else None
+
+    if prompt_mode == "plain":
+        system_prompt = f"Perform {name}."
+    else:
+        system_prompt = meta.prompt if meta else ""
+
+    agent = Agent(
+        model=model,
+        system_prompt=system_prompt,
+        output_type=output_type,
+        deps_type=AgentDeps,
+        model_settings=model_settings,
+        retries=3,
+    )
+    if tools:
+        for t in tools:
+            agent.tool(t)
+    return agent
+
 
 UNIVERSAL_SUBAGENT_PROMPT = """You are a capable, autonomous AI Subagent.
 You execute focused tasks delegated by primary agents.

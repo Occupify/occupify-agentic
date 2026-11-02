@@ -7,10 +7,12 @@ from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker, create_asyn
 
 # Ensure no real model requests ever leave test runs
 models.ALLOW_MODEL_REQUESTS = False
-os.environ["APP_ENV"] = "test"
+os.environ.setdefault("APP_ENV", "test")
 os.environ["ZAI_API_KEY"] = "mock-key-never-used"
 os.environ["PDF_EXTRACTOR"] = "pdfium"
 os.environ["DATABASE_URL"] = "sqlite+aiosqlite:///:memory:"
+os.environ.setdefault("ML_ENABLED", "false")
+os.environ["CORE_RPC_MODE"] = "mock"
 
 from app.core.config import Settings, get_settings  # noqa: E402
 
@@ -19,7 +21,7 @@ get_settings.cache_clear()
 
 from app.core.security import CurrentUser, get_current_user  # noqa: E402
 from app.db.models import Base  # noqa: E402
-from app.db.session import get_db_session, set_engine  # noqa: E402
+from app.db.session import get_db_session, get_sessionmaker, set_engine  # noqa: E402
 from app.main import app  # noqa: E402
 
 
@@ -62,9 +64,20 @@ def mock_user() -> CurrentUser:
 @pytest.fixture
 async def client(test_db, mock_user):
     async def override_get_db():
-        yield test_db
+        maker = get_sessionmaker()
+        async with maker() as session:
+            yield session
 
-    async def override_get_user():
+    from fastapi import Request
+
+    async def override_get_user(request: Request):
+        uid = request.headers.get("X-User-Id")
+        if uid:
+            return CurrentUser(
+                user_id=uid,
+                role=request.headers.get("X-User-Role", "ROLE_USER"),
+                email=request.headers.get("X-User-Email", ""),
+            )
         return mock_user
 
     app.dependency_overrides[get_db_session] = override_get_db

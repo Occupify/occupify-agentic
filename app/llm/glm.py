@@ -15,11 +15,17 @@ def get_model_settings() -> ModelSettings:
 
 def get_model() -> ZaiModel:
     settings = get_settings()
-    if not settings.ZAI_API_KEY and settings.APP_ENV != "test":
-        raise ValueError("ZAI_API_KEY is required and cannot be empty in non-test environment.")
+    if not settings.ZAI_API_KEY:
+        if settings.APP_ENV != "test":
+            raise RuntimeError(
+                "ZAI_API_KEY environment variable is required in non-test environments."
+            )
+        api_key = "dummy-key-for-test"
+    else:
+        api_key = settings.ZAI_API_KEY
 
     provider = ZaiProvider(
-        api_key=settings.ZAI_API_KEY or "dummy-key-for-test",
+        api_key=api_key,
         base_url=settings.ZAI_BASE_URL,
     )
     return ZaiModel(settings.GLM_MODEL, provider=provider)

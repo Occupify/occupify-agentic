@@ -1,0 +1,20 @@
+{
+  "jobs": [
+    {
+      "job": "J1",
+      "requirements": [
+        {
+          "ref": "J1.R1",
+          "status": "met",
+          "note": "Ứng viên có 3 năm kinh nghiệm phát triển REST APIs với FastAPI."
+        },
+        {
+          "ref": "J1.R2",
+          "status": "unclear",
+          "note": "Hồ sơ đề cập Docker nhưng chưa nêu kinh nghiệm Kubernetes cụ thể."
+        }
+      ],
+      "summary": "Ứng viên đáp ứng tốt yêu cầu chính về FastAPI; cần làm rõ thêm về kinh nghiệm Kubernetes."
+    }
+  ]
+}

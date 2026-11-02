@@ -1,0 +1,325 @@
+{
+  "g1": {
+    "worst_hit_rate": 1.0,
+    "mean_hit_rate": 1.0,
+    "worst_ndcg": 0.9785,
+    "mean_ndcg": 0.9829,
+    "total_leaks": 0,
+    "cve_pass": true,
+    "p50_latency_ms": 103206.5,
+    "p95_latency_ms": 124651.2,
+    "mean_tokens_in": 35274.5,
+    "mean_tokens_out": 5745.2,
+    "total_cost_usd": 0.0521
+  },
+  "freshness": {
+    "passed": true,
+    "closed_returned": false,
+    "filled_returned": false,
+    "total_items": 10
+  },
+  "injection": {
+    "shift_pass": true,
+    "rank_shift": 0,
+    "statuses_identical": true,
+    "rank_injected": 0,
+    "rank_clean": 0
+  },
+  "forced_search": {
+    "status": "succeeded",
+    "items_count": 10,
+    "stop_reason": "completed"
+  },
+  "ablation": [
+    {
+      "config": "1. Dense only",
+      "hit_at_3": true,
+      "ndcg_at_5": 1.0,
+      "latency_ms": 96882.0,
+      "tokens": 51643,
+      "cost_usd": 0.0072
+    },
+    {
+      "config": "2. + Lexical / RRF",
+      "hit_at_3": true,
+      "ndcg_at_5": 1.0,
+      "latency_ms": 93322.0,
+      "tokens": 40369,
+      "cost_usd": 0.0056
+    },
+    {
+      "config": "3. + Reranker",
+      "hit_at_3": true,
+      "ndcg_at_5": 1.0,
+      "latency_ms": 87997.0,
+      "tokens": 40014,
+      "cost_usd": 0.0055
+    },
+    {
+      "config": "4. + c/e (Full Core)",
+      "hit_at_3": true,
+      "ndcg_at_5": 1.0,
+      "latency_ms": 73444.0,
+      "tokens": 39842,
+      "cost_usd": 0.0055
+    },
+    {
+      "config": "5. + Forced Search Agent",
+      "hit_at_3": true,
+      "ndcg_at_5": 1.0,
+      "latency_ms": 33984.0,
+      "tokens": 12772,
+      "cost_usd": 0.0018
+    },
+    {
+      "config": "6. Plain Prompts",
+      "hit_at_3": true,
+      "ndcg_at_5": 1.0,
+      "latency_ms": 111915.0,
+      "tokens": 39868,
+      "cost_usd": 0.0055
+    }
+  ],
+  "sample_checks": [
+    {
+      "persona": "cv-a",
+      "project_title": "X\u00e2y d\u1ef1ng backend n\u1ec1n t\u1ea3ng \u0111\u1eb7t l\u1ecbch",
+      "job_title": "Backend Developer (Java Spring Boot)",
+      "req_text": "\u00cdt nh\u1ea5t 2 n\u0103m kinh nghi\u1ec7m Java/Spring Boot",
+      "evidence": "...",
+      "status": "met"
+    },
+    {
+      "persona": "cv-a",
+      "project_title": "H\u1ec7 th\u1ed1ng qu\u1ea3n l\u00fd v\u1eadn \u0111\u01a1n cho c\u00f4ng t",
+      "job_title": "Senior Node.js Engineer",
+      "req_text": "Kinh nghi\u1ec7m thi\u1ebft k\u1ebf h\u1ec7 th\u1ed1ng ph\u00e2n t\u00e1n v\u00e0 message queue",
+      "evidence": "...",
+      "status": "met"
+    },
+    {
+      "persona": "cv-a",
+      "project_title": "Trang qu\u1ea3n tr\u1ecb (admin dashboard) ch",
+      "job_title": "Frontend Developer (React/Next.js)",
+      "req_text": "Bi\u1ebft chuy\u1ec3n thi\u1ebft k\u1ebf Figma th\u00e0nh giao di\u1ec7n responsive",
+      "evidence": "...",
+      "status": "met"
+    },
+    {
+      "persona": "cv-a",
+      "project_title": "T\u00e1i thi\u1ebft k\u1ebf \u1ee9ng d\u1ee5ng thanh to\u00e1n di",
+      "job_title": "Mobile Interaction & Motion Designer",
+      "req_text": "Am hi\u1ec3u Human Interface Guidelines v\u00e0 Material Design 3",
+      "evidence": "...",
+      "status": "met"
+    },
+    {
+      "persona": "cv-a",
+      "project_title": "T\u1ed1i \u01b0u lu\u1ed3ng Checkout cho s\u00e0n th\u01b0\u01a1n",
+      "job_title": "Senior UX Architect (Checkout)",
+      "req_text": "Kinh nghi\u1ec7m ch\u1ea1y A/B Testing v\u00e0 theo d\u00f5i conversion rate",
+      "evidence": "...",
+      "status": "met"
+    },
+    {
+      "persona": "cv-a",
+      "project_title": "Ph\u00e2n t\u00edch d\u1eef li\u1ec7u b\u00e1n h\u00e0ng v\u00e0 dashb",
+      "job_title": "Data Analyst (SQL & PowerBI)",
+      "req_text": "Kinh nghi\u1ec7m tr\u00ecnh b\u00e0y b\u00e1o c\u00e1o cho c\u1ea5p qu\u1ea3n l\u00fd",
+      "evidence": "...",
+      "status": "met"
+    },
+    {
+      "persona": "cv-a",
+      "project_title": "X\u00e2y d\u1ef1ng backend n\u1ec1n t\u1ea3ng \u0111\u1eb7t l\u1ecbch",
+      "job_title": "DevOps Engineer (b\u00e1n th\u1eddi gian)",
+      "req_text": "Kinh nghi\u1ec7m tri\u1ec3n khai Kubernetes tr\u00ean m\u00f4i tr\u01b0\u1eddng production",
+      "evidence": "...",
+      "status": "met"
+    },
+    {
+      "persona": "cv-a",
+      "project_title": "Di chuy\u1ec3n h\u1ec7 th\u1ed1ng l\u00ean AWS",
+      "job_title": "Cloud/DevOps Engineer (AWS)",
+      "req_text": "C\u00f3 ch\u1ee9ng ch\u1ec9 AWS Solutions Architect l\u00e0 l\u1ee3i th\u1ebf",
+      "evidence": "...",
+      "status": "met"
+    },
+    {
+      "persona": "cv-a",
+      "project_title": "T\u00e1i thi\u1ebft k\u1ebf \u1ee9ng d\u1ee5ng thanh to\u00e1n di",
+      "job_title": "Senior UI/UX Lead Designer",
+      "req_text": "Kinh nghi\u1ec7m ph\u1ed1i h\u1ee3p v\u1edbi l\u1eadp tr\u00ecnh vi\u00ean iOS/Android qua Figm",
+      "evidence": "...",
+      "status": "met"
+    },
+    {
+      "persona": "cv-a",
+      "project_title": "T\u1ed1i \u01b0u lu\u1ed3ng Checkout cho s\u00e0n th\u01b0\u01a1n",
+      "job_title": "Visual Designer (Mega Sale)",
+      "req_text": "Gu th\u1ea9m m\u1ef9 hi\u1ec7n \u0111\u1ea1i, phong c\u00e1ch visual th\u01b0\u01a1ng m\u1ea1i \u0111i\u1ec7n t\u1eed",
+      "evidence": "...",
+      "status": "met"
+    },
+    {
+      "persona": "cv-a",
+      "project_title": "Chatbot AI ch\u0103m s\u00f3c kh\u00e1ch h\u00e0ng ti\u1ebfn",
+      "job_title": "AI Engineer (LLM & RAG)",
+      "req_text": "\u0110\u00e3 tri\u1ec3n khai \u00edt nh\u1ea5t 1 h\u1ec7 th\u1ed1ng RAG th\u1ef1c t\u1ebf",
+      "evidence": "...",
+      "status": "met"
+    },
+    {
+      "persona": "cv-a",
+      "project_title": "X\u00e2y d\u1ef1ng backend n\u1ec1n t\u1ea3ng \u0111\u1eb7t l\u1ecbch",
+      "job_title": "Backend Developer (Java Spring Boot)",
+      "req_text": "\u00cdt nh\u1ea5t 2 n\u0103m kinh nghi\u1ec7m Java/Spring Boot",
+      "evidence": "...",
+      "status": "met"
+    },
+    {
+      "persona": "cv-a",
+      "project_title": "H\u1ec7 th\u1ed1ng qu\u1ea3n l\u00fd v\u1eadn \u0111\u01a1n cho c\u00f4ng t",
+      "job_title": "Senior Node.js Engineer",
+      "req_text": "Kinh nghi\u1ec7m thi\u1ebft k\u1ebf h\u1ec7 th\u1ed1ng ph\u00e2n t\u00e1n v\u00e0 message queue",
+      "evidence": "...",
+      "status": "met"
+    },
+    {
+      "persona": "cv-a",
+      "project_title": "Data pipeline cho n\u1ec1n t\u1ea3ng qu\u1ea3ng c\u00e1",
+      "job_title": "Data Engineer",
+      "req_text": "Kinh nghi\u1ec7m x\u1eed l\u00fd d\u1eef li\u1ec7u quy m\u00f4 h\u00e0ng t\u1ef7 b\u1ea3n ghi",
+      "evidence": "...",
+      "status": "met"
+    },
+    {
+      "persona": "cv-a",
+      "project_title": "T\u00e1i thi\u1ebft k\u1ebf \u1ee9ng d\u1ee5ng thanh to\u00e1n di",
+      "job_title": "Mobile Interaction & Motion Designer",
+      "req_text": "\u00cdt nh\u1ea5t 2 n\u0103m thi\u1ebft k\u1ebf Motion & Interaction cho \u1ee9ng d\u1ee5ng di",
+      "evidence": "...",
+      "status": "met"
+    },
+    {
+      "persona": "cv-a",
+      "project_title": "Chatbot AI ch\u0103m s\u00f3c kh\u00e1ch h\u00e0ng ti\u1ebfn",
+      "job_title": "Data Annotator (ti\u1ebfng Vi\u1ec7t)",
+      "req_text": "C\u1ea9n th\u1eadn, tu\u00e2n th\u1ee7 h\u01b0\u1edbng d\u1eabn g\u00e1n nh\u00e3n",
+      "evidence": "...",
+      "status": "met"
+    },
+    {
+      "persona": "cv-a",
+      "project_title": "\u1ee8ng d\u1ee5ng giao \u0111\u1ed3 \u0103n React Native",
+      "job_title": "React Native Developer",
+      "req_text": "Kinh nghi\u1ec7m t\u00edch h\u1ee3p c\u1ed5ng thanh to\u00e1n",
+      "evidence": "...",
+      "status": "met"
+    },
+    {
+      "persona": "cv-a",
+      "project_title": "X\u00e2y d\u1ef1ng backend n\u1ec1n t\u1ea3ng \u0111\u1eb7t l\u1ecbch",
+      "job_title": "DevOps Engineer (b\u00e1n th\u1eddi gian)",
+      "req_text": "Kinh nghi\u1ec7m tri\u1ec3n khai Kubernetes tr\u00ean m\u00f4i tr\u01b0\u1eddng production",
+      "evidence": "...",
+      "status": "met"
+    },
+    {
+      "persona": "cv-a",
+      "project_title": "Ph\u00e2n t\u00edch d\u1eef li\u1ec7u b\u00e1n h\u00e0ng v\u00e0 dashb",
+      "job_title": "Data Analyst (SQL & PowerBI)",
+      "req_text": "Th\u00e0nh th\u1ea1o SQL v\u00e0 DAX",
+      "evidence": "...",
+      "status": "met"
+    },
+    {
+      "persona": "cv-a",
+      "project_title": "Trang qu\u1ea3n tr\u1ecb (admin dashboard) ch",
+      "job_title": "Frontend Developer (React/Next.js)",
+      "req_text": "N\u1eafm v\u1eefng React hooks v\u00e0 TypeScript",
+      "evidence": "...",
+      "status": "met"
+    },
+    {
+      "persona": "cv-a",
+      "project_title": "T\u00e1i thi\u1ebft k\u1ebf \u1ee9ng d\u1ee5ng thanh to\u00e1n di",
+      "job_title": "Senior UI/UX Lead Designer",
+      "req_text": "Kinh nghi\u1ec7m ph\u1ed1i h\u1ee3p v\u1edbi l\u1eadp tr\u00ecnh vi\u00ean iOS/Android qua Figm",
+      "evidence": "...",
+      "status": "met"
+    },
+    {
+      "persona": "cv-a",
+      "project_title": "Chatbot AI ch\u0103m s\u00f3c kh\u00e1ch h\u00e0ng ti\u1ebfn",
+      "job_title": "Data Annotator (ti\u1ebfng Vi\u1ec7t)",
+      "req_text": "Vi\u1ebft ti\u1ebfng Vi\u1ec7t chu\u1ea9n ch\u00ednh t\u1ea3",
+      "evidence": "...",
+      "status": "met"
+    },
+    {
+      "persona": "cv-a",
+      "project_title": "X\u00e2y d\u1ef1ng backend n\u1ec1n t\u1ea3ng \u0111\u1eb7t l\u1ecbch",
+      "job_title": "Backend Developer (Java Spring Boot)",
+      "req_text": "\u00cdt nh\u1ea5t 2 n\u0103m kinh nghi\u1ec7m Java/Spring Boot",
+      "evidence": "...",
+      "status": "met"
+    },
+    {
+      "persona": "cv-a",
+      "project_title": "H\u1ec7 th\u1ed1ng qu\u1ea3n l\u00fd v\u1eadn \u0111\u01a1n cho c\u00f4ng t",
+      "job_title": "Senior Node.js Engineer",
+      "req_text": "Kinh nghi\u1ec7m thi\u1ebft k\u1ebf h\u1ec7 th\u1ed1ng ph\u00e2n t\u00e1n v\u00e0 message queue",
+      "evidence": "...",
+      "status": "met"
+    },
+    {
+      "persona": "cv-a",
+      "project_title": "T\u00e1i thi\u1ebft k\u1ebf \u1ee9ng d\u1ee5ng thanh to\u00e1n di",
+      "job_title": "Mobile Interaction & Motion Designer",
+      "req_text": "\u00cdt nh\u1ea5t 2 n\u0103m thi\u1ebft k\u1ebf Motion & Interaction cho \u1ee9ng d\u1ee5ng di",
+      "evidence": "...",
+      "status": "met"
+    },
+    {
+      "persona": "cv-a",
+      "project_title": "T\u1ed1i \u01b0u lu\u1ed3ng Checkout cho s\u00e0n th\u01b0\u01a1n",
+      "job_title": "Visual Designer (Mega Sale)",
+      "req_text": "Thi\u1ebft k\u1ebf nhanh d\u01b0\u1edbi \u00e1p l\u1ef1c th\u1eddi gian chi\u1ebfn d\u1ecbch",
+      "evidence": "...",
+      "status": "met"
+    },
+    {
+      "persona": "cv-a",
+      "project_title": "H\u1ec7 th\u1ed1ng qu\u1ea3n l\u00fd v\u1eadn \u0111\u01a1n cho c\u00f4ng t",
+      "job_title": "Senior Node.js Engineer",
+      "req_text": "5+ n\u0103m ph\u00e1t tri\u1ec3n backend Node.js",
+      "evidence": "...",
+      "status": "met"
+    },
+    {
+      "persona": "cv-a",
+      "project_title": "Trang qu\u1ea3n tr\u1ecb (admin dashboard) ch",
+      "job_title": "Frontend Developer (React/Next.js)",
+      "req_text": "N\u1eafm v\u1eefng React hooks v\u00e0 TypeScript",
+      "evidence": "...",
+      "status": "met"
+    },
+    {
+      "persona": "cv-a",
+      "project_title": "T\u00e1i thi\u1ebft k\u1ebf \u1ee9ng d\u1ee5ng thanh to\u00e1n di",
+      "job_title": "Senior UI/UX Lead Designer",
+      "req_text": "Kinh nghi\u1ec7m ph\u1ed1i h\u1ee3p v\u1edbi l\u1eadp tr\u00ecnh vi\u00ean iOS/Android qua Figm",
+      "evidence": "...",
+      "status": "met"
+    },
+    {
+      "persona": "cv-a",
+      "project_title": "Chatbot AI ch\u0103m s\u00f3c kh\u00e1ch h\u00e0ng ti\u1ebfn",
+      "job_title": "AI Engineer (LLM & RAG)",
+      "req_text": "\u0110\u00e3 tri\u1ec3n khai \u00edt nh\u1ea5t 1 h\u1ec7 th\u1ed1ng RAG th\u1ef1c t\u1ebf",
+      "evidence": "...",
+      "status": "met"
+    }
+  ]
+}

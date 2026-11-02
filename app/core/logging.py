@@ -114,7 +114,14 @@ class JSONFormatter(logging.Formatter):
             entry["message"] = record.getMessage()
 
         if record.exc_info:
-            entry["exception"] = self.formatException(record.exc_info)
+            if ctx.get("redact_errors"):
+                exc_type, exc_val, _ = record.exc_info
+                entry["error_type"] = exc_type.__name__ if exc_type else "Exception"
+                entry["error_code"] = getattr(exc_val, "error_code", entry["error_type"])
+                if hasattr(exc_val, "status_code"):
+                    entry["status_code"] = getattr(exc_val, "status_code")
+            else:
+                entry["exception"] = self.formatException(record.exc_info)
 
         with _log_lock:
             _log_buffer.append(entry)

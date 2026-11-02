@@ -1,0 +1,12 @@
+{
+  "verdicts": [
+    {"ref": "J2.S1", "verdict": "missing", "cv_skill": null},
+    {"ref": "J2.S2", "verdict": "exact", "cv_skill": "Java"}
+  ],
+  "job_verdicts": {
+    "J2": [
+      {"job_skill": "JavaScript", "verdict": "missing", "cv_skill": null},
+      {"job_skill": "Java", "verdict": "exact", "cv_skill": "Java"}
+    ]
+  }
+}
