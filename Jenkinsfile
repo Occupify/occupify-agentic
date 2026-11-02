@@ -137,47 +137,8 @@ pipeline {
                 sh '''
                     set -eu
 
-                    echo ">> Checking deployment user..."
-                    id occupify
-
-                    echo ">> Pulling image and restarting service..."
-
-                    sudo -iu occupify bash -lc '
-                        set -eu
-
-                        export HOME=/home/occupify
-                        export XDG_RUNTIME_DIR=/run/user/1002
-                        export DBUS_SESSION_BUS_ADDRESS=unix:path=/run/user/1002/bus
-
-                        if [ "$(id -u)" -ne 1002 ]; then
-                            echo "ERROR: Deployment must run as UID 1002"
-                            exit 1
-                        fi
-
-                        if [ ! -d "$XDG_RUNTIME_DIR" ]; then
-                            echo "ERROR: Missing runtime directory: $XDG_RUNTIME_DIR"
-                            exit 1
-                        fi
-
-                        cd /home/occupify/.config/systemd/user/git-ops
-
-                        echo ">> Pulling latest image..."
-                        podman pull "${FULL_IMAGE}:latest"
-
-                        echo ">> Restarting Occupify Agentic..."
-                        systemctl --user restart occupify-be-agentic.service
-
-                        sleep 5
-
-                        echo ">> Checking service status..."
-                        systemctl --user is-active occupify-be-agentic.service
-
-                        echo ">> Container status..."
-                        podman ps -a --filter name=occupify-agentic
-
-                        echo ">> Recent container logs..."
-                        podman logs --tail 50 occupify-agentic
-                    '
+                    echo ">> Running server-side deployment script..."
+                    sudo -n -u occupify /usr/local/sbin/occupify-agentic-deploy
                 '''
             }
         }
