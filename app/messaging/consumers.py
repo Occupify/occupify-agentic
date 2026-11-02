@@ -1,7 +1,7 @@
 import logging
 from typing import Any
 
-from faststream.rabbit import RabbitMessage
+from faststream.rabbit.annotations import RabbitMessage
 
 from app.core.logging import log_step
 from app.db.session import get_sessionmaker
@@ -17,13 +17,14 @@ broker = get_broker()
 
 @broker.subscriber(queue=job_sync_queue, exchange=events_exchange)
 async def handle_project_event(
-    message: dict[str, Any], raw_message: RabbitMessage | None = None
+    message: dict[str, Any], raw_message: RabbitMessage
 ) -> None:
     """
     Handles project.* events from RabbitMQ (created, updated, status_changed, deleted).
     Re-sanitizes, re-embeds, and updates job_index.
     """
-    routing_key = raw_message.routing_key if raw_message else "project.updated"
+    raw = getattr(raw_message, "raw_message", raw_message)
+    routing_key = getattr(raw, "routing_key", "") or "project.updated"
     logger.info("Received project event [%s]", routing_key)
 
     project_id = str(message.get("id") or message.get("projectId") or "")
@@ -59,12 +60,13 @@ async def handle_project_event(
 
 @broker.subscriber(queue=job_item_queue, exchange=events_exchange)
 async def handle_job_event(
-    message: dict[str, Any], raw_message: RabbitMessage | None = None
+    message: dict[str, Any], raw_message: RabbitMessage
 ) -> None:
     """
     Handles job.* events from RabbitMQ (created, updated, closed, deleted).
     """
-    routing_key = raw_message.routing_key if raw_message else "job.updated"
+    raw = getattr(raw_message, "raw_message", raw_message)
+    routing_key = getattr(raw, "routing_key", "") or "job.updated"
     logger.info("Received job event [%s]", routing_key)
 
     job_id = str(message.get("id") or message.get("jobId") or "")
