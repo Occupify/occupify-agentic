@@ -16,9 +16,7 @@ broker = get_broker()
 
 
 @broker.subscriber(queue=job_sync_queue, exchange=events_exchange)
-async def handle_project_event(
-    message: dict[str, Any], raw_message: RabbitMessage
-) -> None:
+async def handle_project_event(message: dict[str, Any], raw_message: RabbitMessage) -> None:
     """
     Handles project.* events from RabbitMQ (created, updated, status_changed, deleted).
     Re-sanitizes, re-embeds, and updates job_index.
@@ -59,9 +57,7 @@ async def handle_project_event(
 
 
 @broker.subscriber(queue=job_item_queue, exchange=events_exchange)
-async def handle_job_event(
-    message: dict[str, Any], raw_message: RabbitMessage
-) -> None:
+async def handle_job_event(message: dict[str, Any], raw_message: RabbitMessage) -> None:
     """
     Handles job.* events from RabbitMQ (created, updated, closed, deleted).
     """
