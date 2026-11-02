@@ -69,7 +69,7 @@ async def handle_job_event(
 
     job_id = str(message.get("id") or message.get("jobId") or "")
     project_id = str(message.get("projectId") or message.get("project_id") or "")
-    status = str(message.get("status") or "").upper()
+    status = str(message.get("newStatus") or message.get("status") or "").upper()
 
     if routing_key in ("job.deleted", "job.closed") or status in ("CLOSED", "FILLED"):
         if job_id:
