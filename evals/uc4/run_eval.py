@@ -46,7 +46,6 @@ import pydantic_ai.models
 
 pydantic_ai.models.ALLOW_MODEL_REQUESTS = True
 
-from sqlalchemy import text
 from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker, create_async_engine
 from sqlalchemy.pool import NullPool
 
@@ -56,7 +55,8 @@ from app.core.security import CurrentUser
 from app.db.init import init_db
 from app.db.session import set_engine
 from app.documents.cv_text import prepare_cv_text
-from app.features.job_match.index.migrate import build as build_job_index, write_index
+from app.features.job_match.index.migrate import build as build_job_index
+from app.features.job_match.index.migrate import write_index
 from app.features.job_match.index.store import PgJobIndex, set_index_empty
 from app.features.job_match.pipeline import run_pipeline
 from app.features.job_match.ports import PipelineOptions, RunResult, RunState

@@ -15,7 +15,6 @@ Outputs evals/uc4/report_routing.md
 import argparse
 import asyncio
 import json
-import os
 import re
 import sys
 from datetime import UTC, datetime
@@ -27,11 +26,10 @@ import yaml
 REPO_ROOT = Path(__file__).resolve().parents[3]
 sys.path.insert(0, str(REPO_ROOT))
 
-from app.agents.deps import AgentDeps
-from app.core.security import CurrentUser
-from app.documents.cv_text import CvText, cache_cv_text
-from app.features.chat.agent import chat_agent
-from app.features.job_match.chat_tool import match_jobs_for_cv
+from app.agents.deps import AgentDeps  # noqa: E402
+from app.core.security import CurrentUser  # noqa: E402
+from app.documents.cv_text import CvText, cache_cv_text  # noqa: E402
+from app.features.chat.agent import chat_agent  # noqa: E402
 
 
 class RoutingCaseResult:
@@ -46,7 +44,9 @@ class RoutingCaseResult:
         self.reasons: list[str] = []
 
 
-def evaluate_routing_case(case: dict[str, Any], tools_called: list[str], criteria_called: dict[str, Any], text_output: str) -> tuple[bool, list[str]]:
+def evaluate_routing_case(
+    case: dict[str, Any], tools_called: list[str], criteria_called: dict[str, Any], text_output: str
+) -> tuple[bool, list[str]]:
     expected_tool = case.get("expected_tool", "none")
     expected_criteria = case.get("expected_criteria", {})
     reasons = []
@@ -84,7 +84,9 @@ def evaluate_routing_case(case: dict[str, Any], tools_called: list[str], criteri
 
     # 4. Narration check: model should not invent titles or scores in text
     if expected_tool == "match_jobs_for_cv":
-        if re.search(r"\b(?:9\d|8\d|7\d)%\b", text_output) or re.search(r"score\s*[:=]\s*\d", text_output, re.IGNORECASE):
+        if re.search(r"\b(?:9\d|8\d|7\d)%\b", text_output) or re.search(
+            r"score\s*[:=]\s*\d", text_output, re.IGNORECASE
+        ):
             passed = False
             reasons.append("Narration violation: scores mentioned in assistant text")
 
@@ -108,7 +110,7 @@ def determine_category(case_id: str) -> str:
 
 
 async def run_routing_suite(cases_path: Path, use_real_model: bool = False) -> dict[str, Any]:
-    with open(cases_path, "r", encoding="utf-8") as f:
+    with open(cases_path, encoding="utf-8") as f:
         data = yaml.safe_load(f)
 
     cases = data.get("cases", [])
@@ -176,9 +178,13 @@ async def run_routing_suite(cases_path: Path, use_real_model: bool = False) -> d
                     if "salary_type" in case.get("expected_criteria", {}):
                         criteria_called["salary_type"] = case["expected_criteria"]["salary_type"]
                     if "experience_level" in case.get("expected_criteria", {}):
-                        criteria_called["experience_level"] = case["expected_criteria"]["experience_level"]
+                        criteria_called["experience_level"] = case["expected_criteria"][
+                            "experience_level"
+                        ]
                     if "hours_per_day" in case.get("expected_criteria", {}):
-                        criteria_called["hours_per_day"] = case["expected_criteria"]["hours_per_day"]
+                        criteria_called["hours_per_day"] = case["expected_criteria"][
+                            "hours_per_day"
+                        ]
             text_chunks.append("Dưới đây là kết quả phù hợp với yêu cầu của bạn.")
         else:
             # Real model execution via pydantic_ai
@@ -212,7 +218,9 @@ async def run_routing_suite(cases_path: Path, use_real_model: bool = False) -> d
         res.criteria_passed = criteria_called
         res.text_response = "".join(text_chunks)
 
-        passed, reasons = evaluate_routing_case(case, tools_called, criteria_called, res.text_response)
+        passed, reasons = evaluate_routing_case(
+            case, tools_called, criteria_called, res.text_response
+        )
         if not passed:
             res.passed = False
             res.reasons.extend(reasons)
@@ -220,9 +228,15 @@ async def run_routing_suite(cases_path: Path, use_real_model: bool = False) -> d
         results.append(res)
 
     # Compute gate metrics
-    should_call_cases = [r for r in results if r.category in ("should_call", "need_cv", "criteria_exact", "adversarial_cv")]
+    should_call_cases = [
+        r
+        for r in results
+        if r.category in ("should_call", "need_cv", "criteria_exact", "adversarial_cv")
+    ]
     should_call_recalled = [r for r in should_call_cases if "match_jobs_for_cv" in r.tools_called]
-    should_call_recall = len(should_call_recalled) / len(should_call_cases) if should_call_cases else 1.0
+    should_call_recall = (
+        len(should_call_recalled) / len(should_call_cases) if should_call_cases else 1.0
+    )
 
     match_intent_served_by_search = sum(
         1 for r in should_call_cases if "search_filter_projects" in r.tools_called
@@ -235,8 +249,12 @@ async def run_routing_suite(cases_path: Path, use_real_model: bool = False) -> d
     criteria_matches = sum(1 for r in criteria_cases if r.passed)
     criteria_match_rate = criteria_matches / len(criteria_cases) if criteria_cases else 1.0
 
-    invented_criteria = sum(1 for r in results if any("Invented criterion" in reason for reason in r.reasons))
-    narration_violations = sum(1 for r in results if any("Narration violation" in reason for reason in r.reasons))
+    invented_criteria = sum(
+        1 for r in results if any("Invented criterion" in reason for reason in r.reasons)
+    )
+    narration_violations = sum(
+        1 for r in results if any("Narration violation" in reason for reason in r.reasons)
+    )
 
     gates = {
         "should_call_recall": {
@@ -310,27 +328,38 @@ def write_routing_report(eval_summary: dict[str, Any], output_path: Path):
         "|---|---|---|---|",
     ]
 
-    cats = ["should_call", "keyword_browse", "no_tool", "need_cv", "criteria_exact", "adversarial_cv"]
+    cats = [
+        "should_call",
+        "keyword_browse",
+        "no_tool",
+        "need_cv",
+        "criteria_exact",
+        "adversarial_cv",
+    ]
     for cat in cats:
         cat_cases = [r for r in results if r.category == cat]
         passed = sum(1 for r in cat_cases if r.passed)
         rate = passed / len(cat_cases) if cat_cases else 1.0
         lines.append(f"| `{cat}` | {len(cat_cases)} | {passed} | {rate:.1%} |")
 
-    lines.extend([
-        "",
-        "## 3. Detailed Case Results",
-        "",
-        "| ID | Category | Prompt | Tools Called | Status | Issues |",
-        "|---|---|---|---|---|---|",
-    ])
+    lines.extend(
+        [
+            "",
+            "## 3. Detailed Case Results",
+            "",
+            "| ID | Category | Prompt | Tools Called | Status | Issues |",
+            "|---|---|---|---|---|---|",
+        ]
+    )
 
     for r in results:
         status_badge = "PASS" if r.passed else "FAIL"
         tools_str = ", ".join(r.tools_called) if r.tools_called else "none"
         issues_str = "; ".join(r.reasons) if r.reasons else "none"
         prompt_snippet = r.prompt.replace("|", "\\|")
-        lines.append(f"| `{r.case_id}` | `{r.category}` | {prompt_snippet} | `{tools_str}` | {status_badge} | {issues_str} |")
+        lines.append(
+            f"| `{r.case_id}` | `{r.category}` | {prompt_snippet} | `{tools_str}` | {status_badge} | {issues_str} |"
+        )
 
     lines.append("")
     output_path.write_text("\n".join(lines), encoding="utf-8")
@@ -339,9 +368,18 @@ def write_routing_report(eval_summary: dict[str, Any], output_path: Path):
 
 def main():
     parser = argparse.ArgumentParser(description="Run UC4 Routing Evaluation")
-    parser.add_argument("--cases", type=str, default="evals/uc4/routing/cases.yaml", help="Path to cases YAML")
-    parser.add_argument("--output", type=str, default="evals/uc4/report_routing.md", help="Path to output markdown report")
-    parser.add_argument("--real-model", action="store_true", help="Use real model (requires API budget)")
+    parser.add_argument(
+        "--cases", type=str, default="evals/uc4/routing/cases.yaml", help="Path to cases YAML"
+    )
+    parser.add_argument(
+        "--output",
+        type=str,
+        default="evals/uc4/report_routing.md",
+        help="Path to output markdown report",
+    )
+    parser.add_argument(
+        "--real-model", action="store_true", help="Use real model (requires API budget)"
+    )
     args = parser.parse_args()
 
     cases_file = Path(args.cases)

@@ -354,4 +354,3 @@ async def test_hours_unknown_warning_emitted_when_hours_per_day_is_none(
 
     warn_codes = [w["code"] for w in res.warnings]
     assert "HOURS_UNKNOWN" in warn_codes
-

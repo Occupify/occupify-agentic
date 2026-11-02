@@ -71,7 +71,6 @@ class JobIndex(Protocol):
     async def index_state(self) -> Literal["ok", "missing", "mismatch"]: ...
 
 
-
 class PipelineOptions(BaseModel):
     dense: bool = True
     lexical: bool = True

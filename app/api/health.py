@@ -1,7 +1,6 @@
 from fastapi import APIRouter, Response, status
 from sqlalchemy import text
 
-from app.core.config import get_settings
 from app.db.session import get_engine
 from app.features.job_match.index import index_state, models_loaded
 from app.messaging.broker import is_broker_connected
@@ -16,7 +15,6 @@ async def health():
 
 @router.get("/ready")
 async def readiness(response: Response):
-    settings = get_settings()
     db_status = "DOWN"
 
     # 1. Check Database

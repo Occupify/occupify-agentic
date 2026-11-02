@@ -62,8 +62,7 @@ async def test_text_then_tool_call_runs_tool_and_continues():
     assert isinstance(events[-1], AgentStreamDone)
     done_event = events[-1]
     assert (
-        done_event.output
-        == "Preamble text before tool call... Final answer after tool execution."
+        done_event.output == "Preamble text before tool call... Final answer after tool execution."
     )
 
 

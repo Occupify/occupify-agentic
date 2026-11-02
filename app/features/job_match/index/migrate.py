@@ -124,7 +124,9 @@ async def write_index(
 
         if is_pg:
             dense_stmt = (
-                select(JobIndexRow.job_id, JobIndexRow.embedding.cosine_distance(q_vec).label("dist"))
+                select(
+                    JobIndexRow.job_id, JobIndexRow.embedding.cosine_distance(q_vec).label("dist")
+                )
                 .order_by("dist")
                 .limit(10)
             )

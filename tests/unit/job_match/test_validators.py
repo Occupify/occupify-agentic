@@ -1,13 +1,13 @@
 import pytest
+
+from app.features.job_match.ports import MatchCriteria
+from app.features.job_match.schemas import SalaryTypeFilter
 from app.features.job_match.validators import (
     clean_output_pii,
     validate_assessment_with_retry,
     validate_v3_criteria,
 )
 from app.skill_schemas.matching import ProjectAssessment, RequirementCheck
-
-from app.features.job_match.ports import MatchCriteria
-from app.features.job_match.schemas import SalaryTypeFilter
 from tests.unit.job_match.scripts import raw_invalid
 
 

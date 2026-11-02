@@ -1,7 +1,5 @@
-import asyncio
 from decimal import Decimal
-from typing import Any
-from unittest.mock import AsyncMock, MagicMock, patch
+from unittest.mock import MagicMock, patch
 
 import pytest
 from httpx import ASGITransport, AsyncClient
@@ -18,7 +16,7 @@ from app.features.job_match.chat_tool import (
     match_jobs_for_cv,
     render_job_match_markdown,
 )
-from app.features.job_match.ports import PipelineResult, RunOutcome, RunResult, RunStatus
+from app.features.job_match.ports import RunOutcome, RunResult, RunStatus
 from app.main import app
 
 
@@ -111,8 +109,10 @@ async def test_need_cv_when_none_or_expired():
     )
 
     # Even if index is missing/unavailable, missing CV takes precedence
-    with patch("app.features.job_match.chat_tool.models_loaded", return_value=True), \
-         patch("app.features.job_match.chat_tool.index_state", return_value="missing"):
+    with (
+        patch("app.features.job_match.chat_tool.models_loaded", return_value=True),
+        patch("app.features.job_match.chat_tool.index_state", return_value="missing"),
+    ):
         res = await match_jobs_for_cv(ctx)
 
     assert res["outcome"] == "NEED_CV"
@@ -170,9 +170,11 @@ async def test_timeout_returns_run_timeout():
     async def mock_slow_pipeline(*args, **kwargs):
         raise TimeoutError()
 
-    with patch("app.features.job_match.chat_tool.models_loaded", return_value=True), \
-         patch("app.features.job_match.chat_tool.index_state", return_value="ok"), \
-         patch("app.features.job_match.chat_tool.run_pipeline", side_effect=mock_slow_pipeline):
+    with (
+        patch("app.features.job_match.chat_tool.models_loaded", return_value=True),
+        patch("app.features.job_match.chat_tool.index_state", return_value="ok"),
+        patch("app.features.job_match.chat_tool.run_pipeline", side_effect=mock_slow_pipeline),
+    ):
         res = await match_jobs_for_cv(ctx)
 
     assert res["outcome"] == "RUN_TIMEOUT"
@@ -213,11 +215,14 @@ async def test_stream_progress_then_block_then_done(test_db):
 
     joined = "".join(events)
     assert "event: meta" in joined
-    assert "event: progress\ndata: {\"stage\": \"RETRIEVAL\"}" in joined
+    assert 'event: progress\ndata: {"stage": "RETRIEVAL"}' in joined
     assert "Here are the matches:" in joined
     assert "Matching Jobs" in joined
     assert "1. Backend Engineer" in joined
-    assert "event: done\ndata: {\"model\": \"test-model\", \"usage\": {\"tokensIn\": 150, \"tokensOut\": 30}}" in joined
+    assert (
+        'event: done\ndata: {"model": "test-model", "usage": {"tokensIn": 150, "tokensOut": 30}}'
+        in joined
+    )
 
 
 @pytest.mark.asyncio
@@ -292,9 +297,11 @@ async def test_summary_has_no_titles_scores_cv_or_employer_text():
     mock_result.missing_skills = ["Docker"]
     mock_result.warnings = []
 
-    with patch("app.features.job_match.chat_tool.models_loaded", return_value=True), \
-         patch("app.features.job_match.chat_tool.index_state", return_value="ok"), \
-         patch("app.features.job_match.chat_tool.run_pipeline", return_value=mock_result):
+    with (
+        patch("app.features.job_match.chat_tool.models_loaded", return_value=True),
+        patch("app.features.job_match.chat_tool.index_state", return_value="ok"),
+        patch("app.features.job_match.chat_tool.run_pipeline", return_value=mock_result),
+    ):
         summary = await match_jobs_for_cv(ctx)
 
     # Allowed keys only
@@ -320,8 +327,10 @@ async def test_summary_has_no_titles_scores_cv_or_employer_text():
 async def test_ready_200_when_index_missing():
     transport = ASGITransport(app=app)
     async with AsyncClient(transport=transport, base_url="http://test") as client:
-        with patch("app.api.health.index_state", return_value="missing"), \
-             patch("app.api.health.is_broker_connected", return_value=True):
+        with (
+            patch("app.api.health.index_state", return_value="missing"),
+            patch("app.api.health.is_broker_connected", return_value=True),
+        ):
             resp = await client.get("/ready")
             assert resp.status_code == 200
             data = resp.json()
@@ -342,8 +351,10 @@ async def test_source_mismatch_is_not_usable():
     ctx = MagicMock()
     ctx.deps = AgentDeps(user=user, turn_documents=[sha])
 
-    with patch("app.features.job_match.chat_tool.models_loaded", return_value=True), \
-         patch("app.features.job_match.chat_tool.index_state", return_value="mismatch"):
+    with (
+        patch("app.features.job_match.chat_tool.models_loaded", return_value=True),
+        patch("app.features.job_match.chat_tool.index_state", return_value="mismatch"),
+    ):
         res = await match_jobs_for_cv(ctx)
 
     assert res["outcome"] == "INDEX_UNAVAILABLE"
@@ -394,9 +405,11 @@ async def test_pipeline_dict_items_rendered_correctly():
     mock_result.missing_skills = []
     mock_result.warnings = []
 
-    with patch("app.features.job_match.chat_tool.models_loaded", return_value=True), \
-         patch("app.features.job_match.chat_tool.index_state", return_value="ok"), \
-         patch("app.features.job_match.chat_tool.run_pipeline", return_value=mock_result):
+    with (
+        patch("app.features.job_match.chat_tool.models_loaded", return_value=True),
+        patch("app.features.job_match.chat_tool.index_state", return_value="ok"),
+        patch("app.features.job_match.chat_tool.run_pipeline", return_value=mock_result),
+    ):
         summary = await match_jobs_for_cv(ctx)
 
     assert summary["outcome"] == "OK"
@@ -452,9 +465,11 @@ async def test_real_run_result_instance_with_top_missing_skills():
         warnings=[],
     )
 
-    with patch("app.features.job_match.chat_tool.models_loaded", return_value=True), \
-         patch("app.features.job_match.chat_tool.index_state", return_value="ok"), \
-         patch("app.features.job_match.chat_tool.run_pipeline", return_value=real_result):
+    with (
+        patch("app.features.job_match.chat_tool.models_loaded", return_value=True),
+        patch("app.features.job_match.chat_tool.index_state", return_value="ok"),
+        patch("app.features.job_match.chat_tool.run_pipeline", return_value=real_result),
+    ):
         summary = await match_jobs_for_cv(ctx)
 
     assert summary["outcome"] == "OK"
@@ -479,5 +494,3 @@ def test_outcome_renderings():
 
     vi_internal = render_job_match_markdown([], {}, [], "INTERNAL_ERROR", lang="vi")
     assert "Đã xảy ra lỗi" in vi_internal
-
-

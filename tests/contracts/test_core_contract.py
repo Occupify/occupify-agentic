@@ -3,6 +3,7 @@ from pathlib import Path
 
 import jsonschema
 import pytest
+
 from app.messaging.mock_core import MockCoreRpc
 
 

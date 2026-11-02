@@ -7,11 +7,11 @@ sys.path.insert(0, str(Path(__file__).resolve().parents[2]))
 
 import pypdfium2
 import yaml
+from app.documents.fetch import validate_pdf_bytes
 from reportlab.lib.pagesizes import letter
 from reportlab.lib.styles import ParagraphStyle, getSampleStyleSheet
 from reportlab.platypus import Paragraph, SimpleDocTemplate, Spacer
 
-from app.documents.fetch import validate_pdf_bytes
 from evals.uc4.render.layouts import render_layout_to_pdf
 
 

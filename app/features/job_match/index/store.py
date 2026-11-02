@@ -1,6 +1,5 @@
 import hashlib
 import logging
-from datetime import datetime
 from pathlib import Path
 from typing import Any, Literal
 
@@ -13,7 +12,6 @@ from app.db.session import get_sessionmaker
 from app.features.job_match.ports import IndexHit, IndexMeta, IndexRow, MatchCriteria
 from app.features.job_match.sanitize import DOC_TEXT_VERSION
 from app.features.job_match.schemas import HoursPerDayFilter
-from app.ml import models_loaded
 
 logger = logging.getLogger(__name__)
 
@@ -29,7 +27,9 @@ def get_expected_index_source() -> str:
     return "rpc"
 
 
-async def check_index_state_with_session(session: AsyncSession) -> Literal["ok", "missing", "mismatch"]:
+async def check_index_state_with_session(
+    session: AsyncSession,
+) -> Literal["ok", "missing", "mismatch"]:
     """Inspects index_meta in session and evaluates status against current settings."""
     settings = get_settings()
     try:

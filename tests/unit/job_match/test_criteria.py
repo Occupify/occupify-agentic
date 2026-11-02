@@ -1,8 +1,8 @@
 from decimal import Decimal
 
 import pytest
-from app.features.job_match.criteria import matches
 
+from app.features.job_match.criteria import matches
 from app.features.job_match.ports import IndexRow, MatchCriteria
 from app.features.job_match.schemas import (
     ExperienceLevelFilter,

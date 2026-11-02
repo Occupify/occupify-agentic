@@ -131,7 +131,9 @@ async def test_meta_mismatch_is_not_usable(pg_session: AsyncSession, fake_embedd
     assert state == "ok"
 
     # Mutate source in metadata to simulate mismatch
-    meta_row = (await pg_session.execute(select(IndexMetaModel).where(IndexMetaModel.id == 1))).scalar_one()
+    meta_row = (
+        await pg_session.execute(select(IndexMetaModel).where(IndexMetaModel.id == 1))
+    ).scalar_one()
     meta_row.source = "mismatched:fake_source"
     await pg_session.commit()
 
@@ -143,6 +145,7 @@ async def test_meta_mismatch_is_not_usable(pg_session: AsyncSession, fake_embedd
 @pytest.mark.asyncio
 async def test_ready_200_when_index_missing():
     from app.messaging import broker as broker_mod
+
     broker_mod._broker_connected = True
 
     app = create_app()

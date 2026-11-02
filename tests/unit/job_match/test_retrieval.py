@@ -1,6 +1,5 @@
-from app.features.job_match.retrieval import compute_exhausted, rrf_fuse
-
 from app.features.job_match.ports import IndexHit
+from app.features.job_match.retrieval import compute_exhausted, rrf_fuse
 
 
 def test_rrf_k60_prefers_items_in_both_lists():

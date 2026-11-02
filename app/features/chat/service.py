@@ -30,7 +30,7 @@ from app.core.security import CurrentUser
 from app.db.repositories.chat import ChatRepository
 from app.db.repositories.documents import DocumentRepository
 from app.documents.cv_text import prepare_cv_text
-from app.documents.extract import extract_pdf_text, validate_pdf_bytes
+from app.documents.extract import validate_pdf_bytes
 from app.features.chat.agent import chat_agent
 from app.features.chat.schemas import (
     AttachmentInfo,
@@ -218,7 +218,8 @@ class ChatService:
                     if msg.seq == existing_user_msg.seq + 1:
                         clean_atts = [
                             AttachmentInfo(**{k: v for k, v in a.items() if k != "sha256"})
-                            if isinstance(a, dict) else AttachmentInfo(**a)
+                            if isinstance(a, dict)
+                            else AttachmentInfo(**a)
                             for a in (existing_user_msg.attachments or [])
                         ]
                         return ChatReplyData(
@@ -325,7 +326,8 @@ class ChatService:
                     if msg.seq == existing_user_msg.seq + 1:
                         clean_atts = [
                             {k: v for k, v in a.items() if k != "sha256"}
-                            if isinstance(a, dict) else a
+                            if isinstance(a, dict)
+                            else a
                             for a in (existing_user_msg.attachments or [])
                         ]
                         yield f"event: meta\ndata: {json.dumps({'sessionId': session_id, 'newSession': False, 'messageId': msg.id, 'attachments': clean_atts})}\n\n"

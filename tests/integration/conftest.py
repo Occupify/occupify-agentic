@@ -34,7 +34,5 @@ async def pg_session(pg_engine):
     async with sessionmaker() as session:
         yield session
         # Truncate tables between tests
-        await session.execute(
-            text("TRUNCATE TABLE job_index, index_meta CASCADE;")
-        )
+        await session.execute(text("TRUNCATE TABLE job_index, index_meta CASCADE;"))
         await session.commit()

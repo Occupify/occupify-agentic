@@ -74,10 +74,18 @@ async def test_init_db_creates_extensions_tables_indexes(pg_session: AsyncSessio
 async def test_hybrid_search_filters(pg_session: AsyncSession, fake_embedder):
     store = PgJobIndex(session=pg_session, embedder=fake_embedder)
     r_hourly = make_test_row(
-        job_id="j-h-1", salary_type="HOURLY", budget_min=300000, budget_max=500000, doc_text="Java Hourly Developer"
+        job_id="j-h-1",
+        salary_type="HOURLY",
+        budget_min=300000,
+        budget_max=500000,
+        doc_text="Java Hourly Developer",
     )
     r_monthly = make_test_row(
-        job_id="j-m-1", salary_type="MONTHLY", budget_min=25000000, budget_max=40000000, doc_text="Java Monthly Engineer"
+        job_id="j-m-1",
+        salary_type="MONTHLY",
+        budget_min=25000000,
+        budget_max=40000000,
+        doc_text="Java Monthly Engineer",
     )
     rows = [r_hourly, r_monthly]
     vectors = fake_embedder.embed([r.doc_text for r in rows])
@@ -94,7 +102,10 @@ async def test_hybrid_search_filters(pg_session: AsyncSession, fake_embedder):
 @pytest.mark.asyncio
 async def test_filtered_dense_search_returns_full_top(pg_session: AsyncSession, fake_embedder):
     store = PgJobIndex(session=pg_session, embedder=fake_embedder)
-    rows = [make_test_row(job_id=f"j-dense-{i}", doc_text=f"Java developer specialized tier {i}") for i in range(10)]
+    rows = [
+        make_test_row(job_id=f"j-dense-{i}", doc_text=f"Java developer specialized tier {i}")
+        for i in range(10)
+    ]
     vectors = fake_embedder.embed([r.doc_text for r in rows])
     await write_index(pg_session, rows, vectors, embedder=fake_embedder)
 

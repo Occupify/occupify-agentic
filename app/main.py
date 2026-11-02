@@ -5,7 +5,6 @@ os.environ.setdefault("PYDANTIC_AI_NO_BANNER", "1")
 os.environ.setdefault("TQDM_DISABLE", "1")
 os.environ.setdefault("HF_HUB_DISABLE_PROGRESS_BARS", "1")
 
-import asyncio
 import logging
 from contextlib import asynccontextmanager
 from pathlib import Path
@@ -21,7 +20,6 @@ from app.core.config import get_settings
 from app.core.errors import AppError
 from app.core.logging import log_step, setup_logging
 from app.db.init import init_db
-from app.db.session import get_sessionmaker
 from app.features.chat import router as chat_router
 from app.messaging.broker import close_broker, start_broker
 from app.ml import load_models_in_background

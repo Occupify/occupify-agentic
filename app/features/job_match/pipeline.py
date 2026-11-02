@@ -11,6 +11,7 @@ from app.core.config import get_settings
 from app.core.logging import bind_context, log_step
 from app.core.pricing import calculate_token_cost
 from app.core.security import CurrentUser
+from app.documents.cv_text import gate_cv_text
 from app.features.job_match.assessment import assess_shortlisted_projects
 from app.features.job_match.criteria import matches as criteria_matches
 from app.features.job_match.freshness import check_projects_freshness
@@ -34,9 +35,7 @@ from app.features.job_match.scoring import (
 from app.features.job_match.search_agent import maybe_search_more
 from app.features.job_match.skill_match import match_skills_for_project
 from app.features.job_match.validators import validate_v3_criteria
-from app.documents.cv_text import CvText, gate_cv_text
 from app.ml import get_embedder, get_reranker
-from app.privacy.gate import clean as privacy_clean
 
 logger = logging.getLogger(__name__)
 
@@ -50,11 +49,12 @@ def handle_budget_exceeded_at_stage(stage: str) -> str:
     return "RUN_BUDGET_EXCEEDED"
 
 
-def clean_cv(text: str, source: str = "cv", is_file: bool = True, user: CurrentUser | None = None) -> str:
+def clean_cv(
+    text: str, source: str = "cv", is_file: bool = True, user: CurrentUser | None = None
+) -> str:
     """Cleans CV text using privacy gate. Raises exception if PII removal fails."""
     cv_obj = gate_cv_text(text, user=user)
     return cv_obj.text
-
 
 
 def sanitize_boundary_text(text: str, boundary_tag: str) -> str:
@@ -682,6 +682,7 @@ async def run_pipeline(
             skill_versions[sk] = meta.skill_version
 
     from collections import Counter
+
     counter = Counter(all_pool_missing_skills)
     top_missing = [s for s, _ in counter.most_common(5)]
 

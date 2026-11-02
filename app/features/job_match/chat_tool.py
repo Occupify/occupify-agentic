@@ -168,7 +168,9 @@ def render_job_match_markdown(
                     j_score = j.get("matchScore") or j.get("match_score", score)
                     pct = int(round(j_score * 100)) if j_score <= 1.0 else int(round(j_score))
                     salary = _format_salary(j)
-                    skills = j.get("matchedSkills") or j.get("matched_skills") or j.get("skills", [])
+                    skills = (
+                        j.get("matchedSkills") or j.get("matched_skills") or j.get("skills", [])
+                    )
                     skills_str = _format_skills(skills)
                     assessment = j.get("summary") or j.get("assessment", "")
 
@@ -289,7 +291,9 @@ async def match_jobs_for_cv(
 
     # 2. Criteria validation
     if min_budget is not None and max_budget is not None and min_budget > max_budget:
-        raise ModelRetry("min_budget cannot be greater than max_budget. Please correct the budget range.")
+        raise ModelRetry(
+            "min_budget cannot be greater than max_budget. Please correct the budget range."
+        )
 
     criteria_applied: dict[str, Any] = {}
     if salary_type is not None:
@@ -315,7 +319,9 @@ async def match_jobs_for_cv(
             "items": [],
         }
         ctx.deps.job_match_memo = summary
-        ctx.deps.job_match_block = render_job_match_markdown([], criteria_applied, [], "NEED_CV", lang=lang)
+        ctx.deps.job_match_block = render_job_match_markdown(
+            [], criteria_applied, [], "NEED_CV", lang=lang
+        )
         return summary
 
     # 4. Readiness checks
@@ -329,7 +335,9 @@ async def match_jobs_for_cv(
             "items": [],
         }
         ctx.deps.job_match_memo = summary
-        ctx.deps.job_match_block = render_job_match_markdown([], criteria_applied, [], "MODELS_LOADING", lang=lang)
+        ctx.deps.job_match_block = render_job_match_markdown(
+            [], criteria_applied, [], "MODELS_LOADING", lang=lang
+        )
         return summary
 
     idx_st = await index_state(session=ctx.deps.db)
@@ -343,7 +351,9 @@ async def match_jobs_for_cv(
             "items": [],
         }
         ctx.deps.job_match_memo = summary
-        ctx.deps.job_match_block = render_job_match_markdown([], criteria_applied, [], "INDEX_UNAVAILABLE", lang=lang)
+        ctx.deps.job_match_block = render_job_match_markdown(
+            [], criteria_applied, [], "INDEX_UNAVAILABLE", lang=lang
+        )
         return summary
 
     # 5. Progress handler
@@ -383,8 +393,14 @@ async def match_jobs_for_cv(
         cost_usd = getattr(run_res, "cost_usd", 0.0) or 0.0
         ctx.deps.pipeline_tokens_in += tokens_in
         ctx.deps.pipeline_tokens_out += tokens_out
-        status_val = run_res.status.value if hasattr(run_res.status, "value") else str(run_res.status)
-        outcome_val = run_res.outcome.value if hasattr(run_res.outcome, "value") else str(run_res.outcome or "MATCH_FOUND")
+        status_val = (
+            run_res.status.value if hasattr(run_res.status, "value") else str(run_res.status)
+        )
+        outcome_val = (
+            run_res.outcome.value
+            if hasattr(run_res.outcome, "value")
+            else str(run_res.outcome or "MATCH_FOUND")
+        )
         log_step(
             "job_match.end",
             run_id=state.run_id,
@@ -411,7 +427,9 @@ async def match_jobs_for_cv(
         item_summaries = [
             {
                 "rank": it.get("rank", idx) if isinstance(it, dict) else getattr(it, "rank", idx),
-                "projectId": it.get("projectId") or it.get("project_id", "") if isinstance(it, dict) else (getattr(it, "project_id", None) or getattr(it, "projectId", "")),
+                "projectId": it.get("projectId") or it.get("project_id", "")
+                if isinstance(it, dict)
+                else (getattr(it, "project_id", None) or getattr(it, "projectId", "")),
             }
             for idx, it in enumerate(run_res.items, start=1)
         ]
@@ -421,8 +439,7 @@ async def match_jobs_for_cv(
             or []
         )
         missing_skills = [
-            m.get("name") or str(m) if isinstance(m, dict) else str(m)
-            for m in raw_missing[:5]
+            m.get("name") or str(m) if isinstance(m, dict) else str(m) for m in raw_missing[:5]
         ]
         warnings_list = [
             w.get("code") if isinstance(w, dict) else str(w) for w in (run_res.warnings or [])
@@ -448,7 +465,9 @@ async def match_jobs_for_cv(
             "items": [],
         }
         ctx.deps.job_match_memo = summary
-        ctx.deps.job_match_block = render_job_match_markdown([], criteria_applied, [], "RUN_TIMEOUT", lang=lang)
+        ctx.deps.job_match_block = render_job_match_markdown(
+            [], criteria_applied, [], "RUN_TIMEOUT", lang=lang
+        )
         return summary
     except Exception as exc:
         logger.exception("Error executing match_jobs_for_cv: %s", exc)
@@ -461,5 +480,7 @@ async def match_jobs_for_cv(
             "items": [],
         }
         ctx.deps.job_match_memo = summary
-        ctx.deps.job_match_block = render_job_match_markdown([], criteria_applied, [], "INTERNAL_ERROR", lang=lang)
+        ctx.deps.job_match_block = render_job_match_markdown(
+            [], criteria_applied, [], "INTERNAL_ERROR", lang=lang
+        )
         return summary

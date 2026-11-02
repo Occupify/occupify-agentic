@@ -128,4 +128,3 @@ __all__ = [
     "load_models_in_background",
     "models_loaded",
 ]
-

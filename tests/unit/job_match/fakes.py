@@ -139,7 +139,6 @@ class FakeJobIndex:
         return "ok"
 
 
-
 def get_default_test_model(name: str) -> Any:
     from pydantic_ai.messages import ModelResponse, ToolCallPart
     from pydantic_ai.models.function import AgentInfo, FunctionModel

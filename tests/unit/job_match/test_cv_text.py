@@ -1,5 +1,4 @@
 import hashlib
-from unittest.mock import MagicMock
 
 import pytest
 
@@ -31,10 +30,10 @@ def test_one_gate_applied_once(monkeypatch):
     raw_cv = """
     Nguyễn Văn Candidate
     Kỹ sư phần mềm
-    
+
     Kinh nghiệm làm việc:
     - 3 năm lập trình Python, FastAPI và PostgreSQL.
-    
+
     Kỹ năng:
     - Python, Docker, Kubernetes
     """

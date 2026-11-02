@@ -32,7 +32,9 @@ def gate_cv_text(raw_text: str, user: Any = None) -> CvText:
     lines = raw_text.splitlines()
     pre_lines = []
     for i, line in enumerate(lines):
-        if i < 5 and re.match(r"^\s*(?:#{1,6}\s*)?(?:curriculum\s+vitae|resume|cv)\s*$", line, re.IGNORECASE):
+        if i < 5 and re.match(
+            r"^\s*(?:#{1,6}\s*)?(?:curriculum\s+vitae|resume|cv)\s*$", line, re.IGNORECASE
+        ):
             pre_lines.append("")
         else:
             pre_lines.append(line)
@@ -152,7 +154,9 @@ async def get_cv_text(sha256: str, session: AsyncSession | None = None) -> CvTex
     return None
 
 
-async def prepare_cv_text(pdf_bytes: bytes, user: Any, session: AsyncSession | None = None) -> CvText:
+async def prepare_cv_text(
+    pdf_bytes: bytes, user: Any, session: AsyncSession | None = None
+) -> CvText:
     pdf_sha256 = hashlib.sha256(pdf_bytes).hexdigest()
     cached = await get_cv_text(pdf_sha256, session=session)
     if cached is not None:

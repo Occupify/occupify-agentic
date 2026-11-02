@@ -100,9 +100,7 @@ async def get_session_messages(
             role=m.role,
             displayText=m.display_text,
             attachments=[
-                {k: v for k, v in a.items() if k != "sha256"}
-                if isinstance(a, dict)
-                else a
+                {k: v for k, v in a.items() if k != "sha256"} if isinstance(a, dict) else a
                 for a in (m.attachments or [])
             ],
             createdAt=m.created_at,
