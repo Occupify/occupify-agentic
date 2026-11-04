@@ -1,0 +1,238 @@
+version: "1.0"
+benchmark_name: "career_consultant_rag_eval"
+description: "Benchmark evaluation set for Career Consultant RAG (UC1) covering roadmaps, ESCO skills, O*NET occupations, transferable skills, multi-source conflicts, and out-of-domain abstentions."
+
+cases:
+  # ---------------------------------------------------------
+  # 1. Learning Roadmaps (roadmap.sh)
+  # ---------------------------------------------------------
+  - id: "roadmap-01"
+    category: "roadmap"
+    query: "What is the recommended roadmap and key steps to become a Backend Developer?"
+    expected_sources: ["roadmap.sh"]
+    expected_keywords: ["Backend", "API", "Database", "Authentication", "Architecture"]
+    expected_abstention: false
+    notes: "Core role-based learning path for Backend Developer."
+
+  - id: "roadmap-02"
+    category: "roadmap"
+    query: "What foundational technologies should a Frontend Developer learn according to the roadmap?"
+    expected_sources: ["roadmap.sh"]
+    expected_keywords: ["Frontend", "HTML", "CSS", "JavaScript", "Frameworks"]
+    expected_abstention: false
+    notes: "Core role-based learning path for Frontend Developer."
+
+  - id: "roadmap-03"
+    category: "roadmap"
+    query: "What are the required milestones and tools to become a DevOps Engineer?"
+    expected_sources: ["roadmap.sh"]
+    expected_keywords: ["DevOps", "Linux", "Docker", "Kubernetes", "CI/CD"]
+    expected_abstention: false
+    notes: "Infrastructure and cloud automation roadmap."
+
+  - id: "roadmap-04"
+    category: "roadmap"
+    query: "What steps are needed to learn PostgreSQL database administration?"
+    expected_sources: ["roadmap.sh"]
+    expected_keywords: ["PostgreSQL", "Database", "Replication", "Backup", "Indexing"]
+    expected_abstention: false
+    notes: "Skill/specialization roadmap for PostgreSQL DBA."
+
+  - id: "roadmap-05"
+    category: "roadmap"
+    query: "What is the learning path for an AI Red Teamer in cyber security?"
+    expected_sources: ["roadmap.sh"]
+    expected_keywords: ["AI Red Teamer", "Adversarial", "Prompt Injection", "Model Security"]
+    expected_abstention: false
+    notes: "Security and AI adversarial testing roadmap."
+
+  - id: "roadmap-06"
+    category: "roadmap"
+    query: "What are the core stages in the Machine Learning Engineer roadmap?"
+    expected_sources: ["roadmap.sh"]
+    expected_keywords: ["Machine Learning", "Python", "Mathematics", "Model Training", "Deployment"]
+    expected_abstention: false
+    notes: "AI & ML roadmap progression."
+
+  # ---------------------------------------------------------
+  # 2. Technical Competencies & Skills (ESCO)
+  # ---------------------------------------------------------
+  - id: "esco-01"
+    category: "esco"
+    query: "What are the essential skills and competencies defined for a software developer in ESCO?"
+    expected_sources: ["esco"]
+    expected_keywords: ["software developer", "programming", "system analysis", "coding"]
+    expected_abstention: false
+    notes: "Standard European occupation profile and core competencies."
+
+  - id: "esco-02"
+    category: "esco"
+    query: "What digital skills are required for data science and big data processing in ESCO taxonomy?"
+    expected_sources: ["esco"]
+    expected_keywords: ["data science", "data analytics", "statistical analysis", "digital skills"]
+    expected_abstention: false
+    notes: "ESCO digital skill competencies."
+
+  - id: "esco-03"
+    category: "esco"
+    query: "What transversal skills are important for technical and engineering management?"
+    expected_sources: ["esco"]
+    expected_keywords: ["leadership", "team management", "communication", "problem solving"]
+    expected_abstention: false
+    notes: "ESCO transversal skills collection."
+
+  - id: "esco-04"
+    category: "esco"
+    query: "What competencies are associated with green skills and sustainable technology in European classification?"
+    expected_sources: ["esco"]
+    expected_keywords: ["sustainable", "environmental", "energy efficiency", "green skills"]
+    expected_abstention: false
+    notes: "ESCO green skills collection."
+
+  - id: "esco-05"
+    category: "esco"
+    query: "What are the occupational requirements and skill relations for a database administrator according to ESCO?"
+    expected_sources: ["esco"]
+    expected_keywords: ["database", "SQL", "data integrity", "database management systems"]
+    expected_abstention: false
+    notes: "ESCO occupation-skill relations."
+
+  # ---------------------------------------------------------
+  # 3. Occupational Profiles & Tasks (O*NET)
+  # ---------------------------------------------------------
+  - id: "onet-01"
+    category: "onet"
+    query: "What are the core work activities and tasks of Computer and Information Systems Managers according to O*NET?"
+    expected_sources: ["onet"]
+    expected_keywords: ["Information Systems", "11-3021.00", "technology", "management", "operations"]
+    expected_abstention: false
+    notes: "O*NET SOC management occupation profile."
+
+  - id: "onet-02"
+    category: "onet"
+    query: "What abilities and essential skills are rated high importance for Chief Executives in O*NET?"
+    expected_sources: ["onet"]
+    expected_keywords: ["11-1011.00", "Oral Comprehension", "Written Comprehension", "Decision Making"]
+    expected_abstention: false
+    notes: "O*NET abilities and essential skills scale data."
+
+  - id: "onet-03"
+    category: "onet"
+    query: "What are the duties and tasks of Information Security Analysts in O*NET?"
+    expected_sources: ["onet"]
+    expected_keywords: ["security", "network", "vulnerability", "risk assessment"]
+    expected_abstention: false
+    notes: "O*NET cybersecurity occupation profile."
+
+  - id: "onet-04"
+    category: "onet"
+    query: "What are the educational requirements and job zones for Database Administrators in O*NET?"
+    expected_sources: ["onet"]
+    expected_keywords: ["Database Administrators", "education", "bachelor", "work activities"]
+    expected_abstention: false
+    notes: "O*NET occupational requirements."
+
+  - id: "onet-05"
+    category: "onet"
+    query: "What are the related occupations and career exploration options for Software Developers in O*NET?"
+    expected_sources: ["onet"]
+    expected_keywords: ["Software Developers", "Computer Programmers", "Computer Systems Analysts"]
+    expected_abstention: false
+    notes: "O*NET career exploration & related occupations."
+
+  # ---------------------------------------------------------
+  # 4. Ambiguous Queries & Transferable Skills
+  # ---------------------------------------------------------
+  - id: "transferable-01"
+    category: "transferable_skills"
+    query: "How can a Software QA Engineer transfer skills to become a Backend Developer or DevOps Engineer?"
+    expected_sources: ["roadmap.sh", "esco", "onet"]
+    expected_keywords: ["testing", "automation", "CI/CD", "APIs", "backend"]
+    expected_abstention: false
+    notes: "Career transition and transferable skills analysis."
+
+  - id: "transferable-02"
+    category: "transferable_skills"
+    query: "What transferable analytical competencies allow a Data Analyst to transition into a Data Engineer?"
+    expected_sources: ["roadmap.sh", "esco", "onet"]
+    expected_keywords: ["SQL", "ETL", "data modeling", "Python", "pipelines"]
+    expected_abstention: false
+    notes: "Transition from analytics to data engineering."
+
+  - id: "ambiguous-01"
+    category: "ambiguous"
+    query: "I want to do 'coding with computers' - what distinct roles exist and what should I choose?"
+    expected_sources: ["roadmap.sh", "esco"]
+    expected_keywords: ["Frontend", "Backend", "Fullstack", "DevOps", "Software Developer"]
+    expected_abstention: false
+    notes: "Vague query requiring categorization into distinct tracks."
+
+  - id: "ambiguous-02"
+    category: "ambiguous"
+    query: "Which tech job is best for someone who likes both design and technical implementation?"
+    expected_sources: ["roadmap.sh", "esco"]
+    expected_keywords: ["Frontend", "Product Design", "UX Designer", "Design Systems"]
+    expected_abstention: false
+    notes: "Ambiguous hybrid role guidance."
+
+  # ---------------------------------------------------------
+  # 5. Multi-Source / Conflicting Queries
+  # ---------------------------------------------------------
+  - id: "multi-01"
+    category: "multi_source"
+    query: "Compare how European ESCO and American O*NET classify the responsibilities and skills of Information Security Specialists."
+    expected_sources: ["esco", "onet"]
+    expected_keywords: ["ESCO", "O*NET", "security", "competence", "SOC"]
+    expected_abstention: false
+    notes: "Cross-jurisdiction taxonomy comparison (EU vs US)."
+
+  - id: "multi-02"
+    category: "multi_source"
+    query: "Synthesize the practical learning path from roadmap.sh with the formal competency taxonomy of ESCO for Fullstack Developers."
+    expected_sources: ["roadmap.sh", "esco"]
+    expected_keywords: ["Fullstack", "roadmap", "ESCO", "frontend", "backend", "competencies"]
+    expected_abstention: false
+    notes: "Multi-source synthesis combining learning milestones and formal competencies."
+
+  # ---------------------------------------------------------
+  # 6. Insufficient Evidence / Out-of-Domain Queries (Abstention)
+  # ---------------------------------------------------------
+  - id: "abstain-01"
+    category: "out_of_domain"
+    query: "What are the certified qualifications and requirements to become an Intergalactic Warp Drive Pilot in 2026?"
+    expected_sources: []
+    expected_keywords: []
+    expected_abstention: true
+    notes: "Fictional occupation; system must cleanly abstain with zero fabricated citations."
+
+  - id: "abstain-02"
+    category: "out_of_domain"
+    query: "How do I become an apprentice Hogwarts Wizard specializing in Defense Against the Dark Arts?"
+    expected_sources: []
+    expected_keywords: []
+    expected_abstention: true
+    notes: "Fictional domain query; must abstain cleanly."
+
+  - id: "abstain-03"
+    category: "out_of_domain"
+    query: "What is the standard salary and bonus structure for cryptocurrency time-travel arbitrageurs?"
+    expected_sources: []
+    expected_keywords: []
+    expected_abstention: true
+    notes: "Nonsensical career query; must abstain."
+
+  - id: "abstain-04"
+    category: "out_of_domain"
+    query: "Tell me the top 10 culinary recipes for baking French sourdough bread."
+    expected_sources: []
+    expected_keywords: []
+    expected_abstention: true
+    notes: "Completely outside career domain; must abstain or state no relevant career knowledge."
+
+  - id: "abstain-05"
+    category: "out_of_domain"
+    query: "How do I become a licensed teleportation operator in Atlantis?"
+    expected_sources: []
+    expected_keywords: []
+    expected_abstention: true
+    notes: "Mythical occupation outside of ESCO/ONET/roadmap scope; must abstain."
