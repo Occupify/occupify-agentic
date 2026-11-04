@@ -1,0 +1,338 @@
+# Engineering Manager
+
+## Metadata
+- Type: Role
+- Domain: Product & Leadership
+- Source: roadmap.sh
+- Source URL: https://roadmap.sh/engineering-manager
+- Related Roles:
+  - Backend Developer
+  - Software Architect
+  - Product Manager
+
+---
+
+## 1. Beginner
+
+### 1.1 What is Engineering Management?
+- **EM vs Tech Lead vs IC**
+  - An individual contributor (IC) focuses on executing technical work. A tech lead guides technical direction while remaining hands-on.
+- **People**
+  - The people dimension of engineering management covers hiring, developing, retaining, and supporting the engineers on the team. This includes running 1:1s, identifying growth opportunities, managing performance, and creating conditions where people do their best work.
+- **Product**
+  - Engineering managers work closely with product to understand requirements, clarify scope, and ensure the team builds things that solve real user problems. This requires enough product context to push back when needed and enough collaboration to keep development and product aligned.
+- **Process**
+  - Process refers to how work gets planned, tracked, and delivered. An engineering manager owns or shapes the rituals and workflows the team uses, from sprint planning to incident reviews, ensuring process serves the team rather than the other way around.
+- **Architectural Decision-Making**
+  - Architectural decisions shape how a system evolves over time. Engineering managers participate in these decisions by bringing business context, facilitating discussion between senior engineers, and ensuring decisions are documented with their reasoning.
+- **System Monitoring & Performance**
+  - Monitoring gives a team visibility into how their systems behave in production. Engineering managers promote good observability practices, ensure the team has useful dashboards and alerts, and treat monitoring as a first-class requirement rather than an afterthought.
+- **Scaling Infrastructure**
+  - Scaling infrastructure means designing and operating systems that can handle growing load without degrading. Engineering managers need enough context to prioritize scaling work appropriately, understand when capacity is becoming a bottleneck, and support engineers working on database performance, caching, distributed systems, or cloud resource planning.
+- **Software Engineering Background**
+  - An engineering manager needs enough software engineering experience to earn technical credibility, evaluate trade-offs, and support their team's work. This does not require being the most senior engineer in the room, but it does require understanding how software is built, what makes a codebase hard to maintain, and how technical decisions have long-term consequences.
+- **System Design and Architecture**
+  - System design covers how software components are structured and how they communicate. An engineering manager needs to understand architectural patterns well enough to participate in design discussions, identify risks in proposed solutions, and evaluate whether the team's technical approach fits the product's scale and reliability requirements.
+- **Technical Debt and Management**
+  - Technical debt refers to shortcuts taken in code or architecture that create future maintenance costs. Engineering managers help the team identify, prioritize, and pay down debt by advocating for time on the roadmap, framing the business risk of deferred work, and helping stakeholders understand the trade-off between speed and long-term system health.
+- **Technical Documentation**
+  - Technical documentation captures how systems work, how decisions were made, and how to operate software in production. Engineering managers encourage a culture of documentation by making it part of the team's definition of done and by demonstrating its value when onboarding new engineers or recovering from incidents.
+- **Code Review Best Practices**
+  - Code review is the process of having engineers examine each other's code before merging. Good code review practices improve code quality, spread knowledge across the team, and catch bugs early.
+- **Technical Roadmapping**
+  - A technical roadmap outlines the engineering work planned over time, separate from or in complement to the product roadmap. Engineering managers build and maintain it to give the team clarity on direction, help stakeholders understand upcoming investments, and create space for infrastructure and platform work that does not directly map to product features.
+- **Build vs Buy Evaluation**
+  - Build vs buy is the decision of whether to develop a capability in-house or use an existing tool, service, or vendor. Engineering managers lead this evaluation by weighing total cost of ownership, team expertise, integration complexity, and strategic fit, then building a recommendation stakeholders can act on.
+- **Technical Risk Assessment**
+  - Technical risk assessment involves identifying what could go wrong in a system or project from a technical standpoint and deciding how to address it. Engineering managers surface risks early, work with the team to mitigate them where practical, and communicate remaining risk to stakeholders so decisions are made with accurate information.
+- **CI/CD Implementation**
+  - CI/CD (continuous integration and continuous delivery) automates the process of building, testing, and deploying software. Engineering managers support CI/CD adoption because it reduces integration risk, shortens feedback loops, and makes deployments less stressful.
+- **Development / Release Workflow**
+  - A development and release workflow defines how code moves from an engineer's local machine to production. This includes branching strategies, code review gates, staging environments, and deployment processes.
+- **Technical Standards Setting**
+  - Technical standards are shared conventions the team agrees to follow, such as coding style, API design patterns, error handling approaches, and logging formats. Engineering managers facilitate the process of defining and evolving these standards, ensuring they are practical, documented, and adopted without becoming bureaucratic overhead.
+- **Security  Best Practices**
+  - Security best practices in engineering cover how code is written, how data is handled, how access is controlled, and how vulnerabilities are managed. Engineering managers are responsible for ensuring the team takes security seriously, participates in security reviews, and responds promptly to vulnerabilities, even when security is not the team's primary focus.
+- **Testing Strategies**
+  - Testing strategies define how a team verifies that software works correctly. This spans unit tests, integration tests, end-to-end tests, and manual QA.
+- **Incident Management**
+  - Incident management is the process of detecting, responding to, and recovering from production outages or degradations. Engineering managers ensure the team has clear on-call processes, runbooks, and escalation paths.
+- **Hiring and Recruitment**
+  - Hiring involves sourcing candidates, running interviews, evaluating skills, and making offers. Engineering managers own or co-own this process for their team.
+- **Team Structure and Design**
+  - Team structure defines how engineers are grouped, what they own, and how they interact with other teams. Engineering managers think about structure in terms of ownership clarity, cognitive load, and communication overhead.
+- **Performance Evaluations**
+  - Performance evaluations are structured assessments of how an engineer is meeting expectations for their role and level. Engineering managers conduct these with concrete feedback grounded in observed work, not just impressions.
+- **Mentoring and Coaching**
+  - Mentoring involves sharing experience and knowledge to help someone grow. Coaching involves asking questions to help someone solve problems and develop their own thinking.
+- **Career Development Planning**
+  - Career development planning involves helping engineers identify where they want to grow and creating conditions for that growth. Engineering managers map an engineer's interests and strengths to opportunities on the team or elsewhere in the organization and give regular feedback on progress toward career goals.
+- **Delegation**
+  - Delegation is the practice of assigning work, decisions, or responsibilities to others rather than doing everything yourself. Engineering managers delegate to develop their team's capabilities, free themselves up for higher-leverage work, and build ownership within the team.
+- **Conflict Resolution**
+  - Conflict between team members or across teams is a normal part of collaborative work. Engineering managers address conflict by creating space for honest conversation, helping parties understand each other's positions, and facilitating agreements.
+- **Feedback Delivery**
+  - An Engineering Manager plays a vital role in delivering feedback. Constructive feedback reinforces positive behaviors and corrects any missteps, effectively enhancing team dynamics.
+- **Team Motivation**
+  - Team motivation refers to maintaining conditions in which engineers feel engaged, challenged, and valued. Engineering managers influence motivation through how they structure work, recognize contributions, involve the team in decisions, and remove obstacles.
+- **Trust / Influence Building**
+  - Trust is built through consistent follow-through, honest communication, and showing genuine interest in the people you work with. Engineering managers who have the trust of their team can navigate ambiguity, deliver hard messages, and drive change more effectively.
+- **One-on-One Meetings**
+  - One-on-one meetings are regular, private conversations between an engineering manager and each direct report. They serve as a space for feedback, career conversations, and raising concerns that would not surface in a group setting.
+- **Team Meetings**
+  - Team meetings bring the full team together to share information, align on priorities, or collaborate on decisions. Engineering managers design these meetings with a clear purpose, keep them focused, and avoid letting them become status theaters.
+- **Status Reporting**
+  - Status reporting is the practice of communicating the state of work to stakeholders and leadership on a regular basis. Engineering managers produce status updates that are concise, accurate, and highlight risks alongside progress.
+- **Stakeholder Management**
+  - Stakeholder management involves identifying the people who have a stake in the team's work, understanding their needs and expectations, and communicating with them proactively. Engineering managers work with stakeholders inside and outside the organization, including product managers, executives, customers, and partner teams.
+- **Cross-functional Collaboration**
+  - Cross-functional collaboration means working effectively with people from design, product, data, marketing, and other disciplines to deliver outcomes. Engineering managers facilitate this by ensuring the team understands how their work connects to others, by representing engineering needs in cross-functional discussions, and by resolving coordination problems that slow delivery.
+- **Resource Allocation**
+  - Resource allocation is the process of deciding how to distribute engineering capacity across competing priorities. Engineering managers balance short-term delivery with investments in reliability, developer experience, and technical debt.
+- **Sprint Planning**
+  - Sprint planning is the process of selecting and organizing work for an upcoming sprint. Engineering managers ensure the sprint goal is clear, that engineers have enough context to get started, and that the team's capacity is accounted for honestly.
+- **Release Management**
+  - Release management covers the process of planning, scheduling, and controlling when software is deployed to production. Engineering managers ensure releases are predictable and low-risk, with appropriate testing and rollback plans in place.
+- **Risk Management**
+  - Risk management in project planning involves identifying what could prevent the team from delivering on time or at the expected quality, and deciding what to do about it. Engineering managers surface risks early, track them over time, and communicate them to stakeholders before they become blockers.
+- **Dependency management**
+  - Dependency management refers to tracking and resolving the external dependencies a project has on other teams, systems, or third-party components. Engineering managers map dependencies at the start of planning, follow up to keep them unblocked, and escalate when dependency delays are putting the project at risk.
+- **Agile methodologies**
+  - Agile methodologies are approaches to software development that emphasize iteration, collaboration, and responding to change over following a fixed plan. Common frameworks include Scrum, Kanban, and SAFe.
+- **Project Tracking**
+  - Project tracking is the ongoing process of monitoring the state of work in progress. Engineering managers use tracking tools, standups, and direct conversation to maintain awareness of what is on track, what is blocked, and what has changed.
+- **Milestone Management**
+  - Milestones are defined checkpoints in a project that mark meaningful progress toward a goal. Engineering managers set milestones to give the team and stakeholders a shared sense of progress and to create natural review points where scope or approach can be revisited if needed.
+- **Scope Management**
+  - Scope management involves defining what a project includes and actively controlling changes to that definition. Engineering managers defend scope from growth that was not planned for and facilitate decisions when stakeholders want to add requirements mid-delivery.
+- **Timeline Estimation**
+  - Timeline estimation is the process of predicting how long work will take. Engineering managers work with their team to break down work, identify unknowns, and produce estimates that are honest about uncertainty.
+- **KPI Definition**
+  - KPIs (key performance indicators) are metrics used to evaluate whether the team is achieving its goals. Engineering managers define KPIs in collaboration with leadership and product, choosing measures that reflect meaningful outcomes rather than just activity.
+- **Velocity Tracking**
+  - Velocity tracking measures how much work a team completes in a given period. In Scrum, it is often expressed in story points per sprint.
+- **Quality Metrics**
+  - Quality metrics capture the state of software quality over time, using measures like defect rates, code coverage, mean time to recovery, or error rates. Engineering managers track these metrics to identify whether quality is improving or degrading, and use them to make the case for quality-focused work when it competes with feature delivery.
+- **Team Health Metrics**
+  - Team health metrics measure how well the team is functioning as a group, using indicators like retention, engagement survey results, workload distribution, or the frequency of after-hours incidents. Engineering managers monitor team health proactively because problems in team dynamics often surface in these signals before they become crises.
+- **Project Postmortems**
+  - A project postmortem is a retrospective conducted after a project or major milestone to review what went well, what went poorly, and what should change. Engineering managers facilitate these sessions with a focus on learning and systemic improvement, not blame.
+- **Product strategy alignment**
+  - Product strategy alignment means ensuring the engineering team's work is connected to the product's strategic direction. Engineering managers translate product strategy into technical priorities, help engineers understand why their work matters, and flag when technical constraints or debt need to be factored into product plans.
+- **Business Case Development**
+  - A business case is a structured argument for why an investment, project, or initiative should be approved. Engineering managers write business cases to secure budget, headcount, or time for technical work that does not directly map to a product feature, such as a platform migration or a reliability investment.
+- **ROI analysis**
+  - ROI (return on investment) analysis estimates the value generated by an investment relative to its cost. Engineering managers use ROI framing to evaluate whether engineering work is worth pursuing and to help non-technical stakeholders understand the financial logic behind technical decisions.
+- **Market awareness**
+  - Market awareness means understanding the competitive landscape, industry trends, and customer context relevant to the product the team is building. Engineering managers with market awareness make better technical trade-offs because they understand what the business needs to win and can anticipate how priorities might shift.
+- **Competitive Analysis**
+  - Competitive analysis involves researching what competitors are building, how they position their products, and where gaps or opportunities exist. Engineering managers use this to inform technical strategy, identify where investment in quality or performance would create differentiation, and avoid building things competitors already offer.
+- **Budget Planning**
+  - Budget planning is the process of estimating and allocating the financial resources a team will need over a planning period. Engineering managers work with finance and leadership to build budgets that cover headcount, tooling, infrastructure, and vendor costs.
+- **Resource forecasting**
+  - Resource forecasting involves predicting future staffing and capacity needs based on planned work and growth projections. Engineering managers use forecasts to identify gaps between planned work and available capacity and to make the case for hiring or contract resources before the gap becomes a delivery risk.
+- **Cost Optimization**
+  - Cost optimization involves identifying ways to reduce engineering or infrastructure costs without degrading quality or output. Engineering managers look for inefficiencies in cloud spending, vendor contracts, or tooling overlaps, and frame cost reduction as a shared goal rather than a top-down budget cut.
+- **Vendor Management**
+  - Vendor management covers the relationships with external software vendors, service providers, and contractors. Engineering managers negotiate contracts, monitor vendor performance, manage renewals, and make decisions about when to continue, replace, or build an alternative to a vendor-supplied capability.
+- **Company Culture**
+  - Company culture is the shared values, behaviors, and norms that define how people work together in an organization. Engineering managers shape culture at the team level by what they reward, how they respond to mistakes, and how they treat people.
+- **Change management**
+  - Change management refers to the structured approach to transitioning individuals and teams through organizational or process changes. Engineering managers handle change by communicating early, explaining the reasoning, and giving the team space to adapt while maintaining focus on delivery.
+- **Organization structure**
+  - Organizational structure defines reporting lines, team boundaries, and how decisions flow within a company. Engineering managers need to understand the structure they operate in to know how to escalate, collaborate, and influence decisions.
+- **Politics navigation**
+  - Organizational politics refers to the informal dynamics of influence, interest, and power within a company. Engineering managers navigate politics by building relationships across the organization, understanding who has influence over decisions that affect their team, and advocating for their team's interests without damaging trust.
+- **Cross-department collaboration**
+  - Cross-department collaboration involves working with teams outside of engineering, such as sales, legal, finance, or customer support, to achieve shared goals. Engineering managers represent engineering interests in these interactions and ensure that engineering constraints and timelines are understood by partners who depend on the team's output.
+- **Emotional Intelligence**
+  - Emotional intelligence is the ability to recognize and manage your own emotions and to understand and respond to others' emotions effectively. For engineering managers, this shows up in how they handle pressure, how they read team dynamics, and how they adjust their communication style to different people and situations.
+- **Defining and Enforcing Values**
+  - Team values are the principles that guide how the team works and makes decisions. Engineering managers define these values explicitly, model them in their own behavior, and hold the team accountable to them.
+- **Team Traditions and Rituals**
+  - Team traditions and rituals are recurring activities that reinforce shared identity and culture, such as team celebrations, reading groups, or informal social time. Engineering managers invest in these practices because they build the social fabric that makes teams resilient during stressful periods.
+- **Recognition programs**
+  - Recognition programs are structured or informal ways of acknowledging and rewarding contributions. Engineering managers give recognition frequently and specifically, making sure praise is tied to real behavior rather than generic praise.
+- **Social connections**
+  - Social connections within a team are the informal relationships that develop between colleagues. Engineering managers create opportunities for these relationships to form, especially in remote or hybrid environments, because teams with strong social bonds communicate better, collaborate more naturally, and recover from conflict more quickly.
+- **Inclusive environment creation**
+  - An inclusive environment is one where people from different backgrounds, identities, and perspectives feel equally valued and able to contribute. Engineering managers create inclusion through how they run meetings, how they solicit input, how they respond to bias when it surfaces, and how they make decisions about hiring and promotion.
+- **Innovation fostering**
+  - Innovation fostering is the practice of creating conditions where engineers feel safe to explore new ideas, experiment with different approaches, and propose changes to how the team works. Engineering managers support innovation by protecting time for exploration, celebrating learning from failure, and removing barriers to trying new things.
+- **Learning culture development**
+  - A learning culture is one where continuous development is valued and supported. Engineering managers build this by encouraging engineers to share what they learn, providing access to learning resources, discussing career growth regularly, and treating mistakes as data rather than reasons for blame.
+- **Knowledge sharing practices**
+  - Knowledge sharing practices are the mechanisms through which information flows within a team and across the organization. This includes internal talks, documentation, pair programming, and wikis.
+- **Technical excellence mindset**
+  - A technical excellence mindset means caring deeply about the quality, reliability, and maintainability of what the team builds, not just whether it ships. Engineering managers model and reinforce this mindset by making space for refactoring, reviewing code with an eye for quality, and treating excellence as a standard rather than an aspiration.
+- **Blameless Post-mortems**
+  - Blameless post-mortems are incident reviews conducted without assigning personal fault. The goal is to understand the systemic conditions that made the incident possible and to change those conditions.
+- **Bias Recognition / Mitigation**
+  - Bias recognition involves identifying the cognitive patterns and structural factors that lead to unfair treatment of individuals or groups. Engineering managers actively work to recognize bias in hiring, performance evaluation, and day-to-day interactions, and put processes in place to reduce its impact on decisions.
+- **Emergency protocols**
+  - Emergency protocols define what the team does when something goes seriously wrong, such as a production outage, data breach, or major service degradation. Engineering managers ensure these protocols exist, are documented, and have been practiced before an emergency occurs, so the team can respond quickly under pressure.
+- **War Room Management**
+  - War room management refers to the practice of coordinating a focused, time-boxed response to a major incident. Engineering managers facilitate the war room by assigning clear roles, managing communication, and keeping the team focused on resolution rather than side conversations or blame.
+- **Stakeholder Communication**
+  - During incidents, stakeholder communication means keeping the right people informed about what happened, what the team is doing, and when resolution is expected. Engineering managers own or coordinate this communication so engineers can stay focused on the technical problem.
+- **Post-incident analysis**
+  - A post-incident analysis reviews what happened during an incident to extract learnings and produce improvements. Engineering managers drive this process, ensure it happens promptly while memory is fresh, and track follow-up action items to completion.
+- **Service Recovery**
+  - Service recovery is the process of restoring a system or service to full operation after an incident. Engineering managers track the recovery plan, remove blockers, and coordinate across teams when recovery involves multiple systems or dependencies.
+- **Contingency planning**
+  - Contingency planning involves preparing responses to foreseeable problems before they happen. Engineering managers work with their team to identify what could go wrong in a project or system and develop plans for how to respond, including fallback options, communication templates, and escalation paths.
+- **Disaster recovery**
+  - Disaster recovery is the capability to restore systems and data after a catastrophic failure, such as data center loss or widespread data corruption. Engineering managers ensure the team has tested disaster recovery plans, understands recovery time and recovery point objectives, and can execute the plan under pressure.
+- **Business continuity**
+  - Business continuity planning ensures that critical operations can continue during and after a disruptive event. For engineering teams, this includes planning for prolonged outages, key person dependencies, and the loss of critical systems.
+- **Security incident handling**
+  - Security incident handling covers the response to detected breaches, vulnerabilities, or unauthorized access events. Engineering managers coordinate the team's technical response, ensure security and legal teams are engaged appropriately, and manage communication with affected parties according to company policy and regulatory requirements.
+- **Production issues management**
+  - Production issues management is the ongoing practice of monitoring, triaging, and resolving problems that affect users in production. Engineering managers ensure there is a clear process for reporting and prioritizing issues, that on-call rotations are sustainable, and that recurring issues are addressed rather than just patched repeatedly.
+- **Burnout prevention**
+  - Burnout prevention focuses on strategies and practices aimed at minimizing and mitigating the risk of employees experiencing burnout, a state of emotional, physical, and mental exhaustion caused by prolonged or excessive stress. It involves creating a supportive work environment, promoting healthy work-life balance, and equipping individuals and teams with the tools and resources needed to manage stress effectively and maintain their well-being.
+- **Critical situation leadership**
+  - Leading a team through a critical situation involves guiding them effectively when facing unexpected challenges, high-pressure scenarios, or significant disruptions. This requires clear communication, decisive action, and a focus on maintaining team morale and productivity while navigating uncertainty and resolving the crisis at hand.
+- **Emergency staffing**
+  - Emergency staffing refers to the process of quickly securing and deploying personnel to address unexpected and critical situations that disrupt normal operations. This involves identifying skill gaps, finding available resources (either internal or external), and rapidly onboarding them to mitigate the impact of the emergency and restore stability.
+- **Stress management**
+  - Stress management encompasses the techniques and strategies used to control and reduce the negative impacts of stress. It involves identifying stressors, understanding their effects on physical and mental well-being, and implementing coping mechanisms to maintain a healthy balance.
+- **Work-life balance during crises**
+  - Maintaining work-life balance during a crisis involves strategies and practices that help team members manage their professional responsibilities while also prioritizing their personal well-being and commitments. This includes setting boundaries, utilizing time management techniques, encouraging open communication about workload and stress, and ensuring access to resources that support mental and physical health.
+- **Board presentations**
+  - Board presentations are formal communications to a company's board of directors. Engineering managers may prepare or contribute to these when engineering investments, incidents, or strategy decisions need board-level visibility.
+- **Executive summaries**
+  - Executive summaries distill complex technical work or decisions into brief, clear communications for senior leaders. Engineering managers write these to inform decisions, request resources, or provide status on critical work.
+- **Strategic proposals**
+  - Strategic proposals are documents that recommend a significant course of action, such as adopting a new technology, restructuring teams, or investing in a platform. Engineering managers write these to build consensus and secure approval, combining technical analysis with business impact framing.
+- **Budget requests**
+  - Budget requests are formal asks for financial resources to support engineering work. Engineering managers prepare these by quantifying the need, explaining the expected return, and anticipating questions about alternatives.
+- **Vision alignment**
+  - Vision alignment means ensuring the engineering team understands and believes in the direction the organization is heading. Engineering managers translate company vision into team-level goals, explain the connection between day-to-day work and long-term direction, and surface disconnects between stated vision and actual priorities.
+- **Customer feedback integration**
+  - Customer feedback integration is the practice of bringing user-reported issues, requests, and observations into the team's planning process. Engineering managers work with product and customer-facing teams to ensure feedback is structured, prioritized, and visible to engineers, so customer experience informs technical decisions.
+- **Technical customer support**
+  - Technical customer support involves directly helping customers resolve technical issues with the product. Engineering managers may define how engineering participates in support escalations, build tooling to help support teams self-serve, and set response time standards for issues that require engineering involvement.
+- **Customer success alignment**
+  - Customer success alignment means ensuring the engineering team understands what customers need to achieve with the product and builds accordingly. Engineering managers bridge engineering and customer success by participating in feedback loops, attending customer calls when useful, and translating customer outcomes into technical priorities.
+- **Feature prioritization**
+  - Feature prioritization is the process of deciding which product capabilities to build and in what order. Engineering managers contribute technical perspective to prioritization by estimating effort, surfacing dependencies, and flagging when proposed features conflict with system health or strategic direction.
+- **Technical partnerships**
+  - Technical partnerships are collaborations with other companies at the system level, involving shared APIs, joint infrastructure, or co-developed features. Engineering managers manage the engineering side of these partnerships, ensuring technical commitments are realistic, well-documented, and don't create architectural problems downstream.
+- **Vendor relationships**
+  - Vendor relationships are the ongoing partnerships with companies that provide tools, platforms, or services the engineering team depends on. Engineering managers maintain these relationships by communicating needs clearly, holding vendors accountable to SLAs, and making sure the team's dependency on any single vendor is understood and managed.
+- **Technology partnerships**
+  - Technology partnerships involve collaborating with external companies to build integrations, co-develop features, or share capabilities. Engineering managers evaluate the technical fit of partnerships, define integration requirements, and ensure the team has what it needs to execute without creating long-term maintenance burdens.
+- **Integration management**
+  - Integration management covers the work of connecting systems through APIs, webhooks, or data pipelines. Engineering managers ensure integrations are well-designed, tested, documented, and monitored, and that partner-dependent work is tracked with enough visibility to catch problems before they affect users.
+- **API strategy**
+  - API strategy defines how a team designs, publishes, and evolves the APIs it offers to internal or external consumers. Engineering managers contribute to API strategy by ensuring consistency, stability, and adequate documentation, and by making decisions about versioning, deprecation, and access control.
+- **External collaboration**
+  - External collaboration refers to working with engineering teams, consultants, or open source communities outside the organization. Engineering managers set expectations around contribution, communication standards, and ownership to ensure external collaboration produces value without creating dependency or security risk.
+- **Legacy System Retirement**
+  - Legacy system retirement is the process of decommissioning old software and migrating its functionality or data to newer systems. Engineering managers plan these migrations carefully to minimize disruption, sequence dependencies correctly, and manage the risk that comes with changing systems still in active use.
+- **Architecture documentation**
+  - Architecture documentation describes how a system is structured, what components exist, how they interact, and what decisions have shaped the design. Engineering managers ensure this documentation exists, is kept current, and is accessible to new engineers joining the team.
+- **Process documentation**
+  - Process documentation captures how the team does its work, including development workflows, deployment procedures, and incident response steps. Engineering managers treat process documentation as a forcing function for clarifying how things actually work and reducing reliance on tribal knowledge.
+- **Decision records**
+  - Decision records, often called Architecture Decision Records (ADRs), document important technical choices along with the context and trade-offs that informed them. Engineering managers encourage their use because they prevent the same decisions from being relitigated and help new team members understand why the system is built the way it is.
+- **Lessons Learned**
+  - Lessons learned are insights captured from completed projects, incidents, or experiments that inform future work. Engineering managers create structures for capturing these learnings, such as retrospectives, post-mortems, or dedicated knowledge bases, and ensure they translate into actual changes rather than being filed and forgotten.
+- **Best Practices**
+  - Best practices are proven approaches to common engineering challenges that the team agrees to follow. Engineering managers help establish and evolve best practices by facilitating discussions, gathering input from engineers, and ensuring practices are written down rather than assumed.
+- **Mentoring Programs**
+  - Mentoring programs are structured arrangements that pair engineers with more experienced colleagues for guidance and development. Engineering managers may run team-level mentoring or participate in company-wide programs.
+- **Knowledge bases**
+  - A knowledge base is a searchable repository of documentation, guides, and references that the team maintains. Engineering managers champion the knowledge base as a living resource, not a static archive, by encouraging contributions, reviewing staleness, and making it a natural first stop for common questions.
+- **Brown Bags**
+  - Brown bag sessions are informal learning events, typically held during lunch, where someone presents or leads discussion on a topic. Engineering managers use them to facilitate knowledge sharing without requiring a formal meeting format.
+- **Tech Talks**
+  - Tech talks are internal presentations where engineers share knowledge about a technology, project, or concept with colleagues. Engineering managers create a culture where tech talks are encouraged, scheduled regularly, and valued as part of professional development rather than treated as optional extras.
+- **Migration planning**
+  - Migration planning covers the process of moving from one system, architecture, or technology to another. Engineering managers lead migrations by defining the target state, sequencing the work, managing dependencies, and ensuring the team has a rollback plan at each stage.
+- **Legacy system retirement**
+  - Legacy system retirement is the process of decommissioning old software and migrating its functionality or data to newer systems. Engineering managers plan these transitions carefully, sequence dependencies correctly, and manage the risk that comes from changing systems that are still in active use by customers or other teams.
+- **Technology adoption**
+  - Technology adoption is the process of introducing a new tool, language, framework, or platform into the team's stack. Engineering managers evaluate adoption decisions based on team learning curve, long-term maintenance, community support, and strategic fit rather than novelty.
+- **Tool transitions**
+  - Tool transitions involve switching from one tool to another, such as moving from one project management system, monitoring platform, or CI provider to another. Engineering managers plan these transitions to minimize disruption, ensure data is migrated correctly, and allow the team enough time to become proficient before the old tool is retired.
+- **Process changes**
+  - Process changes are modifications to how the team plans, builds, reviews, or ships work. Engineering managers introduce process changes incrementally, communicate the reason clearly, and evaluate whether changes are producing the intended improvement.
+- **Change strategy**
+  - A change strategy is the plan for how a significant organizational or technical transition will be executed. Engineering managers develop change strategies that account for sequencing, communication, training needs, and the human side of change, recognizing that technical change often fails due to people and process factors rather than technology.
+- **Impact assessment**
+  - Impact assessment is the process of evaluating how a proposed change will affect systems, teams, users, or processes before it is made. Engineering managers use impact assessments to surface unintended consequences, identify required preparation, and make better-informed decisions about whether and how to proceed with a change.
+- **Stakeholder management**
+  - Stakeholder management in the context of change involves identifying who is affected by a change, understanding their concerns, and communicating proactively throughout the transition. Engineering managers map stakeholders at the start of any significant change effort and tailor communication to what each group needs to know.
+- **Communication planning**
+  - Communication planning defines who will be told about a change, what they will be told, when, and through what channels. Engineering managers develop communication plans for significant changes to ensure the right people have accurate information at the right time, and to reduce the uncertainty that drives resistance.
+- **Resistance management**
+  - Resistance management involves recognizing and addressing pushback to organizational or technical changes. Engineering managers treat resistance as signal rather than obstruction, using it to uncover valid concerns, improve the change plan, or clarify misunderstandings that are driving opposition.
+- **Reorganizations**
+  - Reorganizations are changes to the structure of teams, reporting lines, or organizational units. Engineering managers may initiate, lead, or be affected by reorgs.
+- **Team mergers**
+  - Team mergers involve combining two or more teams into one, often bringing together different cultures, codebases, or ways of working. Engineering managers leading a merger focus on establishing shared practices, integrating tooling, and building trust across the merged group before pushing for full alignment on process and culture.
+- **Role transitions**
+  - Role transitions occur when an engineer changes function, such as moving from an individual contributor to a tech lead, or from one team to another. Engineering managers support transitions by clarifying new expectations, providing feedback during the adjustment period, and helping the engineer build credibility in their new context.
+- **Responsibility shifts**
+  - Responsibility shifts happen when ownership of a system, process, or area moves from one team or person to another. Engineering managers plan these shifts carefully to ensure continuity, adequate documentation, and a clear handoff process that does not leave gaps in coverage.
+- **Culture evolution**
+  - Culture evolution is the gradual change of a team's norms, values, and ways of working over time. Engineering managers shape culture intentionally by modeling the behaviors they want to see, adjusting practices as the team grows, and being willing to revisit and update cultural norms that no longer serve the team well.
+
+---
+
+## 2. Intermediate
+
+---
+
+## 3. Advanced
+
+---
+
+## 4. Optional / Specialized Topics
+
+- Architectural Decision-Making
+- System Monitoring & Performance
+- Scaling Infrastructure
+- Software Engineering Background
+- System Design and Architecture
+- Technical Debt and Management
+- Technical Documentation
+- Code Review Best Practices
+- Technical Roadmapping
+- Build vs Buy Evaluation
+- Technical Risk Assessment
+- CI/CD Implementation
+- Development / Release Workflow
+- Technical Standards Setting
+- Security  Best Practices
+- Testing Strategies
+- Incident Management
+- Hiring and Recruitment
+- Team Structure and Design
+- Performance Evaluations
+- Mentoring and Coaching
+- Career Development Planning
+- Delegation
+- Conflict Resolution
+- Feedback Delivery
+
+---
+
+## 5. References
+
+- [Engineering Manager Roadmap](https://roadmap.sh/engineering-manager)
+
+---
+
+## 6. Related Roles / Topics
+
+### Related Roles
+- Backend Developer
+- Software Architect
+- Product Manager
+
+### Related Skills
+- System Design
+- Software Design & Architecture
