@@ -183,3 +183,50 @@ class IndexMetaModel(Base):
     doc_text_version: Mapped[str] = mapped_column(String(20), nullable=False, default="v1")
     built_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=utc_now)
     jobs_n: Mapped[int] = mapped_column(Integer, default=0)
+
+
+class CareerKnowledgeChunk(Base):
+    __tablename__ = "career_knowledge_chunks"
+
+    id: Mapped[str] = mapped_column(String(36), primary_key=True, default=lambda: str(uuid.uuid4()))
+    source_id: Mapped[str] = mapped_column(String(50), nullable=False)  # roadmap.sh, esco, onet
+    source_record_id: Mapped[str] = mapped_column(String(255), nullable=False)
+    source_url: Mapped[str | None] = mapped_column(Text, nullable=True)
+    source_version: Mapped[str] = mapped_column(String(50), default="v1", nullable=False)
+    source_type: Mapped[str] = mapped_column(
+        String(50), nullable=False
+    )  # learning_roadmap, occupation_taxonomy, skill_competency
+    title: Mapped[str] = mapped_column(Text, nullable=False)
+    content: Mapped[str] = mapped_column(Text, nullable=False)
+    chunk_metadata: Mapped[dict[str, Any]] = mapped_column(JSON, default=dict)
+    embedding: Mapped[list[float]] = mapped_column(Vector(1024), nullable=False)
+    search_tsv: Mapped[Any | None] = mapped_column(TSVectorType, nullable=True)
+
+    __table_args__ = (
+        UniqueConstraint(
+            "source_id", "source_record_id", "title", name="uq_career_chunk_source_record"
+        ),
+        Index(
+            "ix_career_knowledge_chunks_embedding_hnsw",
+            "embedding",
+            postgresql_using="hnsw",
+            postgresql_ops={"embedding": "vector_cosine_ops"},
+        ),
+        Index("ix_career_knowledge_chunks_search_tsv_gin", "search_tsv", postgresql_using="gin"),
+        Index("ix_career_knowledge_chunks_source_filter", "source_id", "source_type"),
+    )
+
+
+class CareerIngestionRun(Base):
+    __tablename__ = "career_ingestion_runs"
+
+    id: Mapped[str] = mapped_column(String(36), primary_key=True, default=lambda: str(uuid.uuid4()))
+    source_id: Mapped[str] = mapped_column(String(50), nullable=False)
+    source_version: Mapped[str] = mapped_column(String(50), nullable=False)
+    status: Mapped[str] = mapped_column(
+        String(20), nullable=False, default="running"
+    )  # running, completed, failed
+    chunks_count: Mapped[int] = mapped_column(Integer, default=0, nullable=False)
+    manifest_hash: Mapped[str] = mapped_column(String(64), nullable=False)
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=utc_now)
+    finished_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
