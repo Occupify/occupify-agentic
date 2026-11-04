@@ -1,0 +1,671 @@
+# Cyber Security Specialist
+
+## Metadata
+- Type: Role
+- Domain: Cybersecurity
+- Source: roadmap.sh
+- Source URL: https://roadmap.sh/cyber-security
+- Related Roles:
+  - Frontend Developer
+  - Fullstack Developer
+  - DevOps Engineer
+
+---
+
+## 1. Beginner
+
+### 1.1 Fundamental IT Skills
+- **Computer Hardware Components**
+  - Computer hardware components are the physical parts that make up a computer system. These include the central processing unit (CPU), which executes instructions, memory (RAM) for temporary data storage, storage devices like hard drives and SSDs for permanent data storage, and input/output devices like keyboards, mice, and monitors that allow interaction with the system.
+- **Connection Types and their function**
+  - Different devices connect to networks in various ways. Ethernet cables create a wired connection, often used for desktops and servers, providing a reliable and fast link.
+- **OS-Independent Troubleshooting**
+  - Troubleshooting IT systems involves a systematic approach to identify and resolve issues, regardless of the operating system. This process includes recognizing common symptoms such as slow performance or hardware failures and following a structured plan to isolate the problem.
+- **Understand Basics of Popular Suites**
+  - Productivity suites are collections of software applications, usually centered around document creation, spreadsheets, and presentations. Some of the most widely used suites include Google Workspace (formerly G Suite), which is cloud-based and includes apps like Docs, Sheets, and Slides; Microsoft Office, a long-standing suite that includes Word, Excel, and PowerPoint; and LibreOffice, a free and open-source suite offering Writer, Calc, and Impress.
+- **Basics of Computer Networking**
+  - Computer networking is the practice of connecting computers and devices to share data and resources. It involves the use of protocols like TCP/IP for communication, hardware such as routers and switches for directing traffic, and various network topologies (e.g., star, mesh, bus) for organizing connections.
+- **NFC**
+  - Near Field Communication (NFC) is a short-range wireless technology that allows devices to communicate and exchange data over very short distances, typically up to 4 inches (10 cm). NFC is commonly used for applications such as contactless payments, electronic ticketing, and data transfer between devices.
+- **WiFi**
+  - WiFi is a wireless networking technology that allows devices to connect to the internet and communicate with each other without physical cables. It uses radio waves to transmit data, typically operating on the 2.4 GHz and 5 GHz frequency bands.
+- **Bluetooth**
+  - Bluetooth is a short-range wireless technology standard used for exchanging data between fixed and mobile devices over short distances. While it offers convenience for connecting peripherals and transferring information, it also presents several security concerns in the cybersecurity landscape.
+- **HackTheBox**
+  - Hack The Box (HTB) is a popular online platform designed for security enthusiasts, penetration testers, and ethical hackers to develop and enhance their skills by engaging in real-world cybersecurity challenges. The platform provides a wide array of virtual machines (VMs), known as "boxes," each with a unique set of security vulnerabilities to exploit.
+- **TryHackMe**
+  - TryHackMe is an online platform designed for cybersecurity training and learning through hands-on experience. It offers a wide range of virtual rooms and challenges covering various security topics, from basic to advanced levels.
+- **VulnHub**
+  - VulnHub is an online platform that provides a collection of intentionally vulnerable virtual machines for cybersecurity enthusiasts, penetration testers, and ethical hackers to practice their skills. These virtual machines simulate various real-world scenarios with different vulnerabilities and security misconfigurations.
+- **picoCTF**
+  - picoCTF is an online cybersecurity competition designed to help students and beginners learn and practice hacking skills through capture-the-flag (CTF) challenges. Developed by Carnegie Mellon University, picoCTF features a series of progressively difficult puzzles that teach concepts such as reverse engineering, cryptography, web exploitation, forensics, and binary exploitation.
+- **pwn.college**
+  - pwn.college is an educational platform designed to teach the fundamentals of computer security, specifically focusing on binary exploitation and low-level software vulnerabilities. It provides a structured curriculum that combines hands-on practice labs with interactive lectures, allowing users to actively exploit intentionally insecure programs in a safe, controlled environment.
+- **CompTIA A+**
+  - CompTIA A+ is an entry-level certification for IT professionals that focuses on essential knowledge and skills in computer hardware, software, and troubleshooting. This certification is widely recognized in the IT industry and can serve as a stepping stone for individuals looking to start a career in the field of information technology.
+- **CompTIA Linux+**
+  - The CompTIA Linux+ certification is an entry-level certification aimed at individuals who are seeking to learn and demonstrate their skills and knowledge of the Linux operating system. This certification is widely recognized in the IT industry as an essential qualification for entry-level Linux administrators and helps them gain a strong foundation in Linux system administration tasks.
+- **CompTIA Network+**
+  - The CompTIA Network+ is a highly sought-after certification for IT professionals who aim to build a solid foundation in networking concepts and practices. This certification is vendor-neutral, meaning that it covers a broad range of knowledge that can be applied to various network technologies, products, and solutions.
+- **CCNA**
+  - The Cisco Certified Network Associate (CCNA) certification is an entry-level certification for IT professionals who want to specialize in networking, specifically within the realm of Cisco products. This certification validates an individual's ability to install, configure, operate, and troubleshoot medium-sized routed and switched networks.
+- **CompTIA Security+**
+  - CompTIA Security+ is a highly recognized and respected certification for individuals seeking to start their careers in the field of cybersecurity. This certification is vendor-neutral, meaning it doesn't focus on any specific technology or platform, and provides a solid foundation in cybersecurity principles, concepts, and best practices.
+- **CEH**
+  - Certified Ethical Hacker (CEH) is an advanced certification focused on equipping cybersecurity professionals with the knowledge and skills required to defend against the continuously evolving landscape of cyber threats. This certification is facilitated by the EC-Council, an internationally recognized organization for information security certifications.
+
+### 1.2 Operating Systems
+- **Infrared**
+  - Infrared (IR) is a type of wireless communication technology that utilizes light waves in the electromagnetic spectrum to transmit data between devices. Infrared connections are widely used in short-range communication, commonly found in devices like remote controls, wireless keyboards and mice, and computer-to-printer communication.
+- **iCloud**
+  - iCloud is Apple's cloud storage and cloud computing service. It allows users to store data like documents, photos, music, and contacts on remote servers and wirelessly synchronize it to their iOS, macOS, or Windows devices.
+- **Google Suite**
+  - Google Workspace, formerly known as G Suite, is a collection of cloud-based productivity and collaboration tools developed by Google. It includes popular applications such as Gmail for email, Google Drive for file storage and sharing, Google Docs for document creation and editing, Google Sheets for spreadsheets, and Google Meet for video conferencing.
+- **MS Office Suite**
+  - The Microsoft Office Suite is a collection of productivity software developed by Microsoft, commonly used in both personal and professional settings. It includes core applications such as Word (word processing), Excel (spreadsheets), PowerPoint (presentations), and Outlook (email and calendar).
+- **CISA**
+  - CISA, or Certified Information Systems Auditor, is a globally recognized certification for professionals who audit, control, monitor, and assess an organization's information technology and business systems. It demonstrates expertise in assessing vulnerabilities, reporting on compliance, and instituting controls within an enterprise.
+- **CISM**
+  - The Certified Information Security Manager (CISM) is an advanced cybersecurity certification offered by ISACA that focuses on information security management. It is designed for professionals who have a strong understanding of information security and are responsible for overseeing, designing, and managing an organization's information security programs.
+- **GSEC**
+  - The GIAC Security Essentials Certification (GSEC) is an advanced cybersecurity certification that demonstrates an individual's knowledge and skills in addressing security threats and vulnerabilities in various systems. Developed by the Global Information Assurance Certification (GIAC), this certification is suitable for security professionals, IT managers, and network administrators who want to enhance their expertise in the core cybersecurity concepts and practices.
+- **GPEN**
+  - The GIAC Penetration Tester (GPEN) certification is an advanced-level credential designed for professionals who want to demonstrate their expertise in the field of penetration testing and ethical hacking. Created by the Global Information Assurance Certification (GIAC) organization, GPEN validates an individual's ability to conduct legal, systematic, and effective penetration tests to assess the security of computer networks, systems, and applications.
+- **GWAPT**
+  - The GIAC Web Application Penetration Tester (GWAPT) certification validates an individual's ability to perform in-depth web application security assessments and exploit vulnerabilities. GWAPT focuses on using ethical hacking methodologies to conduct web application penetration testing with the goal of identifying, evaluating, and mitigating security risks.
+- **GIAC**
+  - GIAC is a globally recognized organization that provides certifications for information security professionals. Established in 1999, its primary aim is to validate the knowledge and skills of professionals in various cybersecurity domains.
+- **OSCP**
+  - OSCP (Offensive Security Certified Professional) is a widely recognized certification in cybersecurity that focuses on penetration testing and ethical hacking. Offered by Offensive Security, it requires candidates to complete a challenging exam that involves identifying and exploiting vulnerabilities in a controlled environment.
+- **CREST**
+  - CREST is a non-profit, accreditation and certification body that represents the technical information security industry. Established in 2008, its mission is to promote the development and professionalization of the cyber security sector.
+- **CISSP**
+  - The Certified Information Systems Security Professional (CISSP) is a globally recognized certification offered by the International Information System Security Certification Consortium (ISC)². It is designed for experienced security professionals to validate their knowledge and expertise in the field of information security.
+- **Windows**
+  - Windows is Microsoft's widely-used operating system for personal computers and servers. It provides a graphical user interface, multitasking capabilities, and supports a vast array of software applications and hardware devices.
+- **Linux**
+  - Linux is an open-source, Unix-like operating system kernel first released by Linus Torvalds in 1991. It forms the core of various operating systems known as Linux distributions.
+- **MacOS**
+  - macOS is an operating system developed by Apple Inc. for its line of Mac computers.
+- **Installation and Configuration**
+  - Installing and configuring an operating system involves setting up the core software that manages computer hardware and resources. This process includes partitioning drives, selecting user accounts, defining network settings, and installing necessary drivers.
+- **Different Versions and Differences**
+  - Operating systems (OS) evolve over time, leading to different versions of the same OS (like Windows 10 vs. Windows 11) and different OS families altogether (like Windows vs.
+- **Navigating using GUI and CLI**
+  - Navigating an operating system can be done in two primary ways: using a Graphical User Interface (GUI) or a Command Line Interface (CLI). A GUI presents visual elements like windows, icons, and menus that you interact with using a mouse or touch.
+- **Understand Permissions**
+  - Permissions dictate which users or groups have access to specific files, directories, or resources. These permissions define what actions users can perform, such as reading, writing, or executing files.
+- **Basics of Subnetting**
+  - Subnetting is the practice of dividing a network into two or more smaller, logically isolated networks, called subnets. This is accomplished by manipulating the subnet mask, which defines the range of IP addresses that belong to a particular network.
+- **Public vs Private IP Addresses**
+  - Public addresses are IP addresses assigned to devices directly accessible over the internet, allowing them to communicate with external networks and services. In contrast, private addresses are used within local networks and are not routable over the Internet, providing a way for devices within a private network to communicate with each other while conserving public IP address space.
+- **localhost**
+  - Localhost is a hostname that refers to the current computer being used to access it. It's essentially a way for your computer to communicate with itself over a network connection.
+- **loopback**
+  - A loopback is a mechanism where network traffic is routed back to the originating device. It's essentially a shortcut for a device to talk to itself over a network.
+- **CIDR**
+  - CIDR (Classless Inter-Domain Routing) is a method for allocating IP addresses and routing Internet Protocol packets. It replaces the older classful network addressing scheme.
+- **subnet mask**
+  - A subnet mask is a 32-bit number used in IP networking to divide an IP address into network and host portions. It determines which part of an IP address refers to the network and which part refers to the host.
+- **default gateway**
+  - A default gateway is a network node, typically a router or a firewall, that serves as the access point or intermediary between a local network and external networks, such as the internet. When a device on a local network needs to communicate with a device outside its own subnet—such as accessing a website or sending an email—it sends the data to the default gateway, which then routes it to the appropriate external destination.
+- **VMWare**
+  - VMWare is a suite of virtualization software that allows you to run multiple operating systems on a single physical machine. This is achieved by creating virtual machines (VMs), which are essentially software-defined computers that emulate the hardware of a physical machine.
+- **VirtualBox**
+  - VirtualBox is a free, open-source virtualization software developed by Oracle. It allows users to run multiple operating systems simultaneously on a single physical machine.
+- **esxi**
+  - VMware ESXi is a Type 1 hypervisor and the core building block for VMware's virtualization technology. It represents a bare-metal hypervisor, which means it is installed directly onto your physical server's hardware, without the need for a supporting operating system.
+- **proxmox**
+  - Proxmox is an open-source virtualization management platform that integrates both Proxmox Virtual Environment (Proxmox VE) and Proxmox Mail Gateway. Proxmox VE combines virtualization technologies, including KVM for virtual machines and LXC for lightweight containers, into a unified web-based interface for managing and deploying virtualized environments.
+- **Hypervisor**
+  - A hypervisor, also known as a virtual machine monitor (VMM), is software or firmware that enables the creation and management of virtual machines (VMs) by abstracting the underlying hardware. It allows multiple VMs to run on a single physical machine, each operating independently with its own operating system and applications.
+- **GuestOS**
+  - A Guest Operating System (GuestOS) is an operating system installed within a virtual machine. Think of it as an operating system running inside another operating system (the host).
+
+---
+
+## 2. Intermediate
+
+### 2.1 Networking Knowledge
+- **Installing Software and Applications**
+  - Installing software and applications is more than just clicking "next, next, finish." When adding new programs to your system, think about where you're getting them from. Stick to official app stores or the developer's website for the best security.
+- **Performing CRUD on Files**
+  - Creating, reading, updating, and deleting (CRUD) files are fundamental operations within any operating system. These actions allow users and programs to interact with data stored on a computer, enabling everything from saving documents to managing configuration settings.
+- **Troubleshooting**
+  - Troubleshooting is a systematic approach to problem-solving used to identify, diagnose, and resolve issues in complex systems, particularly in technology and engineering fields. It involves a step-by-step process of gathering information, identifying symptoms, formulating hypotheses, testing potential solutions, and implementing fixes.
+- **Common Commands**
+  - Common operating system (OS) commands are essential for interacting with a system's shell or command-line interface (CLI). These commands allow users to perform a wide range of tasks, such as navigating the file system, managing files and directories, checking system status, and administering processes.
+- **Understand the OSI Model**
+  - The OSI (Open Systems Interconnection) model is a conceptual framework that standardizes the functions of a telecommunication or computing system into seven distinct layers. Each layer performs a specific set of network functions, and communicates with the layers above and below it.
+- **Common Protocols and their Uses**
+  - Networking protocols are standardized sets of rules that govern how data is transmitted between devices on a network. They define everything from how data is formatted and addressed to how errors are detected and corrected.
+- **Common Ports and their Uses**
+  - Ports are virtual endpoints where network connections start and end. They are numbered, and these numbers help identify specific applications or services running on a server.
+- **VLAN**
+  - A Virtual Local Area Network (VLAN) is a logical segmentation of a physical network, allowing multiple isolated networks to exist on the same physical infrastructure. VLANs group devices together based on function, department, or application, regardless of their physical location.
+- **DMZ**
+  - A DMZ, also known as a Demilitarized Zone, is a specific part of a network that functions as a buffer or separation between an organization's internal, trusted network and the external, untrusted networks like the internet. The primary purpose of a DMZ is to isolate critical systems and data from the potentially hostile external environment and provide an extra layer of security.
+- **ARP**
+  - Address Resolution Protocol (ARP) is a communication protocol used for discovering the link-layer address, such as a MAC address, associated with a given Internet layer address, typically an IPv4 address. In simpler terms, when a device wants to send data to another device on the same network, it uses ARP to find the physical hardware address (MAC address) of the destination device, so that the data can be correctly delivered.
+- **VM**
+  - A Virtual Machine (VM) is a software-based emulation of a physical computer. It runs an operating system and applications, isolated from the underlying hardware.
+- **DHCP**
+  - The Dynamic Host Configuration Protocol (DHCP) is a network management protocol used to automatically assign IP addresses and other network configuration details, such as subnet masks, default gateways, and DNS servers, to devices on a network. When a device, such as a computer or smartphone, connects to a network, it sends a request to the DHCP server, which then dynamically assigns an available IP address from a defined range and provides the necessary configuration information.
+- **DNS**
+  - The Domain Name System (DNS) is a fundamental protocol of the internet that translates human-readable domain names, like www.example.com, into IP addresses, such as 192.0.2.1, which are used by computers to locate and communicate with each other. Essentially, DNS acts as the internet's phonebook, enabling users to access websites and services without needing to memorize numerical IP addresses.
+- **NAT**
+  - Network Address Translation (NAT) is a method used to modify IP address information in packet headers while they are in transit across a network. NAT allows multiple devices on a private network to share a single public IP address for accessing external resources, helping conserve the limited number of available public IP addresses.
+- **IP**
+  - IP, or Internet Protocol, is a fundamental concept in cybersecurity that refers to the way data is transferred across networks, specifically the internet. It is a core component of the internet's architecture and serves as the primary building block for communication between devices connected to the network.
+- **Router**
+  - A router is a networking device that directs data packets between different networks, ensuring they reach their destination. It operates at the network layer (Layer 3) of the OSI model and forwards data based on the IP addresses of the source and destination.
+- **Switch**
+  - A switch is a network device that operates at the data link layer (Layer 2) of the OSI model, connecting multiple devices within a local area network (LAN). It uses MAC addresses to forward data packets between devices, creating separate collision domains for each port.
+- **VPN**
+  - A Virtual Private Network (VPN) creates a secure, encrypted connection over a less secure network, like the internet. It essentially extends a private network across a public one, allowing users to send and receive data as if their devices were directly connected to the private network.
+- **MAN**
+  - A Metropolitan Area Network (MAN) is a computer network that connects computers and other devices within a geographical area larger than a local area network (LAN) but smaller than a wide area network (WAN). It's essentially a scaled-up version of a LAN, designed to serve a city or metropolitan area.
+- **LAN**
+  - A Local Area Network (LAN) is a network that connects computers and other devices within a limited area, such as a home, school, office, or small group of buildings. It allows devices to share resources like files, printers, and internet access, enabling communication and collaboration within that confined space.
+- **WAN**
+  - A Wide Area Network (WAN) connects multiple Local Area Networks (LANs) that are geographically separated. It uses various technologies like leased lines, satellite links, and the internet to enable communication between these disparate networks, allowing users and computers in one location to communicate with those in other locations.
+- **WLAN**
+  - A Wireless Local Area Network (WLAN) is a type of computer network that uses wireless data connections to link devices within a limited area. WLANs typically use Wi-Fi technology, allowing devices like laptops, smartphones, and IoT devices to connect to the internet or communicate with each other without physical cable connections.
+- **NTP**
+  - Network Time Protocol (NTP) is a networking protocol designed to synchronize the clocks of computers over a network. It uses a hierarchical system of time servers to distribute accurate time information, enabling devices to maintain consistent and reliable timestamps.
+- **IPAM**
+  - IP Address Management (IPAM) is a critical aspect of cyber security, as it helps organizations efficiently manage and track their IP addresses, DNS, and DHCP services. In any network, devices like servers, routers, and switches are assigned unique IP addresses, which enables them to communicate with each other.
+- **Star**
+  - A star network topology is a configuration where all devices (nodes) are connected directly to a central hub or switch. In this arrangement, each node has a dedicated point-to-point link to the central device, forming a star-like structure.
+- **Ring**
+  - In a ring topology, each network device is connected in a circular fashion, where data travels through each node in one direction (or both in a bidirectional setup) until it reaches its destination. This structure simplifies wiring and ensures a predictable data path, but a failure in any single node or connection can disrupt the entire network unless redundant paths are used.
+- **Mesh**
+  - A mesh network topology is a network setup where devices are interconnected with each other through multiple redundant paths. Unlike traditional networks where devices are connected to a central node, in a mesh network, each node can act as a router and forward data to other nodes.
+- **Bus**
+  - In the context of cybersecurity, a bus refers to a communication system that transfers data between components inside a computer or between computers. It's a critical part of computer architecture that can be vulnerable to various security threats.
+- **SSH**
+  - SSH (Secure Shell) is a cryptographic network protocol used for secure remote login and other secure network services over an unsecured network. It provides a secure channel over an unsecured network by using strong encryption to protect the connection against eavesdropping, tampering, and man-in-the-middle attacks.
+- **RDP**
+  - Remote Desktop Protocol (RDP) is a Microsoft-developed protocol that enables users to remotely access and control a computer over a network. It allows users to interact with a remote desktop environment as if they were sitting in front of the computer, providing access to applications, files, and network resources.
+- **FTP**
+  - File Transfer Protocol (FTP) is a standard network protocol used for transferring files between a client and a server over a TCP/IP network, such as the internet. It operates using a client-server model, where a client initiates a connection to an FTP server to upload, download, delete, or rename files.
+- **SFTP**
+  - SFTP (SSH File Transfer Protocol) is a secure file transfer protocol that provides file access, transfer, and management over a reliable data stream. It runs over the SSH protocol, typically on port 22, ensuring encrypted file transfers.
+- **HostOS**
+  - A Host Operating System (HostOS) is the operating system installed directly onto the physical hardware of a computer. It manages the hardware resources, such as the CPU, memory, storage, and network interfaces, and provides a platform for running other operating systems within virtual machines.
+- **nslookup**
+  - nslookup is a network utility used to query Domain Name System (DNS) servers for information about domain names and IP addresses. It allows users to obtain details such as IP address mappings for a given domain name, reverse lookups to find domain names associated with an IP address, and DNS record types like A, MX, and CNAME records.
+- **iptables**
+  - IPTables is a command-line utility for configuring and managing packet filtering rules within the Linux operating system. It allows the system administrator to define and manage the firewall rules that control the incoming and outgoing network traffic.
+- **Packet Sniffers**
+  - Packet sniffers are tools used to capture and analyze network traffic by intercepting data packets as they traverse a network. They provide insights into network activity, including protocols, IP addresses, and payload contents, which can be useful for diagnosing network issues, monitoring performance, and detecting unauthorized or malicious activity.
+- **ipconfig**
+  - ipconfig is a widely-used command-line utility for Windows operating systems that provides valuable information regarding a computer's network configuration. It can be extremely helpful for incident response and discovery tasks when investigating network-related issues, extracting crucial network details, or when trying to ascertain a machine's IP address.
+- **netstat**
+  - netstat (network statistics) is a command-line tool used to display network connections, routing tables, and network interface statistics. It provides information about active TCP and UDP connections, listening ports, and the status of network interfaces.
+- **Port Scanners**
+  - Port scanners are essential tools in the troubleshooting and cybersecurity landscape. They are designed to detect open or closed network ports on a target system.
+- **ping**
+  - Ping is a network utility used to test the reachability and responsiveness of a device on a network. It sends Internet Control Message Protocol (ICMP) echo request packets to a target host and measures the time it takes for an echo reply to be received.
+- **dig**
+  - dig, short for the Domain Information Groper, is a powerful and flexible command-line tool used to perform DNS queries and obtain valuable information about domains, IPs, and DNS records. This utility, available on UNIX-based systems like Linux and macOS, provides an essential function to help diagnose and resolve various issues related to domain name resolution and network connectivity.
+- **arp**
+  - Address Resolution Protocol (ARP) is a protocol used to map an IP address to a physical machine address, also known as a Media Access Control (MAC) address, on a local network. When a device wants to communicate with another device on the same network, it uses ARP to find the MAC address associated with the destination's IP address.
+- **Protocol Analyzers**
+  - Protocol analyzers, also known as network analyzers or packet sniffers, are tools used to capture, inspect, and analyze network traffic. They help diagnose network issues, troubleshoot performance problems, and ensure security by providing detailed insights into the data packets transmitted across a network.
+- **nmap**
+  - Nmap (Network Mapper) is an open-source network scanning tool used to discover hosts and services on a network, identify open ports, and detect vulnerabilities. It provides detailed information about networked devices, including their IP addresses, operating systems, and running services.
+- **route**
+  - The route command is a network utility used to view and manipulate the IP routing table on Unix-like and Windows systems. It allows users to display the current routes that data packets take, as well as add, modify, or delete routes for network traffic.
+- **tcpdump**
+  - Tcpdump is a command-line packet analyzer that captures and displays network traffic going through a system. It allows users to intercept and inspect TCP/IP packets, providing insights into network communication.
+- **tracert**
+  - Tracert (traceroute) is a command-line network diagnostic tool used to trace the route that a packet takes from your computer to a specified destination. It works by sending out a series of packets with increasing time-to-live (TTL) values.
+- **SSO**
+  - Single Sign-On (SSO) lets a user access multiple applications and websites with just one set of credentials. Instead of needing to remember and enter different usernames and passwords for each service, a user authenticates once, and that authentication is then shared securely across various interconnected systems.
+
+### 2.2 Security Skills and Knowledge
+- **SSL and TLS Basics**
+  - Secure Sockets Layer (SSL) and Transport Layer Security (TLS) are cryptographic protocols that provide secure communication over a network. They work by encrypting data exchanged between a client and a server, ensuring confidentiality and integrity.
+- **Basics of NAS and SAN**
+  - Network Attached Storage (NAS) is a file-level data storage device that connects to a network, allowing multiple devices to access files from a central location. A Storage Area Network (SAN) is a dedicated, high-speed network that provides block-level access to storage devices, appearing to servers as locally attached disks.
+- **HTTP / HTTPS**
+  - HTTP (Hypertext Transfer Protocol) is the foundation of data communication on the web. It defines how messages are formatted and transmitted between a web server and a browser.
+- **SSL / TLS**
+  - Secure Sockets Layer (SSL) and Transport Layer Security (TLS) are cryptographic protocols used to provide security in internet communications. These protocols encrypt the data that is transmitted over the web, so anyone who tries to intercept packets will not be able to interpret the data.
+- **Kerberos**
+  - Kerberos is a network authentication protocol designed to provide strong authentication for client/server applications. It was developed by MIT in the 1980s and is named after the three-headed dog from Greek mythology that guarded the gates of Hades, symbolizing the protocol's aim to provide secure authentication in a potentially hostile network environment.
+- **LDAP**
+  - LDAP (Lightweight Directory Access Protocol) is a software protocol for enabling anyone to locate data about organizations, individuals, and other resources, such as files and devices on a network. It is a "directory service" that structures information in a hierarchical, tree-like structure, allowing for efficient searching and retrieval of information.
+- **RADIUS**
+  - Remote Authentication Dial-In User Service (RADIUS) is a network protocol that provides centralized Authentication, Authorization, and Accounting (AAA) management for users who connect to and use a network service. It is commonly used for managing access to network resources such as VPNs, Wi-Fi, and dial-up services.
+- **Certificates**
+  - Certificates, also known as digital certificates or SSL/TLS certificates, are electronic documents used to establish trust and secure communication over networks. They function like digital IDs, verifying the identity of websites, servers, individuals, or devices.
+- **Local Auth**
+  - Local authentication is the process of verifying a user's identity directly against a database or security mechanism housed on the same system or network they are trying to access. This typically involves checking credentials, like usernames and passwords, against locally stored information to grant or deny access to resources.
+- **Understand Common Hacking Tools**
+  - There's a wide range of tools, software, and techniques hackers use to exploit vulnerabilities in systems and networks. These tools range from simple network scanners that identify open ports to sophisticated exploit frameworks that automate the process of gaining unauthorized access.
+- **Understand Common Exploit Frameworks**
+  - Exploit frameworks are collections of tools and resources designed to automate and simplify the process of finding and exploiting vulnerabilities in computer systems. They provide a structured environment for security professionals and penetration testers to develop, test, and execute exploits against target systems.
+- **Understand Concept of Defense in Depth**
+  - Defense in Depth is a layered security strategy where multiple security controls are strategically placed throughout an IT environment. This approach ensures that if one security mechanism fails or is bypassed, others are in place to prevent a successful attack.
+- **Understand Concept of Runbooks**
+  - Runbooks are essentially detailed, step-by-step guides or checklists designed to help security teams and other IT professionals consistently and efficiently handle specific incidents, tasks, or procedures. They outline the actions needed to achieve a desired outcome, ensuring a standardized approach and reducing the likelihood of errors during time-sensitive situations like security breaches or system failures.
+- **Understand Basics of Forensics**
+  - Digital forensics is like being a detective for computers and other digital devices. When a cybercrime or security incident happens, digital forensics experts investigate the devices involved to find clues.
+- **Basics and Concepts of Threat Hunting**
+  - Threat hunting is a proactive security activity where security analysts actively search for malicious activities or threats that have evaded automated security defenses. Unlike reactive incident response, which begins after an alert, threat hunting assumes that threats are already present within the environment and seeks to identify them before they cause significant damage.
+- **Basics of Vulnerability Management**
+  - Vulnerability management is a cyclical process aimed at identifying, classifying, remediating, and mitigating vulnerabilities in computer systems and software. It begins with vulnerability scanning to discover potential weaknesses.
+- **Basics of Reverse Engineering**
+  - Reverse engineering is the process of dissecting a system, piece of hardware, or software program to understand its design, function, and operation without having access to the source code or blueprints. It involves analyzing the object's structure, components, and behavior to deduce how it was created and how it works.
+- **Penetration Testing Rules of Engagement**
+  - Rules of Engagement (RoE) in penetration testing define the boundaries, scope, and limitations of the test. It's a documented agreement between the penetration tester and the client that outlines what systems are in scope, what testing techniques are permitted, a detailed schedule, and communication protocols during the engagement.
+- **Perimiter vs DMZ vs Segmentation**
+  - These are network security concepts that define how a network is structured to protect its assets. The perimeter is the outer defense line, controlling traffic entering and exiting the network.
+- **Core Concepts of Zero Trust**
+  - Zero Trust is a security framework based on the principle of "never trust, always verify." Instead of assuming that users or devices inside a network are automatically trustworthy, Zero Trust mandates that every user, device, and network flow is authenticated and authorized before being granted access to resources. This model minimizes the blast radius of a potential security breach by segmenting access and continuously validating security posture.
+- **Roles of Compliance and Auditors**
+  - Compliance and auditors ensure organizations adhere to internal policies, industry regulations, and legal requirements related to data security and privacy. They assess security controls, identify vulnerabilities, and verify that practices align with established standards like GDPR, HIPAA, or PCI DSS.
+- **Understand the Definition of Risk**
+  - Risk, at its core, stems from the interplay of three components: a threat, a vulnerability, and the potential impact. A threat represents any actor or event with the potential to harm an asset.
+- **Understand Backups and Resiliency**
+  - Backups are copies of data taken and stored separately from the original data source, designed to be used to restore information in case of data loss events like hardware failure, accidental deletion, or cyberattacks. Resiliency, on the other hand, is the ability of a system or network to recover quickly from disruptions and maintain essential functions, even when faced with adverse conditions.
+- **Cyber Kill Chain**
+  - The Cyber Kill Chain is a model that was developed by Lockheed Martin, a major aerospace, military support, and security company, to understand and prevent cyber intrusions in various networks and systems. It serves as a framework for breaking down the stages of a cyber attack, making it easier for security professionals to identify, mitigate, and prevent threats.
+- **MFA & 2FA**
+  - Multi-factor authentication (MFA) is an authentication method that requires the user to present multiple pieces of evidence (factors) to verify their identity. Two-factor authentication (2FA) is a specific type of MFA that uses only two factors.
+- **Operating System Hardening**
+  - Operating system hardening involves configuring and securing an OS to reduce vulnerabilities and improve its defense against attacks. This process includes disabling unnecessary services and ports, applying security patches and updates, configuring strong authentication mechanisms, enforcing least privilege principles, and enabling firewalls and intrusion detection systems.
+- **Understand Concept of Isolation**
+  - Isolation is a security principle focused on separating critical resources, processes, or data to prevent unauthorized access or modification. This separation limits the potential impact of a security breach, vulnerability, or error.
+- **Basics of IDS and IPS**
+  - Intrusion Detection Systems (IDS) and Intrusion Prevention Systems (IPS) are security mechanisms designed to monitor network or system activities for malicious behavior or policy violations. An IDS primarily detects suspicious activity and alerts administrators, while an IPS goes a step further by actively blocking or preventing the detected intrusions.
+- **Honeypots**
+  - A honeypot is a decoy system or resource designed to attract and trap potential attackers. It mimics a real target, such as a server or application, but contains fabricated vulnerabilities.
+- **Authentication vs Authorization**
+  - Authentication verifies who a user is, confirming their identity using credentials like usernames and passwords. Authorization, on the other hand, determines what a user is allowed to access after they've been authenticated.
+- **Blue / Red / Purple Teams**
+  - Blue, Red, and Purple Teams are conceptual groups used to structure cybersecurity roles and responsibilities. A Blue Team is responsible for defending an organization's systems by identifying vulnerabilities and implementing security measures.
+- **False Negative / False Positive**
+  - False positives and false negatives are common occurrences when evaluating security systems and tools. A false positive is when a system incorrectly identifies a normal activity as malicious, raising an alert when there's actually no threat.
+- **True Negative / True Positive**
+  - In the context of security assessments and testing, a true positive is when a security system correctly identifies a threat that is actually present. Conversely, a true negative occurs when the system correctly identifies that there is no threat when, in reality, no threat exists.
+- **Basics of Threat Intel, OSINT**
+  - Threat intelligence involves gathering and analyzing information about potential threats and adversaries. OSINT, or Open-Source Intelligence, is a specific type of threat intelligence that focuses on collecting information from publicly available sources, such as news articles, social media, and public records.
+- **Understand Handshakes**
+  - A handshake is a digital "hello" between two systems, like your computer and a website's server, establishing a secure communication channel. It's a process where both sides exchange information to agree on things like encryption methods and session keys.
+- **Understand CIA Triad**
+  - The CIA Triad is a model designed to guide security policies within an organization. It consists of three fundamental principles: Confidentiality, Integrity, and Availability.
+- **Privilege Escalation**
+  - Privilege escalation is a technique where an attacker increases their access level within a system, moving from lower to higher permissions, such as from a standard user to an administrator. This can be achieved by exploiting system vulnerabilities, misconfigurations, or security weaknesses.
+- **Web Based Attacks and OWASP10**
+  - The OWASP Top 10 is a regularly updated list that highlights the most critical security risks facing web applications. These vulnerabilities are ranked based on exploitability, prevalence, detectability, and technical and business impact.
+- **Learn how Malware works and Types**
+  - Malware, short for malicious software, refers to any program or code designed to harm, disrupt, or gain unauthorized access to computer systems, networks, or devices. This encompasses various forms like viruses that replicate themselves, worms that self-propagate across networks, Trojans disguised as legitimate software, ransomware that encrypts data for extortion, spyware that secretly monitors user activity, and adware that displays unwanted advertisements.
+- **nmap**
+  - Nmap (Network Mapper) is an open-source network scanning tool used to discover hosts and services on a network, identify open ports, and detect vulnerabilities. It provides detailed information about networked devices, including their IP addresses, operating systems, and running services.
+- **tracert**
+  - Tracert, short for traceroute, is a command-line network utility used to trace the route that packets take to reach a specific destination. It works by sending packets with incrementally increasing Time-To-Live (TTL) values.
+- **nslookup**
+  - nslookup is a network utility used to query Domain Name System (DNS) servers for information about domain names and IP addresses. It allows users to obtain details such as IP address mappings for a given domain name, reverse lookups to find domain names associated with an IP address, and DNS record types like A, MX, and CNAME records.
+- **curl**
+  - cURL is a versatile command-line tool primarily used for transferring data using various network protocols. It is widely used in cybersecurity and development for the purpose of testing and interacting with web services, APIs, and scrutinizing web application security.
+- **hping**
+  - hping is a versatile and powerful command-line based packet crafting tool that allows network administrators, security professionals, and system auditors to manipulate and analyze network packets at a granular level. hping can be used to perform stress testing, firewall testing, scanning, and packet generation, among other functionalities.
+- **ping**
+  - Ping is a network utility used to test the reachability and responsiveness of a device on a network. It sends Internet Control Message Protocol (ICMP) echo request packets to a target host and measures the time it takes for an echo reply to be received.
+- **arp**
+  - ARP, or Address Resolution Protocol, is a communication protocol used for discovering the link layer address (typically a MAC address) associated with a given internet layer address (typically an IPv4 address). It operates by sending an ARP request to all devices on a network, asking the device with the specific IP address to respond with its MAC address.
+- **cat**
+  - cat is a widely used command-line utility in UNIX and UNIX-like systems. It stands for "concatenate" which, as the name suggests, can be used to concatenate files, display file contents, or combine files.
+- **dd**
+  - dd (data duplicator) is a command-line utility used primarily for copying and converting data. It operates at a low level, reading and writing data block by block.
+- **head**
+  - head is a versatile command-line utility that enables users to display the first few lines of a text file; by default, it shows the first 10 lines. In the case of incident response and cybersecurity, it is a useful tool to quickly analyze logs or configuration files while investigating potential security breaches or malware infections in a system.
+- **grep**
+  - Grep is a powerful command-line tool used for searching and filtering text, primarily in Unix-based systems. Short for "global regular expression print", grep is widely used for its ability to search through files and directories, and find lines that match a given pattern.
+- **wireshark**
+  - Wireshark is a free and open-source packet analyzer. It captures network traffic in real-time and provides detailed information about the data being transmitted, including source and destination addresses, protocols used, and the data payload.
+- **winhex**
+  - WinHex is a hexadecimal editor and disk analysis tool primarily used for data recovery, digital forensics, and low-level data processing. It allows users to inspect and edit all types of files, physical disks, and memory, making it invaluable for identifying file system anomalies, recovering deleted data, and analyzing system behavior.
+- **memdump**
+  - memdump is a tool or process used to capture the contents of a computer's physical memory (RAM) for analysis. This "memory dump" can be useful in digital forensics, debugging, or incident response to identify active processes, open files, network connections, or potentially malicious code running in memory.
+- **FTK Imager**
+  - FTK Imager is a popular and widely used free imaging tool developed by AccessData. It allows forensic analysts and IT professionals to create forensic images of digital devices and storage media.
+- **autopsy**
+  - Autopsy is a versatile and powerful open-source digital forensics platform that is primarily used for incident response, cyber security investigations, and data recovery. As an investigator, you can utilize Autopsy to quickly and efficiently analyze a compromised system, extract crucial artifacts, and generate comprehensive reports.
+- **dig**
+  - dig, short for the Domain Information Groper, is a powerful and flexible command-line tool used to perform DNS queries and obtain valuable information about domains, IPs, and DNS records. This utility, available on UNIX-based systems like Linux and macOS, provides an essential function to help diagnose and resolve various issues related to domain name resolution and network connectivity.
+- **tail**
+  - The tail command is a Unix/Linux utility used to display the last part of a file. By default, it shows the last 10 lines of a specified file.
+- **ipconfig**
+  - ipconfig is a widely-used command-line utility for Windows operating systems that provides valuable information regarding a computer's network configuration. It can be extremely helpful for incident response and discovery tasks when investigating network-related issues, extracting crucial network details, or when trying to ascertain a machine's IP address.
+- **Salting**
+  - Salting is a crucial concept within the realm of cryptography. It is a technique employed to enhance the security of passwords or equivalent sensitive data by adding an extra layer of protection to safeguard them against hacking attempts, such as brute-force attacks or dictionary attacks.
+- **Hashing**
+  - Hashing is a fundamental concept in computer science involving the use of a mathematical function (a hash function) to map data of arbitrary size to a fixed-size value, known as a hash or a hash code. This transformation is typically one-way, meaning it is computationally infeasible to reverse the process and recover the original data from the hash value alone.
+- **Key Exchange**
+  - Key exchange refers to the processes and protocols used to securely share cryptographic keys between parties. This allows them to then use those keys for encrypting and decrypting messages, ensuring confidentiality and integrity of their communication.
+- **PKI**
+  - Public Key Infrastructure (PKI) is a system that uses digital certificates to verify and authenticate the identity of users, devices, and services. It relies on cryptographic keys – a public key for encrypting data and a corresponding private key for decrypting it.
+- **Private vs Public Keys**
+  - Private and public keys are fundamental components of modern cryptography. A private key is a secret, known only to the owner, used for encrypting data and creating digital signatures.
+- **Obfuscation**
+  - Obfuscation is the practice of deliberately making data, code, or communications difficult to understand or analyze, often to protect intellectual property or enhance security. In software development, obfuscation involves transforming code into a complex or less readable form to hinder reverse engineering or unauthorized access.
+- **ATT&CK**
+  - The MITRE ATT&CK framework is a knowledge base and model for describing the tactics, techniques, and procedures (TTPs) that adversaries use when attacking computer systems. It's organized into matrices that outline common attack behaviors across various platforms and environments.
+- **Kill Chain**
+  - The Kill Chain is a framework that breaks down a cyberattack into distinct stages, from initial reconnaissance to achieving the attacker's objective. It provides a structured approach to understanding and disrupting malicious activity by identifying specific points where security controls can be implemented to interrupt the attack sequence.
+- **Diamond Model**
+  - The Diamond Model is a framework for understanding and analyzing cyber threat activity. It visualizes an intrusion event as a diamond shape with four core features: adversary, capability, infrastructure, and victim.
+- **Phishing**
+  - Phishing is a type of social engineering attack where malicious actors attempt to deceive individuals into revealing sensitive information, such as usernames, passwords, credit card details, or other personal data. This is often done by disguising oneself as a trustworthy entity in an electronic communication, like an email, message, or website, to trick the recipient into clicking a malicious link or providing the requested information.
+- **Whishing**
+  - Whishing, a portmanteau of "Whaling" and "Phishing," is a type of social engineering attack that specifically targets high-profile individuals within an organization, such as CEOs, CFOs, and other executives. Unlike regular phishing, which casts a wide net, whishing is highly targeted and aims to trick these individuals into divulging sensitive information or performing actions that benefit the attacker, like transferring money or revealing confidential business strategies.
+- **Whaling**
+  - Whaling is a specific type of phishing attack that targets high-profile individuals within an organization, such as executives, CEOs, or other senior leaders. The term "whaling" is derived from the idea of hunting large "whales," as opposed to the more common "phishing," which targets a broader range of users.
+- **Smishing**
+  - Smishing is a type of phishing attack that uses SMS (Short Message Service) or text messages to trick individuals into giving up sensitive information. Attackers send fraudulent text messages that appear to be from legitimate sources, such as banks, government agencies, or popular businesses.
+- **Spam vs Spim**
+  - Spam refers to unsolicited and often irrelevant messages sent over email, typically to a large number of recipients, with the purpose of advertising, phishing, spreading malware, or other malicious activities. Spam emails are usually sent by automated bots and are characterized by their bulk nature.
+- **Shoulder Surfing**
+  - Shoulder surfing is a type of social engineering attack where an attacker directly observes someone entering sensitive information, such as passwords, PINs, or credit card details. This observation can happen in public places like ATMs, coffee shops, or even within an office environment.
+- **Dumpster Diving**
+  - Dumpster Diving in the context of cybersecurity refers to the practice of searching through discarded materials in trash or recycling bins to find confidential information. This technique may seem unsophisticated, but it can be extremely effective in obtaining valuable data such as passwords, account information, network diagrams, or any other sensitive information that has not been properly destroyed.
+- **Tailgating**
+  - Tailgating is the act of getting access to a restricted area by simply following an authorized person. This is a common social engineering technique used by attackers to gain physical access to a building or a restricted area.
+- **Zero day**
+  - A zero-day exploit refers to a cyber attack that targets a software vulnerability which is unknown to the software vendor or the public. This means there isn't a patch available to fix the vulnerability when the attack occurs.
+- **Social Engineering**
+  - Social Engineering is a manipulation technique that exploits human psychology to gain access to confidential information, systems, or physical locations. Unlike traditional hacking methods that rely on technical skills, social engineering primarily focuses on deceiving or tricking individuals into revealing sensitive information or performing actions that compromise security.
+- **Reconnaissance**
+  - Reconnaissance is the first phase of a cyber-attack, during which attackers gather as much information as possible about a target system, network, or organization. The goal of reconnaissance is to identify potential vulnerabilities, entry points, and other valuable details that can be exploited in subsequent attack phases.
+- **Impersonation**
+  - Impersonation in cybersecurity refers to an attack technique where a threat actor pretends to be a legitimate person or entity to deceive individuals, systems, or organizations. This tactic is commonly used in social engineering attacks to gain unauthorized access to sensitive information, resources, or systems.
+
+---
+
+## 3. Advanced
+
+### 3.1 Cloud Skills and Knowledge
+- **ISO**
+  - The International Organization for Standardization (ISO) is an international standard-setting body composed of representatives from various national standards organizations. It promotes worldwide proprietary, industrial, and commercial standards.
+- **NIST**
+  - The National Institute of Standards and Technology (NIST) is a non-regulatory agency of the U.S. Department of Commerce.
+- **RMF**
+  - The Risk Management Framework (RMF) is a structured, comprehensive process for managing security and privacy risk for information systems, organizations, and individuals. It provides a unified framework to identify, assess, and mitigate risks throughout the system development lifecycle.
+- **CIS**
+  - The Center for Internet Security (CIS) is a non-profit organization that focuses on enhancing the cybersecurity posture of individuals, organizations, and governments around the world. CIS offers various tools, best practices, guidelines, and frameworks that help in defending against common cyber threats.
+- **CSF**
+  - The Cybersecurity Framework (CSF) is a set of guidelines aimed at helping organizations better protect their critical infrastructure from cyber threats. Developed by the National Institute of Standards and Technology (NIST), this voluntary framework provides a flexible, risk-based approach to managing cybersecurity risks.
+- **SIEM**
+  - Security Information and Event Management (SIEM) systems are tools that collect and analyze security logs and event data from various sources throughout an organization's IT infrastructure. This data is then correlated to identify potential security threats, vulnerabilities, and policy violations, providing security teams with a centralized view of their security posture and enabling them to respond to incidents more effectively.
+- **SOAR**
+  - SOAR refers to a collection of software solutions and tools that allow organizations to gather security-related data from various sources, analyze it, and automate responses to security incidents. It integrates different security technologies to streamline incident response, reduce manual effort, and improve the overall efficiency of security operations.
+- **ParrotOS**
+  - ParrotOS is a Debian-based Linux distribution designed for security, privacy, and development. It includes a comprehensive suite of tools for penetration testing, digital forensics, and vulnerability assessment, making it popular among cybersecurity professionals and ethical hackers.
+- **Kali Linux**
+  - Kali Linux is a specialized Linux distribution that is designed for penetration testing, security auditing, and related information security tasks. Originating from the Debian distribution, Kali Linux is equipped with a vast array of tools that are used for ethical hacking purposes.
+- **LOLBAS**
+  - Living Off The Land Binaries and Scripts (LOLBAS) refers to the use of legitimate, pre-installed operating system tools and programs for malicious purposes. Instead of introducing new malware, attackers leverage these existing, trusted binaries to perform actions such as downloading files, executing code, or gathering information, often evading traditional security defenses that focus on detecting malicious software.
+- **Event Logs**
+  - Event logs are records of activities that occur within a computer system or network. These logs capture various events, such as system startups and shutdowns, application errors, security alerts, and user login/logout activities.
+- **syslogs**
+  - Syslogs are standardized text-based logs that are generated by various devices and applications on a network. These logs contain information about system events, security alerts, and other relevant data, all formatted in a consistent manner.
+- **netflow**
+  - NetFlow is a network protocol developed by Cisco for collecting and analyzing network traffic data. It provides detailed information about network flows, including the source and destination IP addresses, ports, and the amount of data transferred.
+- **Packet Captures**
+  - Packet captures involve recording and analyzing network traffic data packets as they travel across a network. This process allows network administrators and security professionals to inspect the content of packets, including headers and payloads, to diagnose network issues, monitor performance, and detect suspicious activities.
+- **Firewall Logs**
+  - Firewall logs are records generated by a firewall that detail network traffic passing through it. These logs typically contain information such as source and destination IP addresses, ports, timestamps, and the actions taken by the firewall (e.g., allowing or blocking connections).
+- **MAC-based**
+  - Mandatory Access Control (MAC) is a security model where the operating system enforces strict rules on access to resources. Unlike discretionary access control (DAC), where users control access to their own files, MAC uses a centralized authority to define access policies.
+- **NAC-based**
+  - Network Access Control (NAC) based hardening is a crucial component in enhancing the security of your network infrastructure. NAC provides organizations with the ability to control and manage access to the network resources, ensuring that only authorized users and devices can connect to the network.
+- **Port Blocking**
+  - Port blocking is an essential practice in hardening the security of your network and devices. It involves restricting, filtering, or entirely denying access to specific network ports to minimize exposure to potential cyber threats.
+- **Group Policy**
+  - Group Policy is a feature within Microsoft Windows operating systems that provides centralized management and configuration of computer and user settings in an Active Directory environment. It allows administrators to define and enforce specific rules and policies for users and computers, controlling aspects like password complexity, software installation, security settings, and access rights.
+- **ACLs**
+  - An Access Control List (ACL) is a security mechanism used to define which users or system processes are granted access to objects, such as files, directories, or network resources, and what operations they can perform on those objects. ACLs function by maintaining a list of permissions attached to each object, specifying the access rights of various entities—like users, groups, or network traffic—thereby providing fine-grained control over who can read, write, execute, or modify the resources.
+- **Sinkholes**
+  - A sinkhole, in the context of networking, is a server designed to attract and collect malicious traffic. It acts as a honeypot, diverting attackers away from legitimate systems and allowing security analysts to observe and analyze their activities.
+- **Patching**
+  - Patching refers to the process of updating software or systems with fixes or improvements to address security vulnerabilities, bugs, or performance issues. This involves applying patches—small pieces of code provided by software vendors or developers—to close security gaps, resolve operational problems, and enhance functionality.
+- **Jump Server**
+  - A jump server, also known as a bastion host or jump host, is a critical security component in many network architectures. It is a dedicated, locked-down, and secure server that sits within a protected network, and provides a controlled access point for users and administrators to access specific components within the system.
+- **Endpoint Security**
+  - Endpoint security focuses on protecting networks by securing the devices that connect to them, such as desktops, laptops, smartphones, and servers. It involves implementing security measures directly on these endpoints to prevent malicious activities, data breaches, and unauthorized access.
+- **FTP vs SFTP**
+  - File Transfer Protocol (FTP) is a standard network protocol used to transfer files between a client and a server on a computer network. Secure File Transfer Protocol (SFTP), on the other hand, is a more secure method that transfers files over a secure SSH connection, encrypting both commands and data being transferred.
+- **SSL vs TLS**
+  - SSL (Secure Sockets Layer) and TLS (Transport Layer Security) are cryptographic protocols used to provide secure communication over a network. They work by encrypting data transmitted between a client (like a web browser) and a server, ensuring confidentiality and integrity.
+- **IPSEC**
+  - IPsec (Internet Protocol Security) is a suite of protocols used to secure Internet Protocol (IP) communications by authenticating and encrypting each IP packet of a communication session. It operates at the network layer, providing security for all applications running over it.
+- **DNSSEC**
+  - DNSSEC, or Domain Name System Security Extensions, is a security protocol suite that adds cryptographic signatures to DNS data. It verifies that DNS responses originate from the authoritative DNS server and haven't been tampered with during transit.
+- **LDAPS**
+  - LDAPS (Lightweight Directory Access Protocol Secure) is a method of securing LDAP communications by using SSL (Secure Sockets Layer) or TLS (Transport Layer Security) to encrypt the data transmitted between a client and a directory server. This encryption prevents eavesdropping and tampering with sensitive information like usernames, passwords, and other directory attributes during transit, ensuring a more secure directory service environment.
+- **SRTP**
+  - Secure Real-time Transport Protocol (SRTP) is a security profile for RTP, the Real-time Transport Protocol. It adds encryption, authentication, and integrity protection to RTP data, ensuring that audio and video streams transmitted over a network are confidential and haven't been tampered with during transit.
+- **S/MIME**
+  - S/MIME (Secure/Multipurpose Internet Mail Extensions) is a widely used standard for public key encryption and signing of MIME data. It provides a way to send encrypted and digitally signed emails, ensuring the confidentiality, integrity, and authentication of electronic communications.
+- **Antivirus**
+  - Antivirus software is a program designed to detect, prevent, and remove malicious software (malware) from a computer system. It works by scanning files, directories, or systems for known viruses, worms, trojans, spyware, and other types of malware.
+- **Antimalware**
+  - Antimalware refers to software designed to detect, prevent, and remove malicious software (malware) from computer systems. This type of software typically includes features like real-time scanning, scheduled scans, and removal tools to protect against various threats such as viruses, worms, trojans, spyware, and ransomware.
+- **EDR**
+  - EDR is a security technology that continuously monitors endpoints (like computers, laptops, and servers) for suspicious activity and threats. It collects data from these endpoints, analyzes it in real-time, and automatically responds to detected threats to prevent or minimize damage.
+- **DLP**
+  - Data Loss Prevention (DLP) refers to a set of strategies, tools, and processes used by organizations to ensure that sensitive data is not lost, accessed, or misused by unauthorized users. DLP solutions monitor, detect, and block the movement of critical information outside an organization’s network, helping to prevent data breaches, leaks, and other security incidents.
+- **ACL**
+  - An Access Control List (ACL) is a set of permissions attached to an object (like a file, folder, or network resource) that specifies which users or groups have access to the object and what level of access they are granted (e.g., read, write, execute). Essentially, it's a table that tells a system who is allowed to do what.
+- **Firewall & Nextgen Firewall**
+  - A firewall is a network security system that monitors and controls incoming and outgoing network traffic based on predetermined security rules. It acts as a barrier between a trusted internal network and untrusted external networks, such as the internet.
+- **HIPS**
+  - A Host Intrusion Prevention System (HIPS) is a software application installed on a single host (like a computer or server) that monitors the activities taking place on that host. It analyzes events for malicious or suspicious behavior, based on predefined rules and signatures, and takes action to block or mitigate threats targeting that specific system.
+- **NIDS**
+  - A Network Intrusion Detection System (NIDS) is a security solution designed to monitor and analyze network traffic for signs of suspicious activity or potential threats. NIDS operates by inspecting the data packets that flow through a network, looking for patterns that match known attack signatures or anomalies that could indicate malicious behavior.
+- **NIPS**
+  - A Network Intrusion Prevention System (NIPS) is a security technology designed to monitor, detect, and prevent malicious activities or policy violations on a network. Unlike intrusion detection systems (IDS), which only alert on potential threats, a NIPS actively blocks or mitigates suspicious traffic in real-time.
+- **Host Based Firewall**
+  - A host-based firewall is a software application that resides on a single computer (the "host") and controls network traffic in and out of that machine. It acts as a barrier, examining incoming and outgoing network connections based on pre-configured rules.
+- **Sandboxing**
+  - Sandboxing is a security technique where a program or code is isolated in a controlled environment, or "sandbox," to prevent it from affecting other parts of the system. This isolation allows suspicious or untrusted code, such as software, scripts, or files, to be executed and analyzed safely without risking harm to the host system.
+- **EAP vs PEAP**
+  - EAP (Extensible Authentication Protocol) is an authentication framework providing a general method for transport and authentication, supporting various authentication methods. PEAP (Protected EAP) is an EAP protocol that encapsulates EAP within an encrypted and authenticated TLS tunnel.
+- **WPS**
+  - Wi-Fi Protected Setup (WPS) is a network security standard designed to make it easier to connect devices to a secure wireless network. It allows users to add devices to a Wi-Fi network using a simple setup process, typically involving pressing a WPS button on the router and the device or entering a PIN.
+- **WPA vs WPA2 vs WPA3 vs WEP**
+  - These terms represent different security protocols used to secure Wi-Fi networks. WEP (Wired Equivalent Privacy) was the original standard but has since been deemed insecure.
+- **Preparation**
+  - The Preparation phase in incident response involves establishing and maintaining the tools, policies, and procedures necessary to handle security incidents effectively. This includes creating an incident response plan, defining roles and responsibilities, training staff, and ensuring that appropriate technologies, such as monitoring systems and logging tools, are in place to detect and respond to incidents.
+- **Identification**
+  - Identification refers to the process of detecting and recognizing that a security breach or anomalous activity has occurred within a network or system. This is the initial step in the incident response process, where security tools, monitoring systems, or alert mechanisms, such as Intrusion Detection Systems (IDS), log analysis, or user reports, indicate potential malicious activity.
+- **Containment**
+  - Containment in cybersecurity refers to the process of limiting the impact of a security incident by isolating affected systems, networks, or data to prevent further spread or damage. When a breach or malware infection is detected, containment strategies are quickly implemented to halt the attack's progress, often by disconnecting compromised systems from the network, blocking malicious traffic, or restricting user access.
+- **Eradication**
+  - Eradication in the context of incident response involves completely removing the root cause of a security incident to prevent its recurrence. This phase goes beyond just containing the immediate effects of an attack; it focuses on identifying and eliminating the vulnerability, malware, or other underlying factors that allowed the incident to happen in the first place.
+- **Recovery**
+  - The recovery phase of incident response focuses on restoring affected systems and services to normal operation, which involves repairing systems, recovering data from backups, validating functionality, and communicating with stakeholders. This phase also includes conducting a post-incident review to document lessons learned and update response plans to improve future preparedness.
+- **Lessons Learned**
+  - The final step in incident response focuses on solidifying what was gained from the experience. It starts with a post-incident review, where the team dissects the incident timeline, actions taken, and overall effectiveness.
+- **Zero Day**
+  - A zero-day exploit targets a software vulnerability that is unknown to the vendor or developer. Because the vulnerability is newly discovered (or unknown to those who could fix it), there is no patch or fix available.
+- **Known vs Unknown**
+  - Known threats are security risks that have been previously identified, analyzed, and documented, often with established signatures or patterns. Unknown threats, on the other hand, are novel attacks or vulnerabilities that have not been seen before and lack readily available defenses or signatures.
+- **APT**
+  - Advanced Persistent Threats, or APTs, are a class of cyber threats characterized by their persistence over a long period, extensive resources, and a high level of sophistication. Often associated with nation-state actors, organized cybercrime groups, and well-funded hackers, APTs are primarily focused on targeting high-value assets, such as critical infrastructure, financial systems, and government agencies.
+- **VirusTotal**
+  - VirusTotal is a service that analyzes files and URLs for malicious content. It uses a variety of antivirus engines, website scanners, and other tools to identify viruses, worms, trojans, and other kinds of malware.
+- **Joe Sandbox**
+  - Joe Sandbox is a system used to automatically analyze potentially malicious files or URLs within an isolated environment. It executes these samples and observes their behavior, generating detailed reports on their activities, including network communication, system modifications, and attempts to evade detection.
+- **any.run**
+  - any.run is an interactive online platform used for analyzing suspicious files and URLs in a safe, isolated environment. It allows users to execute potentially malicious software or visit questionable websites without risking their own systems.
+- **urlvoid**
+  - UrlVoid is an online service that evaluates and analyzes websites to assess their safety and reputation. By checking a URL against various security databases and services, UrlVoid provides a summary of potential risks, such as malware, phishing, or blacklisting.
+- **urlscan**
+  - urlscan.io is a free service used to analyze websites. When you submit a URL to urlscan.io, it browses the site in an automated fashion, much like a real user.
+- **WHOIS**
+  - WHOIS is a query and response protocol widely used for querying databases that store the registered users or assignees of an Internet resource, such as a domain name, an IP address block, or an autonomous system number. These databases provide information like the registrant's contact details, creation and expiration dates, registrar information, and nameservers associated with the resource.
+- **Watering Hole Attack**
+  - Watering Hole Attack is a type of cyberattack where the attacker targets a specific group of users by compromising a website or online resource that they are known to frequently visit. The name "watering hole" comes from the idea of predators waiting by a water source to attack prey, similar to how attackers wait for their targets to visit a compromised site.
+- **Drive by Attack**
+  - Drive-by Attack is a type of cyberattack where malicious code is automatically downloaded and executed on a user's system simply by visiting a compromised or malicious website. The user does not need to click on anything or interact with the page; just loading the website is enough to trigger the attack.
+- **Typo Squatting**
+  - Typosquatting is a form of cyberattack that exploits common typing errors made by users when entering website URLs into their browsers. Attackers create malicious websites with URLs that are very similar to legitimate ones, often differing by just a single letter, number, or symbol.
+- **Brute Force vs Password Spray**
+  - Brute force attacks attempt to crack a password by systematically trying every possible combination of characters until the correct one is found. Password spraying, conversely, uses a list of commonly used passwords and attempts them against many different user accounts.
+- **DoS vs DDoS**
+  - A Denial-of-Service (DoS) attack is a type of cyberattack where an attacker attempts to make a machine or network resource unavailable to its intended users by overwhelming it with malicious traffic or requests, originating from a single source. A Distributed Denial-of-Service (DDoS) attack is similar, but the attack traffic comes from multiple compromised systems, creating a larger and more difficult-to-mitigate disruption.
+- **MITM**
+  - A Man-in-the-Middle (MITM) attack occurs when a malicious actor intercepts communication between two parties, such as a user and a website, without their knowledge. The attacker can eavesdrop, alter, or inject false information into the communication, often to steal sensitive data like login credentials or manipulate transactions.
+- **Spoofing**
+  - Spoofing is a form of deception where someone or something pretends to be another person, device, or entity to mislead or gain an advantage. In technology and cybersecurity, it often involves falsifying information like an IP address, email, or website to trick a user or system into believing it’s interacting with a legitimate source.
+- **Evil Twin**
+  - An Evil Twin is a type of wireless network attack where an attacker sets up a rogue Wi-Fi access point that mimics a legitimate Wi-Fi network. The rogue access point has the same SSID (network name) as the legitimate network, making it difficult for users to distinguish between the two.
+- **DNS Poisoning**
+  - DNS spoofing or DNS cache poisoning, occurs when fake information is inserted into a DNS server’s cache.This causes DNS queries to return incorrect IP addresses, directing users to the wrong websites. Hackers exploit this to reroute traffic to malicious sites.
+- **Deauth Attack**
+  - A Deauthentication (Deauth) Attack is a type of denial-of-service (DoS) attack specific to wireless networks. It involves sending fake deauthentication frames to a Wi-Fi client or access point, forcing the client to disconnect from the network.
+- **VLAN Hopping**
+  - VLAN hopping is a network attack where an attacker exploits vulnerabilities in the VLAN (Virtual Local Area Network) configuration to gain unauthorized access to traffic on different VLANs. By manipulating VLAN tagging, the attacker can "hop" from one VLAN to another, bypassing network segmentation.
+- **Rogue Access Point**
+  - A Rogue Access Point (Rogue AP) is an unauthorized wireless access point installed on a secure network without the network administrator's knowledge or consent. These devices can be set up by malicious actors to intercept, steal, or manipulate network traffic, or by employees who unintentionally compromise network security by setting up their own wireless access points.
+- **Buffer Overflow**
+  - A Buffer Overflow is a type of vulnerability that occurs when a program or process attempts to write more data to a buffer—a temporary storage area in memory—than it can hold. This overflow can cause the extra data to overwrite adjacent memory locations, potentially leading to unintended behavior, crashes, or security breaches.
+- **Memory Leak**
+  - A Memory Leak occurs when a computer program consumes memory but fails to release it back to the operating system after it is no longer needed. Over time, this can lead to reduced system performance, increased memory usage, and, in severe cases, the program or system may crash due to the exhaustion of available memory.
+- **XSS**
+  - Cross-Site Scripting (XSS) is a type of security vulnerability that occurs when a web application allows malicious scripts to be injected into the code, which is executed by other users' browsers. These scripts can steal session cookies, redirect the user to malicious websites, or deface the website, all while appearing to originate from the trusted website itself.
+- **SQL Injection**
+  - SQL Injection is a type of web application security vulnerability that allows an attacker to inject malicious SQL code into a web application's database, potentially leading to unauthorized data access, modification, or deletion.
+- **CSRF**
+  - Cross-Site Request Forgery (CSRF) is a web security vulnerability where an attacker tricks a user's browser into performing actions on a website while the user is authenticated. This happens without the user's knowledge or consent, leveraging the established trust between the user's browser and the targeted website.
+- **Replay Attack**
+  - A Replay Attack is a type of network attack where an attacker intercepts and retransmits legitimate communication data, often with the aim of gaining unauthorized access to a system or performing unauthorized actions. In this attack, the attacker captures a valid data transmission and then "replays" it later, without needing to decrypt or alter the data, to trick the recipient into thinking it's a legitimate request.
+- **Pass the Hash**
+  - Pass the Hash (PtH) is a hacking technique that allows an attacker to authenticate to a remote server or service using the hashed value of a user's password, without needing to know the actual plaintext password. This method exploits weaknesses in the way some authentication protocols handle hashed credentials, particularly in Windows-based systems.
+- **Directory Traversal**
+  - Directory traversal, also known as path traversal, is a web security vulnerability that allows attackers to access files and directories stored outside of the intended web server's root directory. It exploits insufficient security validation of user-supplied filenames, enabling attackers to navigate the file system and potentially gain access to sensitive information, execute arbitrary code, or compromise the entire server.
+- **Stakeholders**
+  - Stakeholders are individuals, groups, or organizations that have an interest in or are affected by a project, policy, or activity. They can range from internal teams and management to external customers, partners, and regulatory bodies.
+- **HR**
+  - Human Resources (HR) is the department within a company responsible for managing employees. This includes recruiting, hiring, training, and handling employee relations, as well as administering compensation and benefits.
+- **Legal**
+  - A legal department in a company handles all legal matters, including contracts, compliance with laws and regulations, and dealing with potential lawsuits. Regarding cybersecurity, their role involves ensuring the company follows data privacy laws, managing legal risks related to data breaches, creating policies for data handling and security, and advising on legal aspects of incident response and digital forensics.
+- **Compliance**
+  - Compliance in cybersecurity refers to the adherence to laws, regulations, standards, and best practices designed to protect sensitive data and ensure the security of information systems. It encompasses a wide range of requirements that organizations must meet to safeguard their digital assets and maintain the trust of customers, partners, and regulatory bodies.
+- **Management**
+  - Management departments within companies are generally responsible for planning, organizing, and directing the operations of an organization to achieve its goals. Their role in cybersecurity involves setting security policies, allocating resources for security initiatives, and ensuring compliance with relevant regulations.
+- **Understand the Concept of Security in the Cloud**
+  - Cloud security encompasses the policies, technologies, and controls used to protect data, applications, and infrastructure associated with cloud computing. It addresses the unique security challenges presented by shared resources, remote access, and the distributed nature of cloud environments.
+- **Understand the differences between cloud and on-premises**
+  - Cloud computing involves using shared computing resources, like servers and software, provided by a third-party over the internet. On-premises computing, on the other hand, involves managing your own computing infrastructure, including servers, networking, and software, physically located within your own facilities.
+- **Understand the concept of Infrastructure as Code**
+  - Infrastructure as Code (IaC) is the practice of managing and provisioning computing infrastructure through machine-readable definition files, rather than physical hardware configuration or interactive configuration tools. Think of it as writing code to define and deploy your servers, networks, and other infrastructure components in a consistent and repeatable manner.
+- **SaaS**
+  - Software as a Service (SaaS) is a cloud-based model where software applications are delivered to users over the internet, eliminating the need for local installation or maintenance. SaaS providers manage infrastructure, security, and updates, allowing users to access the software on a subscription basis from any device with an internet connection.
+- **PaaS**
+  - Platform as a Service (PaaS) is a cloud computing model that delivers a complete platform—hardware, software, and infrastructure—for developing, running, and managing applications without the complexity of building and maintaining the underlying infrastructure typically associated with developing and launching an app. Think of it as providing the tools and resources needed for software development, all hosted in the cloud.
+- **IaaS**
+  - Infrastructure as a Service (IaaS) is a type of cloud computing service that provides on-demand access to fundamental computing resources – servers, networking, storage, and virtualization – over the internet. Instead of owning and managing physical hardware in an on-premises data center, users can rent these resources from a cloud provider.
+- **Private**
+  - A private cloud is a cloud computing environment dedicated to a single organization, offering the same benefits as public clouds, such as scalability and self-service, but with greater control and customization. It is hosted either on-premises or by a third-party provider, and it ensures that the organization's data and applications are isolated from other entities.
+- **Public**
+  - Public cloud refers to computing services offered by a third-party provider over the public internet, available to anyone who wants to use or purchase them. These services include servers, storage, databases, networking, software, analytics, and intelligence.
+- **Hybrid**
+  - A hybrid cloud model combines on-premises infrastructure (a private cloud) with third-party public cloud services. This setup allows organizations to leverage the benefits of both environments.
+- **AWS**
+  - Amazon Web Services (AWS) is a leading cloud computing platform provided by Amazon. Launched in 2006, AWS offers an extensive range of on-demand IT services, such as computing power, storage, databases, networking, and security, which enable organizations to develop, deploy, and scale applications and infrastructure quickly and cost-effectively.
+- **GCP**
+  - Google Cloud Platform (GCP) is a collection of cloud computing services offered by Google, which provides infrastructure and platform services to businesses or individuals. It enables users to either build their own applications or services on the provided resources, or utilize ready-to-use services provided by Google.
+- **Azure**
+  - Azure is Microsoft's comprehensive cloud computing platform that offers a wide range of services for building, deploying, and managing applications. It provides infrastructure as a service (IaaS), platform as a service (PaaS), and software as a service (SaaS) solutions, supporting various programming languages, tools, and frameworks.
+- **GTFOBINS**
+  - GTFOBins (GTFOBINS) is a curated list of Unix binaries that can be exploited by attackers to bypass local security restrictions on a misconfigured system. It provides a detailed index of commands and scripts, demonstrating how certain binaries, when used improperly, can enable privilege escalation, file manipulation, and other unauthorized activities, thus serving as a resource for both security professionals to understand potential vulnerabilities and for attackers to identify and exploit weaknesses.
+- **WADCOMS**
+  - WADcoms (Windows/Active Directory Commands) is an interactive cheat sheet, containing a curated list of offensive security tools and their respective commands, to be used against Windows/AD environments. Just select what information you currently have related to the Windows machine (passwords, usernames, services, etc.), and it will display a list of tools you can try against the machine, along with a template command for easy copy/pasting
+
+### 3.2 Programming Skills
+- **Understand the basics and general flow of deploying in the cloud**
+  - Cloud deployment refers to the process of releasing and making an application or service available in a cloud computing environment. This involves configuring cloud resources, deploying code or application components, and setting up the necessary infrastructure for the application to run and be accessible to users.
+- **Understand the Concept of Serverless**
+  - Serverless computing is a cloud execution model where the cloud provider dynamically manages the allocation of machine resources. Instead of provisioning and managing servers, developers write and deploy code that is executed in response to specific events, like HTTP requests or database updates.
+- **S3**
+  - Amazon Simple Storage Service (S3) is a scalable, object-based cloud storage service provided by AWS. It allows users to store and retrieve large amounts of data, such as files, backups, or media content, with high durability and availability.
+- **Dropbox**
+  - Dropbox is a widely used cloud storage service that allows you to store, access, and share files, documents, and media with ease across various devices. Launched in 2007, Dropbox has become one of the most popular cloud storage solutions, catering to both individual users and businesses.
+- **Box**
+  - Box is a popular cloud storage service that provides individuals and businesses with a platform to securely store, share, and access files and documents from any device. Box is known for its emphasis on security and collaboration features, making it an ideal choice for businesses who want a secure way to share and collaborate on files with their teams.
+- **OneDrive**
+  - OneDrive is a cloud storage service provided by Microsoft that allows users to store, sync, and share files and folders online. It integrates seamlessly with Windows and Microsoft 365 applications, enabling users to access their data from any device with an internet connection.
+- **Google Drive**
+  - Google Drive is a cloud-based storage solution provided by Google, which offers users the ability to store, share, and collaborate on files and documents across different platforms and devices. It is integrated with Google's productivity suite, including Google Docs, Sheets, Slides, and Forms, allowing seamless collaboration with team members in real-time.
+- **iCloud**
+  - iCloud is a cloud storage and cloud computing service provided by Apple Inc. It allows users to store data, such as documents, photos, and music, on remote servers and synchronize them across their Apple devices, including iPhones, iPads, and MacBooks.
+- **Python**
+  - Python is a high-level, interpreted programming language known for its readability, simplicity, and versatility. It supports multiple programming paradigms, including procedural, object-oriented, and functional programming.
+- **Go**
+  - Go, also known as Golang, is an open-source programming language created by Google. Launched in 2009, it was designed to overcome issues present in other languages and offer a more secure, robust, and efficient development experience.
+- **JavaScript**
+  - JavaScript (often abbreviated as JS) is a widely-used, high-level programming language. It is predominantly used for creating and enhancing the interactive elements of web pages, making it an integral part of the web development space.
+- **C++**
+  - C++ is a widely-used, high-level programming language that evolved from the earlier C programming language. Developed by Bjarne Stroustrup in 1985 at Bell Labs, C++ provides object-oriented features and low-level memory manipulation, making it an essential language for many fields, including game development, high-performance systems, and cybersecurity.
+- **Bash**
+  - Bash (Bourne Again Shell) is a widely-used Unix shell and scripting language that acts as a command-line interface for executing commands and organizing files on your computer. It allows users to interact with the system's operating system by typing text commands, serving as an alternative to the graphical user interface (GUI).
+- **Power Shell**
+  - PowerShell is a command-line shell and scripting language developed by Microsoft. It's designed for system administrators to automate tasks and manage operating systems.
+
+---
+
+## 4. Optional / Specialized Topics
+
+- Basics of Computer Networking
+- NFC
+- WiFi
+- Bluetooth
+- HackTheBox
+- TryHackMe
+- VulnHub
+- picoCTF
+- pwn.college
+- CompTIA A+
+- CompTIA Linux+
+- CompTIA Network+
+- CCNA
+- CompTIA Security+
+- CEH
+- CISA
+- CISM
+- GSEC
+- GPEN
+- GWAPT
+- GIAC
+- OSCP
+- CREST
+- CISSP
+- Windows
+
+---
+
+## 5. References
+
+- [Cyber Security Specialist Roadmap](https://roadmap.sh/cyber-security)
+
+---
+
+## 6. Related Roles / Topics
+
+### Related Roles
+- Frontend Developer
+- Fullstack Developer
+- DevOps Engineer
+
+### Related Skills
+- Linux
+- Computer Science
+- Docker
+- Python
+- C++
