@@ -23,6 +23,8 @@ class ChatReplyData(BaseModel):
     attachments: list[AttachmentInfo]
     model: str
     usage: TokenUsage
+    state: dict[str, Any] | None = None
+    memory: list[dict[str, Any]] | None = None
 
 
 class ChatSessionItem(BaseModel):
