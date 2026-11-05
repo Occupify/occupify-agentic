@@ -108,6 +108,30 @@
           <span class="stat-divider">·</span>
           <span class="stat-item">Total: <strong id="stat-tokens-total">0</strong></span>
         </div>
+
+        <!-- Live State & Memory Proof Widget -->
+        <div id="state-memory-widget" class="state-memory-widget">
+          <div class="state-widget-header">
+            <span class="state-widget-title">🧠 State & Memory Proof</span>
+            <span id="state-stage-badge" class="state-badge">Stage: DISCOVERY</span>
+          </div>
+          <div class="state-widget-body">
+            <div class="state-widget-row">
+              <span class="label">Seq:</span> <strong id="state-seq">#0</strong>
+              <span class="label" style="margin-left: 0.5rem;">Next:</span> <span id="state-next-action">Awaiting prompt...</span>
+            </div>
+            <div class="state-widget-row">
+              <span class="label">Completed:</span> <span id="state-completed-steps">0 steps</span>
+              <span class="label" style="margin-left: 0.5rem;">Blockers:</span> <span id="state-blockers">0</span>
+            </div>
+            <div class="state-memory-box">
+              <div class="label" style="margin-bottom: 0.2rem;">Active User Memory (<span id="state-memory-count">0</span>):</div>
+              <div id="state-memory-items" class="state-memory-items">
+                <span class="empty-hint">No facts stored for this user yet</span>
+              </div>
+            </div>
+          </div>
+        </div>
       </div>
 
       <div class="log-table-container">

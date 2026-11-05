@@ -624,3 +624,115 @@ body {
 .text-muted {
   color: var(--text-dim);
 }
+
+/* K4 State & Memory Proof Widget */
+.state-memory-widget {
+  margin-top: 0.6rem;
+  background-color: var(--bg-primary);
+  border: 1px solid var(--border-color);
+  border-radius: 6px;
+  padding: 0.6rem 0.75rem;
+  font-size: 0.75rem;
+}
+
+.state-widget-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 0.4rem;
+}
+
+.state-widget-title {
+  font-weight: 700;
+  color: #38bdf8;
+  font-size: 0.8rem;
+}
+
+.state-badge {
+  background-color: rgba(56, 189, 248, 0.15);
+  color: #38bdf8;
+  padding: 0.15rem 0.4rem;
+  border-radius: 4px;
+  font-weight: 700;
+  font-size: 0.7rem;
+}
+
+.state-widget-row {
+  display: flex;
+  align-items: center;
+  gap: 0.4rem;
+  margin-bottom: 0.25rem;
+  color: var(--text-color);
+}
+
+.state-widget-row .label {
+  color: var(--text-dim);
+}
+
+.state-memory-box {
+  margin-top: 0.4rem;
+  padding-top: 0.4rem;
+  border-top: 1px dashed var(--border-color);
+}
+
+.state-memory-items {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.3rem;
+  max-height: 90px;
+  overflow-y: auto;
+}
+
+.memory-pill {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.25rem;
+  background-color: rgba(255, 255, 255, 0.06);
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  padding: 0.15rem 0.35rem;
+  border-radius: 4px;
+  font-size: 0.68rem;
+}
+
+.memory-pill.confirmed {
+  border-color: rgba(52, 211, 153, 0.4);
+  color: #34d399;
+}
+
+.memory-pill.inferred {
+  border-color: rgba(251, 191, 36, 0.4);
+  color: #fbbf24;
+}
+
+/* In-message prompt proof accordion */
+.state-proof-details {
+  margin-top: 0.6rem;
+  background-color: rgba(0, 0, 0, 0.2);
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  border-radius: 4px;
+  padding: 0.4rem 0.6rem;
+  font-size: 0.72rem;
+}
+
+.state-proof-details summary {
+  cursor: pointer;
+  font-weight: 600;
+  color: #38bdf8;
+  outline: none;
+}
+
+.state-proof-content {
+  margin-top: 0.4rem;
+  display: flex;
+  flex-direction: column;
+  gap: 0.3rem;
+  color: #cbd5e1;
+}
+
+.state-proof-section-title {
+  font-weight: 700;
+  color: #94a3b8;
+  text-transform: uppercase;
+  font-size: 0.65rem;
+}
+

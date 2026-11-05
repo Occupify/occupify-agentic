@@ -43,6 +43,129 @@
   const statTokensReasoningEl = document.getElementById("stat-tokens-reasoning");
   const statTokensTotalEl = document.getElementById("stat-tokens-total");
 
+  // State & Memory Proof Elements
+  const stateStageBadgeEl = document.getElementById("state-stage-badge");
+  const stateSeqEl = document.getElementById("state-seq");
+  const stateNextActionEl = document.getElementById("state-next-action");
+  const stateCompletedStepsEl = document.getElementById("state-completed-steps");
+  const stateBlockersEl = document.getElementById("state-blockers");
+  const stateMemoryCountEl = document.getElementById("state-memory-count");
+  const stateMemoryItemsEl = document.getElementById("state-memory-items");
+
+  async function refreshStateAndMemory(sessionId) {
+    if (!sessionId) {
+      if (stateStageBadgeEl) stateStageBadgeEl.textContent = "Stage: DISCOVERY";
+      if (stateSeqEl) stateSeqEl.textContent = "#0";
+      if (stateNextActionEl) stateNextActionEl.textContent = "Awaiting prompt...";
+      if (stateCompletedStepsEl) stateCompletedStepsEl.textContent = "0 steps";
+      if (stateBlockersEl) stateBlockersEl.textContent = "0";
+      if (stateMemoryCountEl) stateMemoryCountEl.textContent = "0";
+      if (stateMemoryItemsEl) stateMemoryItemsEl.innerHTML = '<span class="empty-hint">No facts stored for this user yet</span>';
+      return;
+    }
+    try {
+      const res = await fetch(`/ai/dev/state/${sessionId}`, { headers: getHeaders() });
+      if (!res.ok) return;
+      const json = await res.json();
+      const data = json.data || {};
+      const cp = data.latest_checkpoint;
+      const mem = data.active_user_memory || [];
+
+      if (cp) {
+        if (stateStageBadgeEl) stateStageBadgeEl.textContent = `Stage: ${cp.stage || "DISCOVERY"}`;
+        if (stateSeqEl) stateSeqEl.textContent = `#${cp.checkpoint_seq || 1}`;
+        if (stateNextActionEl) stateNextActionEl.textContent = cp.next_action || "None";
+        if (stateCompletedStepsEl) stateCompletedStepsEl.textContent = `${(cp.completed_steps || []).length} steps`;
+        if (stateBlockersEl) stateBlockersEl.textContent = `${(cp.blockers || []).length}`;
+      }
+      if (stateMemoryCountEl) stateMemoryCountEl.textContent = `${mem.length}`;
+      if (stateMemoryItemsEl) {
+        if (mem.length === 0) {
+          stateMemoryItemsEl.innerHTML = '<span class="empty-hint">No facts stored for this user yet</span>';
+        } else {
+          stateMemoryItemsEl.innerHTML = "";
+          mem.forEach(it => {
+            const pill = document.createElement("span");
+            pill.className = `memory-pill ${it.is_confirmed ? "confirmed" : "inferred"}`;
+            pill.title = `Source: ${it.source} | Confidence: ${it.confidence}`;
+            pill.textContent = `[${it.category}] ${it.key}: ${typeof it.value === "object" ? JSON.stringify(it.value) : it.value} (${it.is_confirmed ? "✓" : "?"})`;
+            stateMemoryItemsEl.appendChild(pill);
+          });
+        }
+      }
+    } catch (_) {}
+  }
+
+  function renderStateProofDetails(card, state, memory) {
+    if (!state && (!memory || memory.length === 0)) return;
+    const details = document.createElement("details");
+    details.className = "state-proof-details";
+
+    const stage = state ? state.stage : "DISCOVERY";
+    const seq = state ? state.checkpoint_seq : 1;
+    const memCount = memory ? memory.length : 0;
+
+    const summary = document.createElement("summary");
+    summary.textContent = `🔍 Injected State & Memory Proof (Stage: ${stage} #${seq} | ${memCount} Facts)`;
+    details.appendChild(summary);
+
+    const content = document.createElement("div");
+    content.className = "state-proof-content";
+
+    if (state) {
+      const stateHeader = document.createElement("div");
+      stateHeader.className = "state-proof-section-title";
+      stateHeader.textContent = `Task Checkpoint (#${state.checkpoint_seq} - ${state.stage})`;
+      content.appendChild(stateHeader);
+
+      if (state.goal) {
+        const goalDiv = document.createElement("div");
+        goalDiv.innerHTML = `<strong>Goal:</strong> ${state.goal}`;
+        content.appendChild(goalDiv);
+      }
+      if (state.completed_steps && state.completed_steps.length > 0) {
+        const compDiv = document.createElement("div");
+        compDiv.innerHTML = `<strong>Completed:</strong> ${state.completed_steps.join(", ")}`;
+        content.appendChild(compDiv);
+      }
+      if (state.pending_steps && state.pending_steps.length > 0) {
+        const pendDiv = document.createElement("div");
+        pendDiv.innerHTML = `<strong>Pending:</strong> ${state.pending_steps.join(", ")}`;
+        content.appendChild(pendDiv);
+      }
+      if (state.next_action) {
+        const nextDiv = document.createElement("div");
+        nextDiv.innerHTML = `<strong>Next Action:</strong> ${state.next_action}`;
+        content.appendChild(nextDiv);
+      }
+    }
+
+    if (memory && memory.length > 0) {
+      const memHeader = document.createElement("div");
+      memHeader.className = "state-proof-section-title";
+      memHeader.style.marginTop = "0.4rem";
+      memHeader.textContent = "Active User Memory Injected";
+      content.appendChild(memHeader);
+
+      const memList = document.createElement("div");
+      memList.style.display = "flex";
+      memList.style.flexDirection = "column";
+      memList.style.gap = "0.2rem";
+
+      memory.forEach(it => {
+        const mRow = document.createElement("div");
+        const status = it.is_confirmed ? "<span style='color:#34d399;'>confirmed</span>" : "<span style='color:#fbbf24;'>inferred</span>";
+        const valStr = typeof it.value === "object" ? JSON.stringify(it.value) : it.value;
+        mRow.innerHTML = `• <code>[${it.category}] ${it.key}</code>: <strong>${valStr}</strong> (${status})`;
+        memList.appendChild(mRow);
+      });
+      content.appendChild(memList);
+    }
+
+    details.appendChild(content);
+    card.appendChild(details);
+  }
+
   // User ID setup
   function getUserId() {
     return userIdInput.value.trim() || "dev-user-1";
@@ -157,6 +280,7 @@
     currentSessionId = sessionId;
     currentChatTitleEl.textContent = title || "Conversation";
     resetTokenStats();
+    refreshStateAndMemory(sessionId);
 
     // Update active highlight
     const items = sessionListEl.querySelectorAll(".session-item");
@@ -221,6 +345,7 @@
     chatMessagesEl.textContent = "";
     chatMessagesEl.appendChild(emptyStateEl);
     resetTokenStats();
+    refreshStateAndMemory(null);
 
     const items = sessionListEl.querySelectorAll(".session-item");
     items.forEach((it) => it.classList.remove("active"));
@@ -354,6 +479,8 @@
     let fullReply = "";
     let responseModel = "";
     let finalUsage = null;
+    let lastDoneState = null;
+    let lastDoneMemory = null;
 
     try {
       const res = await fetch("/ai/chat/messages?stream=true", {
@@ -429,6 +556,8 @@
               const doneData = JSON.parse(dataStr);
               responseModel = doneData.model || "";
               finalUsage = doneData.usage || null;
+              lastDoneState = doneData.state || null;
+              lastDoneMemory = doneData.memory || null;
             } catch (_) {}
           } else if (eventName === "error" && dataStr) {
             try {
@@ -462,6 +591,14 @@
           footer.appendChild(uSpan);
         }
         asstElements.card.appendChild(footer);
+      }
+
+      // Render In-Message State & Memory Proof (K4)
+      if (lastDoneState || (lastDoneMemory && lastDoneMemory.length > 0)) {
+        renderStateProofDetails(asstElements.card, lastDoneState, lastDoneMemory);
+      }
+      if (currentSessionId) {
+        refreshStateAndMemory(currentSessionId);
       }
 
       // Clear file selection
@@ -578,6 +715,11 @@
 
     // Accumulate tokens for current chat if run.end or llm.response
     accumulateTokens(entry);
+
+    // Refresh live state proof when state or memory events fire
+    if (entry && entry.event && (entry.event.startsWith("state.") || entry.event.startsWith("memory."))) {
+      refreshStateAndMemory(currentSessionId);
+    }
 
     if (shouldUpdateUI && !isLogPaused) {
       if (logScope === "all" || (currentSessionId && entry.session_id === currentSessionId)) {
