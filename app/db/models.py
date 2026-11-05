@@ -6,6 +6,7 @@ from typing import Any
 from pgvector.sqlalchemy import Vector
 from sqlalchemy import (
     JSON,
+    Boolean,
     DateTime,
     Float,
     ForeignKey,
@@ -230,3 +231,60 @@ class CareerIngestionRun(Base):
     manifest_hash: Mapped[str] = mapped_column(String(64), nullable=False)
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=utc_now)
     finished_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
+
+
+class UserMemory(Base):
+    __tablename__ = "user_memory"
+
+    id: Mapped[str] = mapped_column(String(36), primary_key=True, default=lambda: str(uuid.uuid4()))
+    user_id: Mapped[str] = mapped_column(String(100), nullable=False)
+    category: Mapped[str] = mapped_column(
+        String(50), nullable=False
+    )  # career, skills, preferences, general
+    key: Mapped[str] = mapped_column(String(100), nullable=False)
+    value: Mapped[Any] = mapped_column(JSON, nullable=False)
+    is_confirmed: Mapped[bool] = mapped_column(Boolean, default=False, nullable=False)
+    confidence: Mapped[float] = mapped_column(Float, default=1.0, nullable=False)
+    source: Mapped[str] = mapped_column(
+        String(100), default="user_chat", nullable=False
+    )  # user_chat, cv_extracted, rag_reasoning
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=utc_now)
+    updated_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), default=utc_now, onupdate=utc_now
+    )
+    expires_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
+
+    __table_args__ = (
+        UniqueConstraint("user_id", "category", "key", name="uq_user_memory_key"),
+        Index("ix_user_memory_user_category", "user_id", "category"),
+    )
+
+
+class TaskCheckpoint(Base):
+    __tablename__ = "task_checkpoints"
+
+    id: Mapped[str] = mapped_column(String(36), primary_key=True, default=lambda: str(uuid.uuid4()))
+    session_id: Mapped[str] = mapped_column(
+        String(36),
+        ForeignKey("chat_sessions.id", ondelete="CASCADE"),
+        nullable=False,
+    )
+    user_id: Mapped[str] = mapped_column(String(100), nullable=False)
+    task_type: Mapped[str] = mapped_column(
+        String(50), nullable=False
+    )  # career_consulting, job_matching, etc.
+    stage: Mapped[str] = mapped_column(String(50), nullable=False)  # DISCOVERY, ASSESSMENT, etc.
+    goal: Mapped[str] = mapped_column(Text, nullable=False)
+    constraints: Mapped[list[Any]] = mapped_column(JSON, default=list)
+    completed_steps: Mapped[list[str]] = mapped_column(JSON, default=list)
+    pending_steps: Mapped[list[str]] = mapped_column(JSON, default=list)
+    blockers: Mapped[list[str]] = mapped_column(JSON, default=list)
+    decisions: Mapped[list[dict[str, Any]]] = mapped_column(JSON, default=list)
+    next_action: Mapped[str | None] = mapped_column(Text, nullable=True)
+    checkpoint_seq: Mapped[int] = mapped_column(Integer, default=1, nullable=False)
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=utc_now)
+
+    __table_args__ = (
+        Index("ix_task_checkpoints_session_seq", "session_id", "checkpoint_seq"),
+        Index("ix_task_checkpoints_user_task", "user_id", "task_type"),
+    )
