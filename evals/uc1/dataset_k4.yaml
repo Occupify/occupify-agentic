@@ -1,0 +1,255 @@
+version: "1.0"
+benchmark_name: "k4_global_memory_state_context_eval"
+description: "Dedicated evaluation benchmark dataset for K4: Global Memory, State & Context Harness covering memory extraction, fact precedence, stage checkpointing, crash recovery, context compaction, multi-tenant isolation, and TTL enforcement."
+
+scenarios:
+  # ---------------------------------------------------------------------------
+  # SCENARIO-1: Multi-Turn Memory Extraction & Grounding
+  # ---------------------------------------------------------------------------
+  - id: "SCENARIO-1"
+    name: "Multi-Turn Memory Extraction & Grounding"
+    rule_reference: "Rule 7 & Rule 8"
+    description: "Turn 1 user states role and skills; asserts memory facts recorded. Turn 2 asks for advice; asserts agent grounds recommendation without re-asking."
+    turns:
+      - turn_index: 1
+        user_message: "Hi! I currently have 5 years of experience in Python, PostgreSQL, and FastAPI, and I am targeting a Senior Cloud Architect role."
+        expected_recorded_facts:
+          - category: "career"
+            key: "target_role"
+            value: "Senior Cloud Architect"
+            is_confirmed: true
+          - category: "career"
+            key: "years_experience"
+            value: 5
+            is_confirmed: true
+          - category: "skills"
+            key: "primary_skills"
+            value: ["Python", "PostgreSQL", "FastAPI"]
+            is_confirmed: true
+        expected_tools_called: ["record_user_memory"]
+
+      - turn_index: 2
+        user_message: "What immediate career development steps should I take based on my profile?"
+        expected_grounded_topics:
+          - "Senior Cloud Architect"
+          - "Python"
+          - "FastAPI"
+        prohibited_reasking_phrases:
+          - "What role are you targeting?"
+          - "How many years of experience do you have?"
+          - "What are your core skills?"
+        expected_memory_injection: true
+
+  # ---------------------------------------------------------------------------
+  # SCENARIO-2: Fact Correction Precedence (Rule 7)
+  # ---------------------------------------------------------------------------
+  - id: "SCENARIO-2"
+    name: "Fact Correction Precedence (Rule 7)"
+    rule_reference: "Rule 7: Inferred facts must not overwrite user-confirmed facts"
+    description: "Evaluates that user confirmation strictly overrides an existing inferred fact, while an unconfirmed inference cannot downgrade confirmed data."
+    steps:
+      - step_name: "initial_inference"
+        action: "record_inferred"
+        fact:
+          category: "career"
+          key: "target_level"
+          value: "Junior"
+          is_confirmed: false
+          confidence: 0.60
+          source: "rag_reasoning"
+        expected_value: "Junior"
+        expected_is_confirmed: false
+
+      - step_name: "user_correction"
+        action: "record_confirmed"
+        user_message: "Actually, I am targeting a Senior level role, not Junior."
+        fact:
+          category: "career"
+          key: "target_level"
+          value: "Senior"
+          is_confirmed: true
+          confidence: 1.00
+          source: "user_chat"
+        expected_value: "Senior"
+        expected_is_confirmed: true
+        expected_override_success: true
+
+      - step_name: "subsequent_inference_rejection"
+        action: "record_inferred"
+        fact:
+          category: "career"
+          key: "target_level"
+          value: "Mid-level"
+          is_confirmed: false
+          confidence: 0.75
+          source: "cv_extracted"
+        expected_value: "Senior"
+        expected_is_confirmed: true
+        expected_override_success: false
+        rejection_reason: "Inferred fact cannot overwrite user-confirmed fact"
+
+  # ---------------------------------------------------------------------------
+  # SCENARIO-3: Stage-by-Stage Consulting Progress & Checkpointing (Rule 8)
+  # ---------------------------------------------------------------------------
+  - id: "SCENARIO-3"
+    name: "Stage-by-Stage Consulting Progress & Checkpointing (Rule 8)"
+    rule_reference: "Rule 8: Track active task state and save checkpoints at stage boundaries"
+    description: "Progresses through DISCOVERY -> ASSESSMENT -> PATH_EXPLORATION -> ROADMAP_FORMULATION; asserts checkpoints with incremental seq."
+    task_type: "career_consulting"
+    stages_progression:
+      - stage: "DISCOVERY"
+        goal: "Career transition to Senior MLOps Engineer"
+        completed_step: "Intake interview completed"
+        pending_steps: ["Assess machine learning pipeline knowledge", "Review Kubernetes and Docker experience"]
+        expected_seq: 1
+      - stage: "ASSESSMENT"
+        goal: "Career transition to Senior MLOps Engineer"
+        completed_step: "Assessed Docker, Kubernetes, and Kubeflow skill gaps"
+        pending_steps: ["Explore MLOps career tracks", "Formulate 90-day learning roadmap"]
+        expected_seq: 2
+      - stage: "PATH_EXPLORATION"
+        goal: "Career transition to Senior MLOps Engineer"
+        completed_step: "Evaluated Cloud-native MLOps vs Enterprise Data Platform tracks"
+        pending_steps: ["Formulate 90-day learning roadmap", "Finalize certification milestones"]
+        expected_seq: 3
+      - stage: "ROADMAP_FORMULATION"
+        goal: "Career transition to Senior MLOps Engineer"
+        completed_step: "Drafted 90-day learning roadmap and milestone schedule"
+        pending_steps: ["Final review and resource links"]
+        expected_seq: 4
+
+  # ---------------------------------------------------------------------------
+  # SCENARIO-4: Crash Recovery & Resumption (Rule 8)
+  # ---------------------------------------------------------------------------
+  - id: "SCENARIO-4"
+    name: "Crash Recovery & Resumption (Rule 8)"
+    rule_reference: "Rule 8: Resume from latest checkpoint's pending steps without repeating completed work"
+    description: "Reaches ASSESSMENT; simulates process restart; asserts agent resumes from latest checkpoint's pending steps without repeating DISCOVERY."
+    persisted_checkpoint:
+      stage: "ASSESSMENT"
+      goal: "Transition from SysAdmin to Cloud DevOps Engineer"
+      checkpoint_seq: 2
+      completed_steps:
+        - "Discovery of 7-year Linux background completed"
+        - "Identified networking and shell scripting strengths"
+      pending_steps:
+        - "Assess Terraform and Infrastructure-as-Code proficiency"
+        - "Evaluate CI/CD experience with GitHub Actions"
+      blockers:
+        - "No cloud certification yet"
+      next_action: "Assess Terraform and Infrastructure-as-Code proficiency"
+    simulation_event: "PROCESS_CRASH_AND_RESTART"
+    resumption_turn:
+      user_message: "Hello, I am back. What should we work on next?"
+      expected_resumed_stage: "ASSESSMENT"
+      expected_resumed_goal: "Transition from SysAdmin to Cloud DevOps Engineer"
+      expected_resumed_next_action: "Assess Terraform and Infrastructure-as-Code proficiency"
+      prohibited_restart_stages: ["DISCOVERY"]
+      prohibited_repetition_of_completed:
+        - "Discovery of 7-year Linux background completed"
+
+  # ---------------------------------------------------------------------------
+  # SCENARIO-5: Context Compaction Integrity & Next-Action Equivalence (Rule 9)
+  # ---------------------------------------------------------------------------
+  - id: "SCENARIO-5"
+    name: "Context Compaction Integrity & Next-Action Equivalence (Rule 9)"
+    rule_reference: "Rule 9: Deterministic context compaction preserving all 9 essential fields"
+    description: "14-turn consulting session; asserts all 9 required fields survive in compacted state card; asserts compacted agent executes identical next action."
+    raw_turns_count: 14
+    compaction_threshold: 12
+    mandatory_fields:
+      - field_index: 1
+        name: "ORIGINAL GOAL"
+        pattern: "1. ORIGINAL GOAL"
+      - field_index: 2
+        name: "CONFIRMED PROFILE FACTS"
+        pattern: "2. CONFIRMED PROFILE FACTS"
+      - field_index: 3
+        name: "CONSTRAINTS & PREFERENCES"
+        pattern: "3. CONSTRAINTS & PREFERENCES"
+      - field_index: 4
+        name: "DECISIONS MADE & RATIONALE"
+        pattern: "4. DECISIONS MADE & RATIONALE"
+      - field_index: 5
+        name: "COMPLETED WORK & ANALYSIS"
+        pattern: "5. COMPLETED WORK & ANALYSIS"
+      - field_index: 6
+        name: "CURRENT STAGE & PROGRESS"
+        pattern: "6. CURRENT STAGE & PROGRESS"
+      - field_index: 7
+        name: "OPEN QUESTIONS & BLOCKERS"
+        pattern: "7. OPEN QUESTIONS & BLOCKERS"
+      - field_index: 8
+        name: "NEXT RECOMMENDED ACTION"
+        pattern: "8. NEXT RECOMMENDED ACTION"
+      - field_index: 9
+        name: "EVIDENCE & HISTORY POINTERS"
+        pattern: "9. EVIDENCE & HISTORY POINTERS"
+    next_action_target: "Synthesize full 12-week Kubernetes and Terraform study timetable"
+    expected_retention_rate: 1.0
+    expected_action_equivalence: true
+
+  # ---------------------------------------------------------------------------
+  # SCENARIO-6: Multi-Tenant Isolation & Zero Leakage (Rule 7 & 10)
+  # ---------------------------------------------------------------------------
+  - id: "SCENARIO-6"
+    name: "Multi-Tenant Isolation & Zero Leakage (Rule 7 & 10)"
+    rule_reference: "Rule 7 & Rule 10: Strict multi-tenant data partitioning"
+    description: "User A and User B concurrent sessions; asserts User A's private memory/checkpoints are 100% invisible to User B, leak_rate == 0.0%."
+    user_a:
+      user_id: "usr_alice_corp_confidential"
+      session_id: "sess_alice_001"
+      private_facts:
+        - category: "career"
+          key: "confidential_employer"
+          value: "StealthStartupCo"
+          is_confirmed: true
+        - category: "preferences"
+          key: "current_compensation"
+          value: "$195,000"
+          is_confirmed: true
+      checkpoint:
+        stage: "PATH_EXPLORATION"
+        goal: "Leave StealthStartupCo for Principal Cloud Architect"
+    user_b:
+      user_id: "usr_bob_external_guest"
+      session_id: "sess_bob_002"
+      inquiry: "What do you know about my background and my current employer?"
+    expected_leak_rate: 0.00
+    leak_detection_tokens:
+      - "StealthStartupCo"
+      - "$195,000"
+      - "Leave StealthStartupCo"
+
+  # ---------------------------------------------------------------------------
+  # SCENARIO-7: Retention Expiration & TTL Enforcement (Rule 10)
+  # ---------------------------------------------------------------------------
+  - id: "SCENARIO-7"
+    name: "Retention Expiration & TTL Enforcement (Rule 10)"
+    rule_reference: "Rule 10: State retention TTL and expired data exclusion"
+    description: "Asserts expired memory rows past TTL are excluded from active injection."
+    user_id: "usr_ttl_evaluation"
+    facts:
+      - category: "preferences"
+        key: "temporary_interview_availability"
+        value: "Available only this Thursday afternoon"
+        ttl_seconds: -10 # expired in the past
+        is_confirmed: true
+        expected_active: false
+      - category: "career"
+        key: "primary_target_track"
+        value: "DevOps / Infrastructure Engineering"
+        ttl_seconds: 86400 # valid for 24h
+        is_confirmed: true
+        expected_active: true
+      - category: "skills"
+        key: "core_programming_language"
+        value: "Go"
+        ttl_seconds: null # permanent
+        is_confirmed: true
+        expected_active: true
+    expected_active_keys:
+      - "primary_target_track"
+      - "core_programming_language"
+    expected_excluded_keys:
+      - "temporary_interview_availability"
