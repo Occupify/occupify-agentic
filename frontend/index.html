@@ -3,8 +3,11 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
+  <meta http-equiv="Pragma" content="no-cache">
+  <meta http-equiv="Expires" content="0">
   <title>Occupify AI Agent Console</title>
-  <link rel="stylesheet" href="/ui/styles.css">
+  <link rel="stylesheet" href="/ui/styles.css?v=20261106a">
 </head>
 <body>
   <!-- Fixed Header -->
@@ -13,12 +16,15 @@
       <span class="logo-badge">AI</span>
       <h1>Occupify Agentic Console</h1>
     </div>
-    <div class="header-notice" role="alert">
-      ⚠️ <strong>Use synthetic data only — the privacy filter is still being fixed</strong>
+    <div class="header-notice" role="status">
+      Synthetic Data Mode
     </div>
-    <div class="header-user">
-      <label for="user-id-input">User ID:</label>
-      <input type="text" id="user-id-input" placeholder="e.g. dev-user-1">
+    <div class="header-actions">
+      <div class="header-user">
+        <label for="user-id-input">User:</label>
+        <input type="text" id="user-id-input" placeholder="dev-user-1">
+      </div>
+      <button type="button" id="toggle-panel-btn" class="btn btn-sm btn-outline active" title="Toggle Trace & State Panel">Trace Panel</button>
     </div>
   </header>
 
@@ -28,7 +34,7 @@
     <aside class="sidebar">
       <div class="sidebar-header">
         <h2>Chats</h2>
-        <button id="new-chat-btn" class="btn btn-primary" title="Start a new chat">+ New Chat</button>
+        <button id="new-chat-btn" class="btn btn-primary" title="Start a new chat">+ New</button>
       </div>
       <div id="session-list" class="session-list" role="navigation" aria-label="Chat sessions">
         <!-- Sessions dynamically populated -->
@@ -85,20 +91,24 @@
       </div>
     </main>
 
-    <!-- Right: Live Log Panel -->
+    <!-- Right: Trace & Log Panel -->
     <aside id="log-panel" class="log-panel">
       <div class="log-panel-header">
         <div class="log-title-row">
-          <h2>Live Step Logs</h2>
+          <div class="panel-tab-group" role="tablist">
+            <button type="button" id="tab-trace-btn" class="panel-tab active" role="tab" aria-selected="true">Activity Trace</button>
+            <button type="button" id="tab-raw-btn" class="panel-tab" role="tab" aria-selected="false">Raw Logs</button>
+          </div>
           <div class="log-controls">
             <div class="filter-group">
-              <label><input type="radio" name="log-scope" id="log-filter-all" value="all" checked> All</label>
-              <label><input type="radio" name="log-scope" id="log-filter-session" value="session"> This chat</label>
+              <label><input type="radio" name="log-scope" id="log-filter-session" value="session" checked> Chat</label>
+              <label><input type="radio" name="log-scope" id="log-filter-all" value="all"> All</label>
             </div>
-            <button id="log-pause-btn" class="btn btn-sm" title="Pause live updates">Pause</button>
-            <button id="log-clear-btn" class="btn btn-sm btn-outline" title="Clear log entries">Clear</button>
+            <button type="button" id="log-pause-btn" class="btn btn-xs" title="Pause live updates">Pause</button>
+            <button type="button" id="log-clear-btn" class="btn btn-xs btn-outline" title="Clear log entries">Clear</button>
           </div>
         </div>
+
         <div id="token-stats" class="token-stats-bar">
           <span class="stat-item">In: <strong id="stat-tokens-in">0</strong></span>
           <span class="stat-divider">·</span>
@@ -109,23 +119,29 @@
           <span class="stat-item">Total: <strong id="stat-tokens-total">0</strong></span>
         </div>
 
-        <!-- Live State & Memory Proof Widget -->
-        <div id="state-memory-widget" class="state-memory-widget">
-          <div class="state-widget-header">
-            <span class="state-widget-title">🧠 State & Memory Proof</span>
-            <span id="state-stage-badge" class="state-badge">Stage: DISCOVERY</span>
+        <!-- Clean Consulting State & Memory Card -->
+        <div id="state-memory-widget" class="state-card">
+          <div class="state-card-header">
+            <span class="state-card-title">Consulting State</span>
+            <span id="state-stage-badge" class="state-badge">DISCOVERY</span>
           </div>
-          <div class="state-widget-body">
-            <div class="state-widget-row">
-              <span class="label">Seq:</span> <strong id="state-seq">#0</strong>
-              <span class="label" style="margin-left: 0.5rem;">Next:</span> <span id="state-next-action">Awaiting prompt...</span>
+          <div class="state-card-body">
+            <div class="state-kv-row">
+              <span class="kv-key">Seq</span>
+              <strong id="state-seq" class="kv-val">#0</strong>
             </div>
-            <div class="state-widget-row">
-              <span class="label">Completed:</span> <span id="state-completed-steps">0 steps</span>
-              <span class="label" style="margin-left: 0.5rem;">Blockers:</span> <span id="state-blockers">0</span>
+            <div class="state-kv-row">
+              <span class="kv-key">Next</span>
+              <span id="state-next-action" class="kv-val">Awaiting prompt...</span>
+            </div>
+            <div class="state-kv-row">
+              <span class="kv-key">Progress</span>
+              <span class="kv-val"><span id="state-completed-steps">0 steps</span> · <span id="state-blockers">0</span> blockers</span>
             </div>
             <div class="state-memory-box">
-              <div class="label" style="margin-bottom: 0.2rem;">Active User Memory (<span id="state-memory-count">0</span>):</div>
+              <div class="state-memory-title">
+                <span>Active User Memory (<span id="state-memory-count">0</span>)</span>
+              </div>
               <div id="state-memory-items" class="state-memory-items">
                 <span class="empty-hint">No facts stored for this user yet</span>
               </div>
@@ -134,17 +150,23 @@
         </div>
       </div>
 
-      <div class="log-table-container">
+      <!-- High-Signal Activity Trace Feed -->
+      <div id="trace-view" class="trace-container">
+        <div id="trace-feed" class="trace-feed">
+          <div class="trace-empty">No activity recorded yet</div>
+        </div>
+      </div>
+
+      <!-- Raw Log Table View -->
+      <div id="raw-log-view" class="raw-log-container" style="display: none;">
         <table class="log-table">
           <thead>
             <tr>
               <th>Time</th>
               <th>Level</th>
               <th>Event</th>
-              <th>Model</th>
-              <th>Tokens (I/O/R)</th>
-              <th>Latency</th>
-              <th>Run ID</th>
+              <th>Tokens</th>
+              <th>ms</th>
             </tr>
           </thead>
           <tbody id="log-table-body">
@@ -155,6 +177,6 @@
     </aside>
   </div>
 
-  <script src="/ui/app.js"></script>
+  <script src="/ui/app.js?v=20261106a"></script>
 </body>
 </html>

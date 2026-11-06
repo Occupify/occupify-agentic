@@ -6,7 +6,7 @@
   let currentSessionId = null;
   let isStreaming = false;
   let isLogPaused = false;
-  let logScope = "all"; // 'all' | 'session'
+  let logScope = "session"; // 'all' | 'session'
   let logEntries = [];
   const MAX_LOG_ROWS = 500;
   let eventSource = null;
@@ -32,7 +32,14 @@
   const sendBtn = document.getElementById("send-btn");
   const formErrorEl = document.getElementById("form-error");
 
-  // Log Panel Elements
+  // Trace & Log Panel Elements
+  const togglePanelBtn = document.getElementById("toggle-panel-btn");
+  const logPanelEl = document.getElementById("log-panel");
+  const tabTraceBtn = document.getElementById("tab-trace-btn");
+  const tabRawBtn = document.getElementById("tab-raw-btn");
+  const traceViewEl = document.getElementById("trace-view");
+  const rawLogViewEl = document.getElementById("raw-log-view");
+  const traceFeedEl = document.getElementById("trace-feed");
   const logTableBodyEl = document.getElementById("log-table-body");
   const logFilterAll = document.getElementById("log-filter-all");
   const logFilterSession = document.getElementById("log-filter-session");
@@ -53,18 +60,9 @@
   const stateMemoryItemsEl = document.getElementById("state-memory-items");
 
   async function refreshStateAndMemory(sessionId) {
-    if (!sessionId) {
-      if (stateStageBadgeEl) stateStageBadgeEl.textContent = "Stage: DISCOVERY";
-      if (stateSeqEl) stateSeqEl.textContent = "#0";
-      if (stateNextActionEl) stateNextActionEl.textContent = "Awaiting prompt...";
-      if (stateCompletedStepsEl) stateCompletedStepsEl.textContent = "0 steps";
-      if (stateBlockersEl) stateBlockersEl.textContent = "0";
-      if (stateMemoryCountEl) stateMemoryCountEl.textContent = "0";
-      if (stateMemoryItemsEl) stateMemoryItemsEl.innerHTML = '<span class="empty-hint">No facts stored for this user yet</span>';
-      return;
-    }
+    const targetSession = sessionId || "new";
     try {
-      const res = await fetch(`/ai/dev/state/${sessionId}`, { headers: getHeaders() });
+      const res = await fetch(`/ai/dev/state/${targetSession}`, { headers: getHeaders() });
       if (!res.ok) return;
       const json = await res.json();
       const data = json.data || {};
@@ -72,11 +70,17 @@
       const mem = data.active_user_memory || [];
 
       if (cp) {
-        if (stateStageBadgeEl) stateStageBadgeEl.textContent = `Stage: ${cp.stage || "DISCOVERY"}`;
+        if (stateStageBadgeEl) stateStageBadgeEl.textContent = cp.stage || "DISCOVERY";
         if (stateSeqEl) stateSeqEl.textContent = `#${cp.checkpoint_seq || 1}`;
         if (stateNextActionEl) stateNextActionEl.textContent = cp.next_action || "None";
         if (stateCompletedStepsEl) stateCompletedStepsEl.textContent = `${(cp.completed_steps || []).length} steps`;
         if (stateBlockersEl) stateBlockersEl.textContent = `${(cp.blockers || []).length}`;
+      } else {
+        if (stateStageBadgeEl) stateStageBadgeEl.textContent = "DISCOVERY";
+        if (stateSeqEl) stateSeqEl.textContent = "#0";
+        if (stateNextActionEl) stateNextActionEl.textContent = "Awaiting prompt...";
+        if (stateCompletedStepsEl) stateCompletedStepsEl.textContent = "0 steps";
+        if (stateBlockersEl) stateBlockersEl.textContent = "0";
       }
       if (stateMemoryCountEl) stateMemoryCountEl.textContent = `${mem.length}`;
       if (stateMemoryItemsEl) {
@@ -177,7 +181,9 @@
     userIdInput.addEventListener("change", function () {
       const val = userIdInput.value.trim() || "dev-user-1";
       localStorage.setItem("occupify_user_id", val);
+      currentSessionId = null;
       loadSessions();
+      refreshStateAndMemory(null);
     });
   }
 
@@ -219,6 +225,11 @@
       const data = await res.json();
       const sessions = data.data || [];
       renderSessionList(sessions);
+      if (!currentSessionId && sessions.length > 0) {
+        selectSession(sessions[0].id, sessions[0].title);
+      } else if (!currentSessionId) {
+        refreshStateAndMemory(null);
+      }
     } catch (err) {
       console.error("Failed to load sessions:", err);
     }
@@ -292,8 +303,8 @@
       }
     });
 
-    // Re-filter logs if in session scope
-    renderLogs();
+    // Re-filter logs and traces if in session scope
+    renderAllLogsAndTraces();
 
     // Fetch messages
     try {
@@ -349,7 +360,7 @@
 
     const items = sessionListEl.querySelectorAll(".session-item");
     items.forEach((it) => it.classList.remove("active"));
-    renderLogs();
+    renderAllLogsAndTraces();
     messageInputEl.focus();
   }
 
@@ -633,7 +644,7 @@
     formErrorEl.style.display = "none";
   }
 
-  // --- Live Log Panel ---
+  // --- Live Trace & Log Panel ---
   function initLogs() {
     // Initial fetch of recent 200 logs
     fetchRecentLogs();
@@ -641,18 +652,48 @@
     // Listen to live stream
     setupLogEventSource();
 
+    // Panel collapse toggle
+    if (togglePanelBtn && logPanelEl) {
+      togglePanelBtn.addEventListener("click", function () {
+        const isCollapsed = logPanelEl.classList.toggle("collapsed");
+        togglePanelBtn.classList.toggle("active", !isCollapsed);
+        togglePanelBtn.setAttribute("aria-pressed", (!isCollapsed).toString());
+      });
+    }
+
+    // View tab switching
+    if (tabTraceBtn && tabRawBtn && traceViewEl && rawLogViewEl) {
+      tabTraceBtn.addEventListener("click", function () {
+        tabTraceBtn.classList.add("active");
+        tabTraceBtn.setAttribute("aria-selected", "true");
+        tabRawBtn.classList.remove("active");
+        tabRawBtn.setAttribute("aria-selected", "false");
+        traceViewEl.style.display = "block";
+        rawLogViewEl.style.display = "none";
+      });
+
+      tabRawBtn.addEventListener("click", function () {
+        tabRawBtn.classList.add("active");
+        tabRawBtn.setAttribute("aria-selected", "true");
+        tabTraceBtn.classList.remove("active");
+        tabTraceBtn.setAttribute("aria-selected", "false");
+        traceViewEl.style.display = "none";
+        rawLogViewEl.style.display = "block";
+      });
+    }
+
     // Filter controls
     logFilterAll.addEventListener("change", function () {
       if (logFilterAll.checked) {
         logScope = "all";
-        renderLogs();
+        renderAllLogsAndTraces();
       }
     });
 
     logFilterSession.addEventListener("change", function () {
       if (logFilterSession.checked) {
         logScope = "session";
-        renderLogs();
+        renderAllLogsAndTraces();
       }
     });
 
@@ -662,15 +703,15 @@
       logPauseBtn.textContent = isLogPaused ? "Resume" : "Pause";
       logPauseBtn.classList.toggle("btn-primary", isLogPaused);
       if (!isLogPaused) {
-        renderLogs();
+        renderAllLogsAndTraces();
       }
     });
 
-    // Clear logs
+    // Clear logs and traces
     logClearBtn.addEventListener("click", function () {
       logEntries = [];
       resetTokenStats();
-      renderLogs();
+      renderAllLogsAndTraces();
     });
   }
 
@@ -681,7 +722,7 @@
       const json = await res.json();
       const entries = json.data || [];
       entries.forEach((e) => pushLogEntry(e, false));
-      renderLogs();
+      renderAllLogsAndTraces();
     } catch (err) {
       console.error("Failed to fetch initial logs:", err);
     }
@@ -713,17 +754,16 @@
       logEntries.shift();
     }
 
-    // Accumulate tokens for current chat if run.end or llm.response
+    // Accumulate tokens for current chat if run.end
     accumulateTokens(entry);
 
-    // Refresh live state proof when state or memory events fire
-    if (entry && entry.event && (entry.event.startsWith("state.") || entry.event.startsWith("memory."))) {
-      refreshStateAndMemory(currentSessionId);
-    }
-
     if (shouldUpdateUI && !isLogPaused) {
-      if (logScope === "all" || (currentSessionId && entry.session_id === currentSessionId)) {
+      const matchesScope = logScope === "all" || (currentSessionId && entry.session_id === currentSessionId);
+      if (matchesScope) {
         appendLogRowToTable(entry);
+        if (isHighSignalTraceEvent(entry)) {
+          appendTraceStep(entry);
+        }
       }
     }
   }
@@ -763,6 +803,151 @@
     statTokensTotalEl.textContent = chatTokensIn + chatTokensOut;
   }
 
+  // --- High-Signal Activity Trace ---
+  function isHighSignalTraceEvent(entry) {
+    if (!entry || !entry.event) return false;
+    if (entry.level === "WARNING" || entry.level === "ERROR") return true;
+    const ev = entry.event;
+    if (
+      ev.startsWith("run.") ||
+      ev.startsWith("llm.") ||
+      ev.startsWith("state.") ||
+      ev.startsWith("memory.") ||
+      ev.startsWith("job_match.") ||
+      ev.startsWith("tool.")
+    ) {
+      return true;
+    }
+    return false;
+  }
+
+  function createTraceStepElement(entry) {
+    const el = document.createElement("div");
+    el.className = "trace-step";
+
+    let badgeText = "EVENT";
+    let titleText = entry.event || "action";
+    let subText = "";
+
+    const tsStr = entry.ts || "";
+    let timeFormatted = "";
+    if (tsStr) {
+      const d = new Date(tsStr);
+      timeFormatted = d.toTimeString().split(" ")[0];
+    }
+
+    const ev = entry.event || "";
+    if (ev === "run.start") {
+      badgeText = "RUN";
+      titleText = "Turn started";
+      if (entry.model) subText = `Model: ${entry.model}`;
+    } else if (ev === "run.end") {
+      badgeText = "DONE";
+      titleText = `Turn completed${entry.ms ? ` (${entry.ms}ms)` : ""}`;
+      subText = `Tokens: ${entry.tokens_in ?? 0} in / ${entry.tokens_out ?? 0} out`;
+    } else if (ev === "llm.request") {
+      badgeText = "LLM";
+      titleText = `Prompt sent to ${entry.model || "model"}`;
+    } else if (ev === "llm.response") {
+      badgeText = "LLM";
+      titleText = "LLM response received";
+      subText = `${entry.tokens_out ?? 0} tokens${entry.ms ? ` · ${entry.ms}ms` : ""}`;
+    } else if (ev.startsWith("state.")) {
+      badgeText = "STATE";
+      titleText = `State: ${ev.replace("state.", "").replace("_", " ")}`;
+    } else if (ev.startsWith("memory.")) {
+      badgeText = "MEMORY";
+      titleText = ev === "memory.recorded" ? "Recorded new user memory" : "Loaded active memory";
+    } else if (ev.startsWith("job_match.") || ev.startsWith("tool.")) {
+      badgeText = "TOOL";
+      titleText = `Tool: ${ev}`;
+      if (entry.ms) subText = `${entry.ms}ms`;
+    } else {
+      badgeText = (entry.level || "INFO").toUpperCase();
+      titleText = ev;
+      if (entry.ms) subText = `${entry.ms}ms`;
+    }
+
+    const top = document.createElement("div");
+    top.className = "trace-step-top";
+
+    const badge = document.createElement("span");
+    badge.className = "trace-badge";
+    badge.textContent = badgeText;
+    top.appendChild(badge);
+
+    const time = document.createElement("span");
+    time.className = "trace-time";
+    time.textContent = timeFormatted;
+    top.appendChild(time);
+
+    el.appendChild(top);
+
+    const text = document.createElement("div");
+    text.className = "trace-text";
+    text.textContent = titleText;
+    el.appendChild(text);
+
+    if (subText) {
+      const sub = document.createElement("div");
+      sub.className = "trace-subtext";
+      sub.textContent = subText;
+      el.appendChild(sub);
+    }
+
+    return el;
+  }
+
+  function appendTraceStep(entry) {
+    if (!traceFeedEl) return;
+    const emptyHint = traceFeedEl.querySelector(".trace-empty");
+    if (emptyHint) {
+      traceFeedEl.removeChild(emptyHint);
+    }
+
+    const stepEl = createTraceStepElement(entry);
+    traceFeedEl.appendChild(stepEl);
+
+    while (traceFeedEl.children.length > 200) {
+      traceFeedEl.removeChild(traceFeedEl.firstChild);
+    }
+
+    const container = traceFeedEl.parentElement;
+    if (container) {
+      container.scrollTop = container.scrollHeight;
+    }
+  }
+
+  function renderTraces() {
+    if (!traceFeedEl) return;
+    traceFeedEl.textContent = "";
+
+    const filtered = logEntries.filter((e) => {
+      if (!isHighSignalTraceEvent(e)) return false;
+      if (logScope === "session") {
+        return currentSessionId && e.session_id === currentSessionId;
+      }
+      return true;
+    });
+
+    if (filtered.length === 0) {
+      const empty = document.createElement("div");
+      empty.className = "trace-empty";
+      empty.textContent = "No activity recorded yet";
+      traceFeedEl.appendChild(empty);
+      return;
+    }
+
+    filtered.forEach((e) => {
+      traceFeedEl.appendChild(createTraceStepElement(e));
+    });
+
+    const container = traceFeedEl.parentElement;
+    if (container) {
+      container.scrollTop = container.scrollHeight;
+    }
+  }
+
   function renderLogs() {
     logTableBodyEl.textContent = "";
     const filtered = logEntries.filter((e) => {
@@ -773,6 +958,11 @@
     });
 
     filtered.forEach((e) => appendLogRowToTable(e));
+  }
+
+  function renderAllLogsAndTraces() {
+    renderLogs();
+    renderTraces();
   }
 
   function appendLogRowToTable(entry) {
@@ -804,42 +994,28 @@
     tdEvent.textContent = entry.event || "log";
     tr.appendChild(tdEvent);
 
-    // 4. Model
-    const tdModel = document.createElement("td");
-    tdModel.className = "text-muted";
-    tdModel.textContent = entry.model || "-";
-    tr.appendChild(tdModel);
-
-    // 5. Tokens (In/Out/Reasoning)
+    // 4. Tokens (In/Out)
     const tdTokens = document.createElement("td");
     if (typeof entry.tokens_in === "number" || typeof entry.tokens_out === "number") {
-      tdTokens.textContent = `${entry.tokens_in ?? 0}/${entry.tokens_out ?? 0}/${entry.tokens_reasoning ?? 0}`;
+      tdTokens.textContent = `${entry.tokens_in ?? 0}/${entry.tokens_out ?? 0}`;
     } else {
       tdTokens.className = "text-muted";
       tdTokens.textContent = "-";
     }
     tr.appendChild(tdTokens);
 
-    // 6. Latency ms
+    // 5. Latency ms
     const tdLatency = document.createElement("td");
     if (typeof entry.ms === "number") {
-      tdLatency.textContent = `${entry.ms}ms`;
+      tdLatency.textContent = `${entry.ms}`;
     } else {
       tdLatency.className = "text-muted";
       tdLatency.textContent = "-";
     }
     tr.appendChild(tdLatency);
 
-    // 7. Short Run ID
-    const tdRun = document.createElement("td");
-    const rId = entry.run_id || "";
-    tdRun.className = "text-muted";
-    tdRun.textContent = rId ? rId.slice(0, 8) : "-";
-    tr.appendChild(tdRun);
-
     logTableBodyEl.appendChild(tr);
 
-    // Auto-scroll to bottom if log container is near bottom
     const container = logTableBodyEl.parentElement.parentElement;
     if (container) {
       container.scrollTop = container.scrollHeight;
