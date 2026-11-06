@@ -100,8 +100,13 @@ class ChatRepository:
         if user_id is not None:
             stmt = stmt.where(ChatSession.user_id == user_id)
         stmt = stmt.values(busy_since=None)
-        await self.session.execute(stmt)
-        await self.session.commit()
+        try:
+            await self.session.execute(stmt)
+            await self.session.commit()
+        except Exception:
+            await self.session.rollback()
+            await self.session.execute(stmt)
+            await self.session.commit()
 
     async def get_messages(
         self,

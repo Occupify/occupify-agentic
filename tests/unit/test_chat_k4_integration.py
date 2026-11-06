@@ -102,6 +102,61 @@ async def test_update_consulting_progress_tool(test_db, mock_user):
     assert "Error:" in err_res
 
 
+@pytest.mark.asyncio
+async def test_concurrent_state_and_memory_tools(test_db, mock_user):
+    import asyncio
+
+    chat_repo = ChatRepository(test_db)
+    chat_sess = await chat_repo.create_session(mock_user.user_id, "Concurrent Checkpoint Session")
+
+    deps = AgentDeps(
+        user=mock_user,
+        session_id=chat_sess.id,
+        db=test_db,
+    )
+    ctx = RunContext(deps=deps, model=None, usage=None, prompt=None)
+
+    # Simulate PydanticAI executing multiple tool calls concurrently in the same turn
+    results = await asyncio.gather(
+        record_user_memory(
+            ctx=ctx,
+            category="skills",
+            key="primary_lang",
+            value="Python",
+            is_confirmed=True,
+        ),
+        record_user_memory(
+            ctx=ctx,
+            category="preferences",
+            key="work_mode",
+            value="Remote",
+            is_confirmed=True,
+        ),
+        update_consulting_progress(
+            ctx=ctx,
+            stage="ASSESSMENT",
+            goal="Land remote Python role",
+            next_action="Review Python portfolio",
+        ),
+    )
+
+    assert len(results) == 3
+    assert "Recorded memory [skills] primary_lang: Python (confirmed)" in results[0]
+    assert "Recorded memory [preferences] work_mode: Remote (confirmed)" in results[1]
+    assert "Checkpoint saved (seq=1)" in results[2]
+
+    # Verify state in DB
+    state_mgr = TaskProgressManager(test_db)
+    cp = await state_mgr.get_latest_checkpoint(chat_sess.id)
+    assert cp is not None
+    assert cp.stage == "ASSESSMENT"
+    assert cp.goal == "Land remote Python role"
+
+    mem_svc = MemoryService(test_db)
+    active_mem = await mem_svc.get_active_memory(mock_user.user_id)
+    assert len(active_mem.items) == 2
+
+
 def test_chat_agent_tool_registration():
     tool_names = set(chat_agent._function_toolset.tools.keys())
     assert "record_user_memory" in tool_names

@@ -35,7 +35,8 @@ async def record_user_memory(
         confidence=confidence,
         source=source,
     )
-    res = await service.record_fact(ctx.deps.user.user_id, item)
+    async with ctx.deps.db_lock:
+        res = await service.record_fact(ctx.deps.user.user_id, item)
     status = "confirmed" if res.is_confirmed else "inferred"
     return f"Recorded memory [{res.category}] {res.key}: {res.value} ({status})."
 
@@ -80,10 +81,11 @@ async def update_consulting_progress(
         next_action=next_action,
     )
 
-    cp = await manager.update_and_checkpoint(
-        session_id=ctx.deps.session_id,
-        user_id=ctx.deps.user.user_id,
-        task_type="career_consulting",
-        update=update,
-    )
+    async with ctx.deps.db_lock:
+        cp = await manager.update_and_checkpoint(
+            session_id=ctx.deps.session_id,
+            user_id=ctx.deps.user.user_id,
+            task_type="career_consulting",
+            update=update,
+        )
     return f"Checkpoint saved (seq={cp.checkpoint_seq}): stage={cp.stage}, next_action={cp.next_action}"
