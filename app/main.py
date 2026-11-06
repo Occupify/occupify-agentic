@@ -139,7 +139,14 @@ def create_app() -> FastAPI:
             async def get_ui():
                 if get_settings().APP_ENV not in ("local", "test"):
                     raise AppError(404, "Endpoint not found.", "NOT_FOUND")
-                return FileResponse(index_path)
+                return FileResponse(
+                    index_path,
+                    headers={
+                        "Cache-Control": "no-cache, no-store, must-revalidate",
+                        "Pragma": "no-cache",
+                        "Expires": "0",
+                    },
+                )
 
             class LocalOnlyStaticFiles(StaticFiles):
                 async def get_response(self, path: str, scope: Scope) -> Response:
@@ -152,7 +159,11 @@ def create_app() -> FastAPI:
                                 "errorCode": "NOT_FOUND",
                             },
                         )
-                    return await super().get_response(path, scope)
+                    res = await super().get_response(path, scope)
+                    res.headers["Cache-Control"] = "no-cache, no-store, must-revalidate"
+                    res.headers["Pragma"] = "no-cache"
+                    res.headers["Expires"] = "0"
+                    return res
 
             app.mount("/ui", LocalOnlyStaticFiles(directory=frontend_dir, html=True), name="ui")
 

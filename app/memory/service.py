@@ -121,7 +121,7 @@ class MemoryService:
         )
 
     async def get_active_memory(
-        self, user_id: str, category: str | None = None
+        self, user_id: str, category: str | None = None, emit_log: bool = False
     ) -> UserMemorySummary:
         """
         Retrieves active unexpired memory facts for the user.
@@ -158,7 +158,7 @@ class MemoryService:
             for r in rows
         ]
 
-        if items:
+        if items and emit_log:
             log_step(
                 "memory.injected",
                 user_id=user_id,
