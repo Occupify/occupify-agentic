@@ -10,25 +10,8 @@ class TaskProgressManager:
     def __init__(self, db: AsyncSession):
         self.db = db
 
-    async def get_latest_checkpoint(
-        self, session_id: str, task_type: str = "career_consulting"
-    ) -> TaskCheckpointRead | None:
-        """Retrieves the latest checkpoint for the session and task type, emitting resumption telemetry."""
-        stmt = (
-            select(TaskCheckpoint)
-            .where(
-                TaskCheckpoint.session_id == session_id,
-                TaskCheckpoint.task_type == task_type,
-            )
-            .order_by(TaskCheckpoint.checkpoint_seq.desc())
-            .limit(1)
-        )
-        res = await self.db.execute(stmt)
-        cp = res.scalar_one_or_none()
-        if not cp:
-            return None
-
-        read_model = TaskCheckpointRead(
+    def _to_read_model(self, cp: TaskCheckpoint) -> TaskCheckpointRead:
+        return TaskCheckpointRead(
             id=cp.id,
             session_id=cp.session_id,
             user_id=cp.user_id,
@@ -45,15 +28,53 @@ class TaskProgressManager:
             created_at=cp.created_at,
         )
 
-        log_step(
-            "state.resumed",
-            session_id=session_id,
-            task_type=task_type,
-            checkpoint_seq=read_model.checkpoint_seq,
-            stage=read_model.stage,
-            next_action=read_model.next_action,
+    async def get_latest_checkpoint(
+        self, session_id: str, task_type: str = "career_consulting", emit_log: bool = False
+    ) -> TaskCheckpointRead | None:
+        """Retrieves the latest checkpoint for the session and task type, emitting resumption telemetry."""
+        stmt = (
+            select(TaskCheckpoint)
+            .where(
+                TaskCheckpoint.session_id == session_id,
+                TaskCheckpoint.task_type == task_type,
+            )
+            .order_by(TaskCheckpoint.checkpoint_seq.desc())
+            .limit(1)
         )
+        res = await self.db.execute(stmt)
+        cp = res.scalar_one_or_none()
+        if not cp:
+            return None
+
+        read_model = self._to_read_model(cp)
+
+        if emit_log:
+            log_step(
+                "state.resumed",
+                session_id=session_id,
+                task_type=task_type,
+                checkpoint_seq=read_model.checkpoint_seq,
+                stage=read_model.stage,
+                next_action=read_model.next_action,
+            )
         return read_model
+
+    async def get_latest_user_checkpoint(
+        self, user_id: str, task_type: str = "career_consulting"
+    ) -> TaskCheckpointRead | None:
+        """Retrieves the most recent checkpoint for the user across all sessions."""
+        stmt = (
+            select(TaskCheckpoint)
+            .where(
+                TaskCheckpoint.user_id == user_id,
+                TaskCheckpoint.task_type == task_type,
+            )
+            .order_by(TaskCheckpoint.checkpoint_seq.desc(), TaskCheckpoint.created_at.desc())
+            .limit(1)
+        )
+        res = await self.db.execute(stmt)
+        cp = res.scalar_one_or_none()
+        return self._to_read_model(cp) if cp else None
 
     async def get_checkpoint_history(self, session_id: str) -> list[TaskCheckpointRead]:
         """Retrieves all historical checkpoints for a session ordered by sequence."""

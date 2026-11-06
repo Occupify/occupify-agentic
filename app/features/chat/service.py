@@ -180,11 +180,13 @@ class ChatService:
 
             # 7. Global Memory & Task State Harness (K4)
             mem_service = MemoryService(self.db)
-            active_memory = await mem_service.get_active_memory(user.user_id)
+            active_memory = await mem_service.get_active_memory(user.user_id, emit_log=True)
             mem_block = active_memory.format_for_prompt()
 
             state_manager = TaskProgressManager(self.db)
-            latest_cp = await state_manager.get_latest_checkpoint(session_id)
+            latest_cp = await state_manager.get_latest_checkpoint(session_id, emit_log=True)
+            if not latest_cp:
+                latest_cp = await state_manager.get_latest_user_checkpoint(user.user_id)
             state_block = latest_cp.format_for_prompt() if latest_cp else ""
 
             # Check context compaction (Rule 9)
@@ -505,6 +507,10 @@ class ChatService:
                     latest_cp = await TaskProgressManager(self.db).get_latest_checkpoint(
                         active_session_id
                     )
+                    if not latest_cp:
+                        latest_cp = await TaskProgressManager(self.db).get_latest_user_checkpoint(
+                            user.user_id
+                        )
                     active_mem = await MemoryService(self.db).get_active_memory(user.user_id)
 
                     done_payload = {
