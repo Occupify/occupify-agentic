@@ -37,7 +37,10 @@ from app.features.chat.schemas import (
     ChatReplyData,
     TokenUsage,
 )
+from app.memory.service import MemoryService
 from app.privacy.gate import clean
+from app.state.compactor import ContextCompactor
+from app.state.task_progress import TaskProgressManager
 
 
 class AgentStreamProgress:
@@ -171,17 +174,52 @@ class ChatService:
                 new_session = True
                 lock_token = await self.chat_repo.mark_busy(session_id, user.user_id)
 
-            # 6. Compose turn prompt
+            # 6. Load previous messages for history and compaction check
+            history = await self.chat_repo.get_all_model_messages(session_id)
+            raw_message_count = len(history)
+
+            # 7. Global Memory & Task State Harness (K4)
+            mem_service = MemoryService(self.db)
+            active_memory = await mem_service.get_active_memory(user.user_id, emit_log=True)
+            mem_block = active_memory.format_for_prompt()
+
+            state_manager = TaskProgressManager(self.db)
+            latest_cp = await state_manager.get_latest_checkpoint(session_id, emit_log=True)
+            if not latest_cp:
+                latest_cp = await state_manager.get_latest_user_checkpoint(user.user_id)
+            state_block = latest_cp.format_for_prompt() if latest_cp else ""
+
+            # Check context compaction (Rule 9)
+            compactor = ContextCompactor()
+            compaction_block = ""
+            if compactor.should_compact(raw_message_count):
+                compaction_block = compactor.build_compacted_state_card(
+                    checkpoint=latest_cp,
+                    memory=active_memory,
+                    raw_message_count=raw_message_count,
+                )
+                history = compactor.compact_history(history, compaction_block)
+
+            # 8. Compose turn prompt with injected context
+            context_blocks: list[str] = []
+            if cleaned_context:
+                context_blocks.append(cleaned_context)
+            if compaction_block:
+                context_blocks.append(compaction_block)
+            if mem_block:
+                context_blocks.append(mem_block)
+            if state_block:
+                context_blocks.append(state_block)
+
+            merged_context = "\n\n".join(context_blocks).strip()
+
             prompt_parts = []
             if prompt_file_blocks:
                 prompt_parts.extend(prompt_file_blocks)
-            if cleaned_context:
-                prompt_parts.append(f"Context:\n{cleaned_context}")
+            if merged_context:
+                prompt_parts.append(f"Context:\n{merged_context}")
             prompt_parts.append(f"User message:\n{cleaned_message}")
             final_prompt = "\n\n".join(prompt_parts)
-
-            # 7. Load all previous model messages
-            history = await self.chat_repo.get_all_model_messages(session_id)
 
             return (
                 session_id,
@@ -289,6 +327,9 @@ class ChatService:
                 status="complete",
             )
 
+            latest_cp = await TaskProgressManager(self.db).get_latest_checkpoint(active_session_id)
+            active_mem = await MemoryService(self.db).get_active_memory(user.user_id)
+
             return ChatReplyData(
                 sessionId=active_session_id,
                 newSession=new_session,
@@ -300,6 +341,8 @@ class ChatService:
                     tokensIn=total_tokens_in,
                     tokensOut=total_tokens_out,
                 ),
+                state=latest_cp.model_dump(mode="json") if latest_cp else None,
+                memory=[m.model_dump(mode="json") for m in active_mem.items],
             )
 
         finally:
@@ -461,12 +504,23 @@ class ChatService:
                         asst_message_id=turn_message_id,
                     )
 
+                    latest_cp = await TaskProgressManager(self.db).get_latest_checkpoint(
+                        active_session_id
+                    )
+                    if not latest_cp:
+                        latest_cp = await TaskProgressManager(self.db).get_latest_user_checkpoint(
+                            user.user_id
+                        )
+                    active_mem = await MemoryService(self.db).get_active_memory(user.user_id)
+
                     done_payload = {
                         "model": item.model,
                         "usage": {
                             "tokensIn": tokens_in,
                             "tokensOut": tokens_out,
                         },
+                        "state": latest_cp.model_dump(mode="json") if latest_cp else None,
+                        "memory": [m.model_dump(mode="json") for m in active_mem.items],
                     }
                     yield f"event: done\ndata: {json.dumps(done_payload)}\n\n"
 

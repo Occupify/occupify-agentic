@@ -1,3 +1,4 @@
+import asyncio
 from dataclasses import dataclass, field
 from typing import Any
 
@@ -11,6 +12,7 @@ class AgentDeps:
     user: CurrentUser
     session_id: str | None = None
     db: AsyncSession | None = None
+    db_lock: asyncio.Lock = field(default_factory=asyncio.Lock)
     rpc: Any = None
     parent_run_id: str | None = None
     agent_role: str = "primary"

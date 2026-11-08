@@ -219,10 +219,10 @@ async def test_stream_progress_then_block_then_done(test_db):
     assert "Here are the matches:" in joined
     assert "Matching Jobs" in joined
     assert "1. Backend Engineer" in joined
-    assert (
-        'event: done\ndata: {"model": "test-model", "usage": {"tokensIn": 150, "tokensOut": 30}}'
-        in joined
-    )
+    assert "event: done" in joined
+    assert '"model": "test-model"' in joined
+    assert '"tokensIn": 150' in joined
+    assert '"tokensOut": 30' in joined
 
 
 @pytest.mark.asyncio
