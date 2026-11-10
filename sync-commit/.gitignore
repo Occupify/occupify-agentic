@@ -1,0 +1,9 @@
+# Sync Engine temporary directories
+.sync_repos/
+*.db
+__pycache__/
+*.pyc
+.coverage
+htmlcov/
+.pytest_cache/
+.ruff_cache/

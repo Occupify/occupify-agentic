@@ -1,0 +1,188 @@
+pipeline {
+    agent any
+
+    parameters {
+        string(
+            name: 'SOURCE_BRANCH',
+            defaultValue: 'main',
+            description: 'Source repository branch to monitor for contributions'
+        )
+
+        string(
+            name: 'TRIGGERED_BY_BUILD',
+            defaultValue: '',
+            description: 'Originating CI/CD build number for traceability'
+        )
+
+        booleanParam(
+            name: 'DRY_RUN',
+            defaultValue: false,
+            description: 'Execute in dry-run mode without pushing branches or creating PRs'
+        )
+    }
+
+    options {
+        timeout(time: 30, unit: 'MINUTES')
+        disableConcurrentBuilds()
+        buildDiscarder(logRotator(numToKeepStr: '20'))
+    }
+
+    environment {
+        SOURCE_REPO = 'https://github.com/se373agenticengineering/nhom-01.git'
+        TARGET_REPO = 'https://github.com/Occupify/occupify-agentic.git'
+        PYTHONPATH = "${WORKSPACE}/sync-commit"
+        SYNC_RUNNER_ID = "jenkins-${BUILD_TAG}"
+    }
+
+    stages {
+        stage('Initialize DB & Environment') {
+            steps {
+                withCredentials([
+                    string(credentialsId: 'github-sync-token', variable: 'GITHUB_TOKEN'),
+                    string(credentialsId: 'sync-database-url', variable: 'DATABASE_URL')
+                ]) {
+                    sh '''
+                        CLI_ARGS=""
+                        if [ "${params.DRY_RUN}" = "true" ]; then CLI_ARGS="--dry-run"; fi
+                        uv run python -m sync_engine.cli init-db ${CLI_ARGS}
+                        uv run python -m sync_engine.cli status ${CLI_ARGS}
+                    '''
+                }
+            }
+        }
+
+        stage('Checkout Source') {
+            steps {
+                withCredentials([
+                    string(credentialsId: 'github-sync-token', variable: 'GITHUB_TOKEN'),
+                    string(credentialsId: 'sync-database-url', variable: 'DATABASE_URL')
+                ]) {
+                    sh '''
+                        CLI_ARGS=""
+                        if [ "${params.DRY_RUN}" = "true" ]; then CLI_ARGS="--dry-run"; fi
+                        uv run python -m sync_engine.cli checkout-source ${CLI_ARGS}
+                    '''
+                }
+            }
+        }
+
+        stage('Load Checkpoint') {
+            steps {
+                withCredentials([
+                    string(credentialsId: 'github-sync-token', variable: 'GITHUB_TOKEN'),
+                    string(credentialsId: 'sync-database-url', variable: 'DATABASE_URL')
+                ]) {
+                    sh '''
+                        CLI_ARGS=""
+                        if [ "${params.DRY_RUN}" = "true" ]; then CLI_ARGS="--dry-run"; fi
+                        uv run python -m sync_engine.cli load-checkpoint ${CLI_ARGS}
+                    '''
+                }
+            }
+        }
+
+        stage('Find New Merged PRs') {
+            steps {
+                withCredentials([
+                    string(credentialsId: 'github-sync-token', variable: 'GITHUB_TOKEN'),
+                    string(credentialsId: 'sync-database-url', variable: 'DATABASE_URL')
+                ]) {
+                    sh '''
+                        CLI_ARGS=""
+                        if [ "${params.DRY_RUN}" = "true" ]; then CLI_ARGS="--dry-run"; fi
+                        uv run python -m sync_engine.cli find-prs ${CLI_ARGS}
+                    '''
+                }
+            }
+        }
+
+        stage('Extract Contributions') {
+            steps {
+                withCredentials([
+                    string(credentialsId: 'github-sync-token', variable: 'GITHUB_TOKEN'),
+                    string(credentialsId: 'sync-database-url', variable: 'DATABASE_URL')
+                ]) {
+                    sh '''
+                        CLI_ARGS=""
+                        if [ "${params.DRY_RUN}" = "true" ]; then CLI_ARGS="--dry-run"; fi
+                        uv run python -m sync_engine.cli extract-contributions ${CLI_ARGS}
+                    '''
+                }
+            }
+        }
+
+        stage('Calculate Diff') {
+            steps {
+                withCredentials([
+                    string(credentialsId: 'github-sync-token', variable: 'GITHUB_TOKEN'),
+                    string(credentialsId: 'sync-database-url', variable: 'DATABASE_URL')
+                ]) {
+                    sh '''
+                        CLI_ARGS=""
+                        if [ "${params.DRY_RUN}" = "true" ]; then CLI_ARGS="--dry-run"; fi
+                        uv run python -m sync_engine.cli calculate-diff ${CLI_ARGS}
+                    '''
+                }
+            }
+        }
+
+        stage('Synchronize to Occupify Agentic') {
+            steps {
+                withCredentials([
+                    string(credentialsId: 'github-sync-token', variable: 'GITHUB_TOKEN'),
+                    string(credentialsId: 'sync-database-url', variable: 'DATABASE_URL')
+                ]) {
+                    sh '''
+                        CLI_ARGS=""
+                        if [ "${params.DRY_RUN}" = "true" ]; then CLI_ARGS="--dry-run"; fi
+                        uv run python -m sync_engine.cli sync-target ${CLI_ARGS}
+                    '''
+                }
+            }
+        }
+
+        stage('Create Pull Request') {
+            steps {
+                withCredentials([
+                    string(credentialsId: 'github-sync-token', variable: 'GITHUB_TOKEN'),
+                    string(credentialsId: 'sync-database-url', variable: 'DATABASE_URL')
+                ]) {
+                    sh '''
+                        CLI_ARGS=""
+                        if [ "${params.DRY_RUN}" = "true" ]; then CLI_ARGS="--dry-run"; fi
+                        uv run python -m sync_engine.cli create-pr ${CLI_ARGS}
+                    '''
+                }
+            }
+        }
+
+        stage('Update Sync State') {
+            steps {
+                withCredentials([
+                    string(credentialsId: 'github-sync-token', variable: 'GITHUB_TOKEN'),
+                    string(credentialsId: 'sync-database-url', variable: 'DATABASE_URL')
+                ]) {
+                    sh '''
+                        CLI_ARGS=""
+                        if [ "${params.DRY_RUN}" = "true" ]; then CLI_ARGS="--dry-run"; fi
+                        uv run python -m sync_engine.cli update-state ${CLI_ARGS}
+                    '''
+                }
+            }
+        }
+    }
+
+    post {
+        always {
+            echo "Sync pipeline execution completed for build ${BUILD_TAG}."
+        }
+
+        success {
+            echo 'Contribution synchronization completed successfully.'
+        }
+
+        failure {
+            echo 'Contribution synchronization encountered errors. Retaining state for safe retry.'
+        }
+    }
+}
