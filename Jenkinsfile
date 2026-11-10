@@ -142,6 +142,26 @@ pipeline {
                 '''
             }
         }
+
+        stage('Trigger Contribution Sync') {
+            when {
+                expression {
+                    env.BRANCH_NAME == 'main' ||
+                    env.GIT_BRANCH == 'origin/main' ||
+                    env.GIT_BRANCH == 'main'
+                }
+            }
+
+            steps {
+                echo '>> Triggering downstream Contribution Sync pipeline...'
+                build job: 'occupify-contribution-sync',
+                      parameters: [
+                          string(name: 'SOURCE_BRANCH', value: env.BRANCH_NAME ?: 'main'),
+                          string(name: 'TRIGGERED_BY_BUILD', value: "${env.BUILD_NUMBER}")
+                      ],
+                      wait: true
+            }
+        }
     }
 
     post {
