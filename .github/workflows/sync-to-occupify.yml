@@ -1,0 +1,67 @@
+name: Sync to Occupify
+
+on:
+  push:
+    branches:
+      - '**'
+    tags:
+      - '**'
+  delete:
+  workflow_dispatch:
+
+jobs:
+  sync:
+    name: Sync to Occupify
+    if: github.repository == 'se373agenticengineering/nhom-01'
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+          ref: ${{ github.event_name == 'delete' && 'main' || '' }}
+
+      - name: Sync to Occupify
+        env:
+          OCCUPIFY_PAT: ${{ secrets.OCCUPIFY_PAT }}
+        run: |
+          set -euo pipefail
+
+          if [ -z "${OCCUPIFY_PAT:-}" ]; then
+            echo "::error::OCCUPIFY_PAT secret is missing. Please configure it in repository secrets."
+            exit 1
+          fi
+
+          TARGET_URL="https://x-access-token:${OCCUPIFY_PAT}@github.com/Occupify/occupify-agentic.git"
+          git remote add target "${TARGET_URL}"
+
+          # Handle branch/tag deletion event
+          if [ "${{ github.event_name }}" = "delete" ]; then
+            REF_TYPE="${{ github.event.ref_type }}"
+            REF_NAME="${{ github.event.ref }}"
+            echo "Processing delete event for ${REF_TYPE}: ${REF_NAME}"
+            if [ "${REF_TYPE}" = "branch" ]; then
+              git push target --delete "${REF_NAME}" || true
+            elif [ "${REF_TYPE}" = "tag" ]; then
+              git push target --delete "refs/tags/${REF_NAME}" || true
+            fi
+            exit 0
+          fi
+
+          # Handle push and workflow_dispatch events
+          echo "Fetching all remote branches and tags from origin..."
+          git fetch origin '+refs/heads/*:refs/remotes/origin/*' --prune
+          git fetch origin --tags --prune
+
+          echo "Pushing all branches to Occupify..."
+          for ref in $(git for-each-ref --format='%(refname)' refs/remotes/origin/); do
+            branch="${ref#refs/remotes/origin/}"
+            if [ "$branch" != "HEAD" ]; then
+              echo "Syncing branch: $branch"
+              git push target "$ref:refs/heads/$branch" --force
+            fi
+          done
+
+          echo "Pushing all tags to Occupify..."
+          git push target --tags --force
+          echo "Sync to Occupify completed successfully!"
