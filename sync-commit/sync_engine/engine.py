@@ -126,7 +126,9 @@ class SyncEngine:
 
         # Workspace directories
         self.work_dir = work_dir or os.getenv("SYNC_WORK_DIR", ".sync_repos")
-        self.source_dir = source_dir or os.path.join(self.work_dir, "source")
+        self.source_dir = (
+            source_dir or self.config.SOURCE_DIR or os.path.join(self.work_dir, "source")
+        )
         self.target_dir = target_dir or os.path.join(self.work_dir, "target")
 
         # Distributed lock tracking
@@ -155,14 +157,29 @@ class SyncEngine:
         Returns:
             Latest commit SHA of source repository branch.
         """
+        if self.config.SOURCE_DIR and os.path.isdir(os.path.join(self.source_dir, ".git")):
+            logger.info(
+                "Stage 1 [Checkout Source]: Using existing source repository at %s",
+                self.source_dir,
+                extra={"stage": 1, "event": "checkout_source_start"},
+            )
+            head_sha = self.git_ops.get_head_sha(self.source_dir, branch=self.config.SOURCE_BRANCH)
+            logger.info(
+                "Stage 1 [Checkout Source]: Successfully verified source at SHA %s",
+                head_sha,
+                extra={"stage": 1, "event": "checkout_source_success", "head_sha": head_sha},
+            )
+            return head_sha
+
+        repo_url = self.config.SOURCE_CLONE_URL or self.config.SOURCE_REPO
         logger.info(
             "Stage 1 [Checkout Source]: Fetching source repo %s (branch: %s)...",
-            self.config.SOURCE_REPO,
+            repo_url,
             self.config.SOURCE_BRANCH,
             extra={"stage": 1, "event": "checkout_source_start"},
         )
         self.git_ops.clone_or_fetch(
-            repo_url=self.config.SOURCE_REPO,
+            repo_url=repo_url,
             target_dir=self.source_dir,
             branch=self.config.SOURCE_BRANCH,
             token=self.config.SOURCE_GITHUB_TOKEN or self.config.GITHUB_TOKEN,
@@ -296,12 +313,130 @@ class SyncEngine:
                         dest_pr_number=record.destination_pr_number,
                         dest_pr_url=record.destination_pr_url,
                     )
+                elif pr_state == "open":
+                    # Active target PR is open. Reset any CONFLICT records so rolling sync can retry them cleanly.
+                    conflict_records = db.list_contributions(status="CONFLICT")
+                    for c_rec in conflict_records:
+                        logger.info(
+                            "Reconciliation: Active target PR #%d is open. Resetting %s from CONFLICT to PENDING for rolling sync.",
+                            record.destination_pr_number,
+                            c_rec.sync_key,
+                            extra={
+                                "event": "conflict_reset_for_rolling_sync",
+                                "dest_pr": record.destination_pr_number,
+                            },
+                        )
+                        db.update_contribution_status(
+                            sync_key=c_rec.sync_key,
+                            status="PENDING",
+                            error_message=None,
+                        )
             except Exception as exc:
                 logger.warning(
                     "Reconciliation check failed for destination PR #%d: %s",
                     record.destination_pr_number,
                     exc,
                 )
+
+        # Check active open target PR directly via GitHub query and reset any conflicts
+        active_rec, active_pr = self.get_active_open_target_pr()
+        if active_pr and active_pr.get("state") == "open":
+            conflict_records = db.list_contributions(status="CONFLICT")
+            for c_rec in conflict_records:
+                dest_pr_id = active_pr.get("number")
+                logger.info(
+                    "Reconciliation: Active target PR #%s is open on GitHub. Resetting %s from CONFLICT to PENDING for rolling sync.",
+                    dest_pr_id,
+                    c_rec.sync_key,
+                    extra={
+                        "event": "conflict_reset_for_rolling_sync",
+                        "dest_pr": dest_pr_id,
+                    },
+                )
+                db.update_contribution_status(
+                    sync_key=c_rec.sync_key,
+                    status="PENDING",
+                    error_message=None,
+                )
+
+    def get_active_open_target_pr(
+        self,
+    ) -> tuple[ContributionRecord | None, dict[str, Any] | None]:
+        """Find an active open sync PR on Target Repo A directly from GitHub and DB.
+
+        Returns:
+            Tuple of (ContributionRecord, pr_details_dict) if open target PR exists, else (None, None).
+        """
+        target_owner, target_repo_name = parse_repo_owner_name(self.config.TARGET_REPO)
+
+        # 1. Primary: Direct query on GitHub for active open sync PRs
+        try:
+            open_prs = self.target_github_client.get_open_prs(
+                owner=target_owner,
+                repo=target_repo_name,
+                base_branch=self.config.TARGET_BRANCH,
+            )
+            for pr in open_prs:
+                head_ref = (pr.get("head") or {}).get("ref", "")
+                if head_ref.startswith("sync/b/"):
+                    dest_pr_num = pr["number"]
+                    dest_pr_url = pr.get("html_url")
+
+                    # Look up or create corresponding record
+                    exported_records = db.list_contributions(status="EXPORTED")
+                    matched_rec = next(
+                        (
+                            r
+                            for r in exported_records
+                            if r.destination_pr_number == dest_pr_num or r.sync_branch == head_ref
+                        ),
+                        None,
+                    )
+                    if matched_rec is None:
+                        match = re.search(r"pr-(\d+)", head_ref)
+                        src_num = int(match.group(1)) if match else 0
+                        matched_rec = ContributionRecord(
+                            sync_key=f"PR_{src_num}",
+                            source_pr_number=src_num,
+                            source_branch=head_ref,
+                            target_branch=self.config.TARGET_BRANCH,
+                            sync_branch=head_ref,
+                            destination_pr_number=dest_pr_num,
+                            destination_pr_url=dest_pr_url,
+                            status="EXPORTED",
+                            merged_at=datetime.now(UTC),
+                        )
+                    else:
+                        matched_rec.destination_pr_number = dest_pr_num
+                        matched_rec.destination_pr_url = dest_pr_url
+                        matched_rec.sync_branch = head_ref
+                        db.record_contribution(matched_rec)
+
+                    return matched_rec, pr
+        except Exception as exc:
+            logger.debug("Direct GitHub query for open PRs failed: %s", exc)
+
+        # 2. Secondary fallback: DB inspection
+        exported_records = db.list_contributions(status="EXPORTED")
+        for rec in exported_records:
+            if not rec.destination_pr_number:
+                continue
+            try:
+                pr_data = self.target_github_client.get_pr_details(
+                    owner=target_owner,
+                    repo=target_repo_name,
+                    pr_number=rec.destination_pr_number,
+                )
+                if pr_data.get("state") == "open":
+                    return rec, pr_data
+            except Exception as exc:
+                logger.debug(
+                    "Failed querying destination PR #%s: %s",
+                    rec.destination_pr_number,
+                    exc,
+                )
+
+        return None, None
 
     # -------------------------------------------------------------------------
     # Stage 3: Find New Merged PRs
@@ -662,18 +797,47 @@ class SyncEngine:
         )
         self.git_ops.ensure_clean_working_tree(self.target_dir)
 
-        # Generate clean branch slug
-        raw_slug = record.source_branch or "patch"
-        clean_slug = re.sub(r"[^a-zA-Z0-9_-]", "-", raw_slug).strip("-")[:30] or "sync"
-        branch_name = f"sync/b/pr-{record.source_pr_number}-{clean_slug}"
-        record.sync_branch = branch_name
+        # Check if an active open target PR already exists on Target Repo A
+        active_rec, active_pr = self.get_active_open_target_pr()
+        if active_rec and active_rec.sync_branch:
+            branch_name = active_rec.sync_branch
+            record.sync_branch = branch_name
+            dest_pr_num = active_pr.get("number") if active_pr else active_rec.destination_pr_number
+            logger.info(
+                "Stage 6 [Synchronize to Target]: Active open target PR #%s detected on branch %s. Rolling changes into active branch...",
+                dest_pr_num,
+                branch_name,
+                extra={
+                    "stage": 6,
+                    "event": "rolling_branch_reuse",
+                    "branch": branch_name,
+                    "dest_pr": dest_pr_num,
+                },
+            )
+            # Ensure branch is fetched and checkout branch
+            self.git_ops.fetch_branch(
+                self.target_dir,
+                branch_name,
+                token=self.config.TARGET_GITHUB_TOKEN or self.config.GITHUB_TOKEN,
+            )
+            self.git_ops.create_branch(
+                self.target_dir,
+                branch_name,
+                start_point=branch_name,
+            )
+        else:
+            # Generate clean branch slug
+            raw_slug = record.source_branch or "patch"
+            clean_slug = re.sub(r"[^a-zA-Z0-9_-]", "-", raw_slug).strip("-")[:30] or "sync"
+            branch_name = f"sync/b/pr-{record.source_pr_number}-{clean_slug}"
+            record.sync_branch = branch_name
 
-        # Create branch from target branch HEAD
-        self.git_ops.create_branch(
-            self.target_dir,
-            branch_name,
-            start_point=f"origin/{self.config.TARGET_BRANCH}",
-        )
+            # Create branch from target branch HEAD
+            self.git_ops.create_branch(
+                self.target_dir,
+                branch_name,
+                start_point=f"origin/{self.config.TARGET_BRANCH}",
+            )
 
         # Resolve primary author attribution and co-authors
         author_name = "Occupify Contributor"
@@ -786,6 +950,70 @@ class SyncEngine:
 - Managed by Occupify Contribution Sync Engine
 - Synchronization branch: {branch_name}
 """
+
+        # Check if an active open target PR already exists on Target Repo A
+        active_rec, active_pr = self.get_active_open_target_pr()
+        if active_rec and active_pr:
+            dest_pr_number = int(active_pr["number"])
+            dest_pr_url = active_pr.get("html_url") or (
+                f"https://github.com/{target_owner}/{target_repo_name}/pull/{dest_pr_number}"
+            )
+            branch_name = active_rec.sync_branch or branch_name
+
+            logger.info(
+                "Stage 7 [Create PR]: Force-pushing rolling branch %s to Target Repo %s for active PR #%d...",
+                branch_name,
+                self.config.TARGET_REPO,
+                dest_pr_number,
+                extra={
+                    "stage": 7,
+                    "event": "rolling_pr_force_push",
+                    "branch": branch_name,
+                    "dest_pr": dest_pr_number,
+                },
+            )
+
+            if not self.config.DRY_RUN:
+                self.git_ops.push_branch(
+                    repo_dir=self.target_dir,
+                    branch_name=branch_name,
+                    remote_url=self.config.TARGET_REPO,
+                    token=self.config.TARGET_GITHUB_TOKEN or self.config.GITHUB_TOKEN,
+                    force=True,
+                )
+
+                existing_body = active_pr.get("body") or ""
+                new_entry = (
+                    f"\n\n### Integrated PR #{record.source_pr_number}: {record.source_branch}\n"
+                    f"- Merge commit: `{record.merge_commit_sha}`\n"
+                    f"- Tracking ID: `{record.sync_key}`\n\n"
+                    f"#### Contributors\n{contributors_md}\n\n"
+                    f"#### Changed Files\n{files_md}"
+                )
+                updated_body = existing_body + new_entry
+
+                try:
+                    self.target_github_client.update_pull_request(
+                        owner=target_owner,
+                        repo=target_repo_name,
+                        pr_number=dest_pr_number,
+                        body=updated_body,
+                    )
+                    logger.info(
+                        "Stage 7 [Create PR]: Successfully updated description for active destination PR #%d.",
+                        dest_pr_number,
+                    )
+                except Exception as exc:
+                    logger.warning(
+                        "Stage 7 [Create PR]: Could not update description for destination PR #%d: %s",
+                        dest_pr_number,
+                        exc,
+                    )
+
+            record.destination_pr_number = dest_pr_number
+            record.destination_pr_url = dest_pr_url
+            db.record_contribution(record)
+            return active_pr
 
         if self.config.DRY_RUN:
             simulated_pr_num = 9999 + record.source_pr_number
@@ -907,17 +1135,17 @@ class SyncEngine:
         if release_lock:
             self.release_distributed_lock()
 
-    def release_distributed_lock(self) -> None:
-        """Release distributed lock if currently held by this runner."""
-        if self._lock_held:
-            logger.info(
-                "Releasing distributed sync lock '%s' for %s...",
-                self.lock_name,
-                self.runner_id,
-                extra={"event": "lock_release"},
-            )
-            db.release_lock(lock_name=self.lock_name, locked_by=self.runner_id)
-            self._lock_held = False
+    def release_distributed_lock(self, force: bool = False) -> None:
+        """Release distributed lock if currently held by this runner or forced."""
+        logger.info(
+            "Releasing distributed sync lock '%s' for %s (force=%s)...",
+            self.lock_name,
+            self.runner_id,
+            force,
+            extra={"event": "lock_release"},
+        )
+        db.release_lock(lock_name=self.lock_name, locked_by=None if force else self.runner_id)
+        self._lock_held = False
 
     # -------------------------------------------------------------------------
     # End-to-End Coordination

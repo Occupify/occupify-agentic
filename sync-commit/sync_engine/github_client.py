@@ -281,6 +281,34 @@ class GitHubClient:
 
         return all_prs
 
+    def get_open_prs(
+        self,
+        owner: str,
+        repo: str,
+        base_branch: str = "main",
+    ) -> list[dict[str, Any]]:
+        """Retrieve currently open Pull Requests targeting base_branch.
+
+        Args:
+            owner: GitHub repository owner / organization.
+            repo: GitHub repository name.
+            base_branch: Target base branch to filter by (default 'main').
+
+        Returns:
+            List of open PR dictionaries.
+        """
+        path = f"/repos/{owner}/{repo}/pulls"
+        params = {
+            "state": "open",
+            "base": base_branch,
+            "sort": "updated",
+            "direction": "desc",
+            "per_page": 100,
+        }
+        resp = self._request("GET", path, params=params)
+        data = resp.json()
+        return data if isinstance(data, list) else []
+
     def get_pr_details(self, owner: str, repo: str, pr_number: int) -> dict[str, Any]:
         """Retrieve detailed information for a specific Pull Request.
 
@@ -454,4 +482,34 @@ class GitHubClient:
             "body": body,
         }
         resp = self._request("POST", path, json=payload)
+        return resp.json()
+
+    def update_pull_request(
+        self,
+        owner: str,
+        repo: str,
+        pr_number: int,
+        title: str | None = None,
+        body: str | None = None,
+    ) -> dict[str, Any]:
+        """Update an existing Pull Request's title or description.
+
+        Args:
+            owner: Target repository owner.
+            repo: Target repository name.
+            pr_number: Pull request number.
+            title: Optional updated title.
+            body: Optional updated body description.
+
+        Returns:
+            Dictionary containing updated pull request metadata.
+        """
+        path = f"/repos/{owner}/{repo}/pulls/{pr_number}"
+        payload: dict[str, Any] = {}
+        if title is not None:
+            payload["title"] = title
+        if body is not None:
+            payload["body"] = body
+
+        resp = self._request("PATCH", path, json=payload)
         return resp.json()
