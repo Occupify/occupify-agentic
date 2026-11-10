@@ -1,0 +1,132 @@
+name: Occupify Agentic CI
+
+on:
+  push:
+    branches: ["main"]
+  pull_request:
+    branches: ["main"]
+  workflow_dispatch:
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+env:
+  APP_ENV: test
+  REGISTRY: ghcr.io
+  IMAGE_NAME: occupify/occupify-agentic
+  FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: true
+
+jobs:
+  lint-and-test:
+    name: Lint, Format Check & Run Unit Tests
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      checks: write
+      pull-requests: write
+
+    steps:
+      - name: Checkout Code
+        uses: actions/checkout@v4
+
+      - name: Set up uv
+        uses: astral-sh/setup-uv@v5
+        with:
+          version: "latest"
+          enable-cache: true
+          cache-dependency-glob: "uv.lock"
+
+      - name: Set up Python 3.13
+        run: uv python install 3.13
+
+      - name: Install Dependencies
+        run: uv sync --locked
+
+      - name: Verify Code Formatting (Ruff)
+        run: |
+          uv run ruff format --check . || {
+            echo "::error title=Code Formatting Failed::Code is not properly formatted! Run 'uv run ruff format .' locally before pushing."
+            exit 1
+          }
+
+      - name: Lint Source Code (Ruff)
+        run: |
+          uv run ruff check . || {
+            echo "::error title=Linting Failed::Ruff lint checks failed! Run 'uv run ruff check --fix .' locally."
+            exit 1
+          }
+
+      - name: Verify Agent Skill Registry
+        run: uv run python -m app.agents.skill_registry --check
+
+      - name: Run Unit Tests with Pytest & Coverage
+        run: |
+          mkdir -p reports
+          uv run pytest \
+            --junitxml=reports/junit.xml \
+            --cov=app \
+            --cov-report=xml:reports/coverage.xml \
+            tests/unit/
+
+      - name: Publish Test Results
+        uses: dorny/test-reporter@v1
+        if: always()
+        continue-on-error: true
+        with:
+          name: Pytest Unit Test Results
+          path: reports/junit.xml
+          reporter: java-junit
+          fail-on-error: true
+
+      - name: Upload Test Reports Artifact
+        uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: agentic-test-reports
+          path: reports/
+          retention-days: 14
+
+      - name: Notify on Failure
+        if: failure()
+        run: |
+          echo "::notice title=CI Status::Occupify Agentic CI workflow failed. Check step logs above (Linting, Formatting, or Unit Tests)."
+
+  build-docker-image:
+    name: Build & Verify Docker Image
+    needs: lint-and-test
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      packages: write
+
+    steps:
+      - name: Checkout Code
+        uses: actions/checkout@v4
+
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v3
+
+      - name: Format image name to lowercase
+        run: |
+          echo "IMAGE_NAME_LOWER=${IMAGE_NAME,,}" >> "$GITHUB_ENV"
+
+      - name: Log in to GitHub Container Registry
+        if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+        uses: docker/login-action@v3
+        with:
+          registry: ${{ env.REGISTRY }}
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Build (and Push if main) Container Image
+        uses: docker/build-push-action@v6
+        with:
+          context: .
+          file: Dockerfile
+          push: ${{ github.event_name == 'push' && github.ref == 'refs/heads/main' }}
+          tags: |
+            ${{ env.REGISTRY }}/${{ env.IMAGE_NAME_LOWER }}:${{ github.sha }}
+            ${{ env.REGISTRY }}/${{ env.IMAGE_NAME_LOWER }}:latest
+          cache-from: type=gha
+          cache-to: type=gha,mode=max
