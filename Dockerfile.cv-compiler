@@ -1,0 +1,15 @@
+FROM python:3.13-slim-bookworm
+RUN apt-get update && apt-get install -y --no-install-recommends \
+    latexmk texlive-xetex texlive-latex-extra fonts-lato fontconfig \
+    && fc-cache -f \
+    && rm -rf /var/lib/apt/lists/*
+RUN pip install --no-cache-dir \
+    fastapi==0.162.0 uvicorn==0.54.0 pydantic==2.14.1 pypdfium2==5.14.0
+RUN useradd --create-home --uid 10002 compiler
+WORKDIR /app
+COPY --chown=compiler:compiler app/features/cv_generator /app/app/features/cv_generator
+ENV PYTHONUNBUFFERED=1
+USER compiler
+EXPOSE 8190
+HEALTHCHECK CMD python -c "import urllib.request; urllib.request.urlopen('http://localhost:8190/health')" || exit 1
+CMD ["uvicorn", "app.features.cv_generator.compiler_api:app", "--host", "0.0.0.0", "--port", "8190"]

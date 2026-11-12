@@ -67,7 +67,7 @@ uv export --frozen --no-dev --no-hashes --no-emit-project --format requirements-
 ### 5. Run on the host (recommended for development)
 
 ```bash
-make infra                         # starts occupify-postgres-agentic (port 5535)
+make infra                         # starts Postgres (5535) and CV compiler (localhost:8190)
 make run                           # starts the app on http://localhost:8186 with auto-reload
 ```
 

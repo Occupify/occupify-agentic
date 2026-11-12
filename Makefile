@@ -1,6 +1,7 @@
 COMPOSE ?= podman compose
+CV_COMPILER_PORT ?= 8190
 
-.PHONY: install fmt lint test test-all test-integration skills-check skills-catalog infra up down reset-db logs run migrate-jobs migrate-jobs-container
+.PHONY: install fmt lint test test-all test-integration skills-check skills-catalog network infra up down reset-db logs run migrate-jobs migrate-jobs-container
 
 install:
 	uv sync
@@ -28,10 +29,13 @@ test-integration:
 test-all:
 	uv run pytest --cov=app tests/
 
-infra:
-	$(COMPOSE) up -d postgres-agentic
+network:
+	$(firstword $(COMPOSE)) network inspect occupify-network >/dev/null 2>&1 || $(firstword $(COMPOSE)) network create occupify-network
 
-up:
+infra: network
+	$(COMPOSE) up -d --build postgres-agentic cv-compiler
+
+up: network
 	$(COMPOSE) up -d --build --force-recreate
 
 down:
@@ -45,7 +49,7 @@ logs:
 	$(COMPOSE) logs -f agentic
 
 run:
-	DATABASE_URL="postgresql+asyncpg://postgres:postgres@localhost:5535/occupify_agentic" RABBITMQ_URL="amqp://guest:guest@localhost:5672/" uv run uvicorn app.main:app --host 0.0.0.0 --port 8186 --reload
+	DATABASE_URL="postgresql+asyncpg://postgres:postgres@localhost:5535/occupify_agentic" RABBITMQ_URL="amqp://guest:guest@localhost:5672/" CV_COMPILER_URL="http://127.0.0.1:$(CV_COMPILER_PORT)" uv run uvicorn app.main:app --host 0.0.0.0 --port 8186 --reload
 
 migrate-jobs:
 	DATABASE_URL="postgresql+asyncpg://postgres:postgres@localhost:5535/occupify_agentic" uv run python -m app.features.job_match.index.migrate

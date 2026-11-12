@@ -22,3 +22,5 @@ class AgentDeps:
     job_match_block: str | None = None
     pipeline_tokens_in: int = 0
     pipeline_tokens_out: int = 0
+    cv_generator_service: Any = None
+    cv_generator_memo: dict[str, Any] = field(default_factory=dict)

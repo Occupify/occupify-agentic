@@ -21,6 +21,7 @@ from app.core.errors import AppError
 from app.core.logging import log_step, setup_logging
 from app.db.init import init_db
 from app.features.chat import router as chat_router
+from app.features.cv_improvement import router as cv_improvement_router
 from app.messaging.broker import close_broker, start_broker
 from app.ml import load_models_in_background
 
@@ -123,6 +124,7 @@ def create_app() -> FastAPI:
     # Mount routers
     app.include_router(health.router)
     app.include_router(chat_router.router)
+    app.include_router(cv_improvement_router)
 
     if settings.APP_ENV in ("local", "test"):
         app.include_router(dev.router)
