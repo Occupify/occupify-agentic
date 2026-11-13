@@ -44,3 +44,8 @@ evals/uc4/.eval_cache.json
 GUIDE.md
 
 doc/
+agent-docs/
+
+/docs/
+/ARCHITECTURE.md
+/AGENT.md

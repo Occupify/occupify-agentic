@@ -1,6 +1,7 @@
 from functools import lru_cache
 from typing import Any
 
+from pydantic import Field, SecretStr
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
 
@@ -35,6 +36,18 @@ class Settings(BaseSettings):
     PDF_MAX_PAGES: int = 20
     PDF_EXTRACTOR: str = "doctr"
     OCR_LANGS: str = "vie,eng"
+
+    # File Storage
+    CV_GENERATOR_ENABLED: bool = False
+    CV_GENERATOR_TIMEOUT_S: int = Field(default=90, ge=45, le=240)
+    CV_GENERATOR_LINK_TTL_S: int = Field(default=86400, ge=60, le=604800)
+    CV_COMPILER_URL: str = "http://cv-compiler:8190"
+    S3_ACCESS_KEY: str = ""
+    S3_SECRET_KEY: SecretStr = SecretStr("")
+    S3_ENDPOINT: str = ""
+    OCI_REGION: str = ""
+    OCI_NAMESPACE: str = ""
+    OCI_BUCKET: str = ""
 
     # Database
     DATABASE_URL: str = (

@@ -1,4 +1,12 @@
 from app.skill_schemas.candidate import CandidateProfile, RoleItem, SkillItem
+from app.skill_schemas.cv_improvement import (
+    CvImprovementProposal,
+    CvSuggestionItem,
+    ResumeData,
+    ResumeEducationItem,
+    ResumeExperienceItem,
+    ResumeProjectItem,
+)
 from app.skill_schemas.matching import (
     JobAssessment,
     ProjectAssessment,
@@ -19,4 +27,10 @@ __all__ = [
     "SkillMatchResult",
     "SearchMoreArgs",
     "SearchDecision",
+    "CvSuggestionItem",
+    "CvImprovementProposal",
+    "ResumeExperienceItem",
+    "ResumeProjectItem",
+    "ResumeEducationItem",
+    "ResumeData",
 ]

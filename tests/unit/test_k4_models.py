@@ -1,4 +1,4 @@
-from app.db.models import TaskCheckpoint, UserMemory
+from app.db.models import CvImprovementSession, TaskCheckpoint, UserMemory
 
 
 def test_user_memory_model():
@@ -63,3 +63,36 @@ def test_task_checkpoint_model():
     index_names = {idx.name for idx in TaskCheckpoint.__table__.indexes}
     assert "ix_task_checkpoints_session_seq" in index_names
     assert "ix_task_checkpoints_user_task" in index_names
+
+
+def test_cv_improvement_session_model():
+    """Verify CvImprovementSession schema, columns, defaults and indexes."""
+    assert CvImprovementSession.__tablename__ == "cv_improvement_sessions"
+
+    columns = {c.name: c for c in CvImprovementSession.__table__.columns}
+    expected_cols = [
+        "id",
+        "user_id",
+        "chat_session_id",
+        "status",
+        "original_cv_text",
+        "target_jd_text",
+        "proposals",
+        "user_decisions",
+        "revised_resume_data",
+        "pdf_url",
+        "created_at",
+        "updated_at",
+    ]
+    for col in expected_cols:
+        assert col in columns, f"Missing column {col} in CvImprovementSession"
+
+    # chat_session_id must be nullable
+    assert columns["chat_session_id"].nullable is True
+
+    # Index checks
+    index_names = {idx.name for idx in CvImprovementSession.__table__.indexes}
+    assert "ix_cv_improvement_sessions_user_id" in index_names
+    assert "ix_cv_improvement_sessions_chat_session_id" in index_names
+    assert "ix_cv_improvement_sessions_user_updated" in index_names
+

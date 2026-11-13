@@ -288,3 +288,36 @@ class TaskCheckpoint(Base):
         Index("ix_task_checkpoints_session_seq", "session_id", "checkpoint_seq"),
         Index("ix_task_checkpoints_user_task", "user_id", "task_type"),
     )
+
+
+class CvImprovementSession(Base):
+    __tablename__ = "cv_improvement_sessions"
+
+    id: Mapped[str] = mapped_column(String(36), primary_key=True, default=lambda: str(uuid.uuid4()))
+    user_id: Mapped[str] = mapped_column(String(100), nullable=False, index=True)
+    chat_session_id: Mapped[str | None] = mapped_column(String(36), nullable=True, index=True)
+    status: Mapped[str] = mapped_column(String(30), nullable=False, default="INIT")
+    # INIT -> ANALYZING -> WAITING_USER_REVIEW -> REVISING -> PDF_GENERATED -> COMPLETED (or CANCELLED)
+    original_cv_text: Mapped[str] = mapped_column(Text, nullable=False)
+    target_jd_text: Mapped[str] = mapped_column(Text, nullable=False)
+    proposals: Mapped[dict[str, Any]] = mapped_column(JSON, default=dict)
+    user_decisions: Mapped[dict[str, Any]] = mapped_column(JSON, default=dict)
+    revised_resume_data: Mapped[dict[str, Any] | None] = mapped_column(JSON, nullable=True)
+    pdf_url: Mapped[str | None] = mapped_column(String(500), nullable=True)
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=utc_now)
+    updated_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), default=utc_now, onupdate=utc_now
+    )
+
+    __table_args__ = (
+        Index("ix_cv_improvement_sessions_user_updated", "user_id", "updated_at"),
+    )
+
+    @property
+    def step(self) -> str:
+        return self.status
+
+    @step.setter
+    def step(self, value: str) -> None:
+        self.status = value
+

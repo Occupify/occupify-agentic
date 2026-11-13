@@ -1,0 +1,115 @@
+% Standalone CV. Compiler: XeLaTeX. Replace the four contact placeholders below.
+\documentclass[a4paper,10pt]{article}
+\usepackage{fontspec}
+\setmainfont{Lato}
+\usepackage[top=0.55in,bottom=0.55in,left=0.65in,right=0.65in]{geometry}
+\usepackage{enumitem}
+\usepackage{xcolor}
+\usepackage{titlesec}
+\pagestyle{empty}
+\setlength{\parindent}{0pt}
+\setlength{\parskip}{0pt}
+\definecolor{heading}{RGB}{135,135,135}
+\titleformat{\section}{\large\bfseries\color{heading}}{}{0em}{}[\titlerule]
+\titlespacing*{\section}{0pt}{7pt}{4pt}
+\setlist[itemize]{leftmargin=1.3em,itemsep=1.5pt,topsep=2pt,parsep=0pt,partopsep=0pt}
+\raggedright
+\emergencystretch=2em
+\begin{document}
+\begin{center}
+{\LARGE\textbf{[YOUR NAME]}}\par
+((* if cv.headline *))
+((( cv.headline|tex )))\par
+((* endif *))
+[YOUR PHONE] \quad | \quad [YOUR EMAIL]\par
+[YOUR PROFILE LINK]
+\end{center}
+((* if cv.summary *))
+\section*{((( labels.summary|tex )))}
+((( cv.summary|tex )))\par
+((* endif *))
+((* if cv.education *))
+\section*{((( labels.education|tex )))}
+((* for e in cv.education *))
+\textbf{((( e.institution|tex )))}\par
+((* if e.location *))
+((( e.location|tex )))\par
+((* endif *))
+((* if e.degree or e.major *))
+((( [e.degree, e.major]|select|join(' — ')|tex )))\par
+((* endif *))
+((* if period(e) *))
+((( period(e)|tex )))\par
+((* endif *))
+((* if e.gpa *))
+GPA: ((( e.gpa|tex )))\par
+((* endif *))
+((* if e.highlights *))
+\begin{itemize}
+((* for text in e.highlights *))
+\item {}((( text|tex )))
+((* endfor *))
+\end{itemize}
+((* endif *))
+\smallskip
+((* endfor *))
+((* endif *))
+((* if cv.certifications *))
+\section*{((( labels.certifications|tex )))}
+((* for c in cv.certifications *))
+\textbf{((( c.name|tex )))}((* if c.result *)) — ((( c.result|tex )))((* endif *))\par
+((* if c.issuer *))
+((( c.issuer|tex )))\par
+((* endif *))
+((* if c.issued_date *))
+((( date(c.issued_date)|tex )))\par
+((* endif *))
+((* if c.expiry_date *))
+((* if labels.present == 'Hiện tại' *))Hết hạn((* else *))Expires((* endif *)): ((( date(c.expiry_date)|tex )))\par
+((* endif *))
+\smallskip
+((* endfor *))
+((* endif *))
+((* if cv.skill_groups *))
+\section*{((( labels.skills|tex )))}
+((* for group in cv.skill_groups *))
+\textbf{((( group.label|tex ))):} ((( group.items|join(', ')|tex )))\par
+((* endfor *))
+((* endif *))
+((* for entries, title in [(cv.experience, labels.experience), (cv.projects, labels.projects)] *))
+((* if entries *))
+\section*{((( title|tex )))}
+((* for e in entries *))
+\textbf{((( (e.company if e.company is defined else e.name)|tex )))}\par
+((* if period(e) *))
+((( period(e)|tex )))\par
+((* endif *))
+((* if e.roles or e.team_size *))
+((( e.roles|join(', ')|tex )))((* if e.team_size *)) ((( ('(' ~ e.team_size ~ ' ' ~ labels.members ~ ')')|tex )))((* endif *))\par
+((* endif *))
+((* if e.employment_type is defined and e.employment_type *))
+((( e.employment_type|tex )))\par
+((* endif *))
+((* if e.location is defined and e.location *))
+((( e.location|tex )))\par
+((* endif *))
+((* if e.technologies is defined and e.technologies *))
+((( e.technologies|join(', ')|tex )))\par
+((* endif *))
+\begin{itemize}
+((* for text in e.bullets *))
+\item {}((( text|tex )))
+((* endfor *))
+\end{itemize}
+((* endfor *))
+((* endif *))
+((* endfor *))
+((* for section in cv.additional_sections *))
+\section*{((( section.title|tex )))}
+\begin{itemize}
+((* for item in section.items *))
+\item {}((* if item.label *))\textbf{((( item.label|tex ))):} ((* endif *))((( item.text|tex )))
+((* endfor *))
+\end{itemize}
+((* endfor *))
+\end{document}

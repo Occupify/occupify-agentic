@@ -1,0 +1,48 @@
+{
+  "full_name": "Nguyễn Văn A",
+  "title": "Backend Developer",
+  "contact_info": "a.nguyen@email.com | 0901234567 | TP.HCM",
+  "summary": "Lập trình viên Backend với nền tảng vững chắc về Python, FastAPI và MySQL. Có kinh nghiệm thiết kế RESTful APIs chuẩn hóa và xử lý lập trình bất đồng bộ.",
+  "skills": [
+    "Python",
+    "FastAPI",
+    "MySQL",
+    "RESTful API",
+    "JWT Authentication",
+    "Git"
+  ],
+  "experiences": [
+    {
+      "company": "Công ty ABC",
+      "role": "Backend Developer Intern",
+      "period": "06/2023 - 12/2023",
+      "bullet_points": [
+        "Thiết kế và phát triển cụm RESTful APIs quản lý sản phẩm bằng FastAPI, áp dụng Pydantic để chuẩn hóa dữ liệu đầu vào.",
+        "Tạo bảng trong cơ sở dữ liệu MySQL"
+      ]
+    }
+  ],
+  "projects": [
+    {
+      "name": "Hệ thống bán sách online",
+      "role": "Backend Developer",
+      "tech_stack": [
+        "Python",
+        "FastAPI",
+        "MySQL",
+        "JWT"
+      ],
+      "bullet_points": [
+        "Xây dựng hệ thống xác thực người dùng JWT và xử lý giỏ hàng sử dụng async/await trên FastAPI."
+      ]
+    }
+  ],
+  "education": [
+    {
+      "institution": "Đại học Công nghệ Thông tin",
+      "degree": "Kỹ sư Kỹ thuật Phần mềm",
+      "period": "2020 - 2024"
+    }
+  ]
+}
+
