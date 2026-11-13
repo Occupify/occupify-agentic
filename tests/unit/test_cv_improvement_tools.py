@@ -1,9 +1,12 @@
+import uuid
 from datetime import UTC, datetime
+from pathlib import Path
 from unittest.mock import AsyncMock, MagicMock
 
 import pytest
+from httpx import ASGITransport, AsyncClient
 from pydantic_ai import RunContext
-from sqlalchemy.ext.asyncio import AsyncSession
+from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker, create_async_engine
 
 from app.agents.deps import AgentDeps
 from app.core.security import CurrentUser
@@ -13,6 +16,7 @@ from app.core.storage import (
     LocalStorageClient,
     set_storage_client,
 )
+from app.db.models import Base, CvImprovementSession
 from app.db.repositories.cv_improvement import (
     CvDecisionType,
     CvImprovementRepository,
@@ -25,11 +29,11 @@ from app.features.cv_generator.schemas import (
     GenerateCvResult,
 )
 from app.features.cv_improvement.tools import (
-    _extract_contact_dict,
     execute_cv_finalization,
     finalize_and_generate_cv,
     resume_data_to_cv_content,
 )
+from app.main import app
 
 
 @pytest.fixture
@@ -48,7 +52,9 @@ def current_user():
 
 
 def test_local_storage_client(tmp_path):
-    storage = LocalStorageClient(base_dir=tmp_path / "resumes", base_url="/download/cv")
+    storage = LocalStorageClient(
+        base_dir=tmp_path / "resumes", base_url="/download/cv"
+    )
 
     # Test path sanitization
     assert storage._sanitize_filename("../../etc/passwd") == "passwd"
@@ -75,7 +81,9 @@ async def test_local_storage_upload_and_get(tmp_path):
 @pytest.mark.asyncio
 async def test_core_rpc_storage_client_success(tmp_path):
     mock_rpc = MagicMock()
-    mock_rpc.call = AsyncMock(return_value={"ok": True, "url": "https://cdn.example.com/cv.pdf"})
+    mock_rpc.call = AsyncMock(
+        return_value={"ok": True, "url": "https://cdn.example.com/cv.pdf"}
+    )
 
     client = CoreRpcStorageClient(rpc_client=mock_rpc)
     url = await client.upload_file(b"content", "doc.pdf")
@@ -350,7 +358,9 @@ async def test_execute_cv_finalization_success(test_db: AsyncSession, current_us
 
 
 @pytest.mark.asyncio
-async def test_execute_cv_finalization_no_decisions(test_db: AsyncSession, current_user):
+async def test_execute_cv_finalization_no_decisions(
+    test_db: AsyncSession, current_user
+):
     repo = CvImprovementRepository(test_db)
     session = await repo.create_session(
         user_id=current_user.user_id,
@@ -369,7 +379,9 @@ async def test_execute_cv_finalization_no_decisions(test_db: AsyncSession, curre
 
 
 @pytest.mark.asyncio
-async def test_finalize_and_generate_cv_agent_tool(test_db: AsyncSession, current_user):
+async def test_finalize_and_generate_cv_agent_tool(
+    test_db: AsyncSession, current_user
+):
     repo = CvImprovementRepository(test_db)
     session = await repo.create_session(
         user_id=current_user.user_id,
@@ -445,57 +457,3 @@ async def test_download_endpoint(tmp_path, client):
         assert res_404.status_code == 404
     finally:
         set_storage_client(None)
-
-
-def test_extract_contact_dict_with_placeholders():
-    empty_data = {}
-    contact = _extract_contact_dict(empty_data, original_cv_text=None)
-    assert contact["name"] == "Your Full Name"
-    assert contact["email"] == "youremail@gmail.com"
-    assert contact["phone"] == "+84 123 456 789"
-    assert contact["link"] == "github.com/yourusername"
-
-
-def test_extract_contact_dict_with_real_data():
-    data = {
-        "full_name": "Nguyen Van A",
-        "email": "nguyenvana@gmail.com",
-        "phone": "0987654321",
-        "github": "github.com/nguyenvana",
-    }
-    contact = _extract_contact_dict(data)
-    assert contact["name"] == "Nguyen Van A"
-    assert contact["email"] == "nguyenvana@gmail.com"
-    assert contact["phone"] == "0987654321"
-    assert contact["link"] == "github.com/nguyenvana"
-
-
-def test_extract_contact_dict_from_cv_text():
-    data = {}
-    cv_text = (
-        "Le Thi B\nEmail: lethib@outlook.com | Phone: +84901234567\nGitHub: github.com/lethib\n"
-    )
-    contact = _extract_contact_dict(data, original_cv_text=cv_text)
-    assert contact["name"] == "Le Thi B"
-    assert contact["email"] == "lethib@outlook.com"
-    assert contact["phone"] == "+84901234567"
-    assert "github.com/lethib" in contact["link"]
-
-
-def test_resume_data_to_cv_content_with_empty_projects_and_experience():
-    sparse_data = {
-        "full_name": "Tran Van C",
-        "title": "Software Developer",
-        "summary": "Junior dev passionate about learning.",
-        "skills": ["Python", "FastAPI"],
-        "experiences": [],
-        "projects": [],
-    }
-    content = resume_data_to_cv_content(sparse_data, language="en")
-    assert len(content.experience) == 1
-    assert content.experience[0].company == "Your Previous Company"
-    assert len(content.experience[0].bullets) >= 2
-
-    assert len(content.projects) == 1
-    assert content.projects[0].name == "Your Highlighted Project"
-    assert len(content.projects[0].bullets) >= 2

@@ -146,7 +146,9 @@ async def test_save_revised_resume_and_cv_generator_contract(test_db):
         "cv": {
             "headline": "Senior Backend Developer",
             "summary": "Lập trình viên backend có kinh nghiệm Spring Boot, PostgreSQL, Docker.",
-            "skill_groups": [{"label": "Backend", "items": ["Python", "FastAPI", "PostgreSQL"]}],
+            "skill_groups": [
+                {"label": "Backend", "items": ["Python", "FastAPI", "PostgreSQL"]}
+            ],
             "experience": [
                 {
                     "company": "Công ty Công nghệ ABC",
@@ -159,15 +161,15 @@ async def test_save_revised_resume_and_cv_generator_contract(test_db):
                     "team_size": 5,
                     "bullets": [
                         "Xây dựng REST API xử lý 10,000 yêu cầu/phút bằng FastAPI.",
-                        "Tối ưu hóa cơ sở dữ liệu PostgreSQL giảm độ trễ truy vấn 30%.",
-                    ],
+                        "Tối ưu hóa cơ sở dữ liệu PostgreSQL giảm độ trễ truy vấn 30%."
+                    ]
                 }
             ],
             "projects": [],
             "education": [],
             "certifications": [],
-            "additional_sections": [],
-        },
+            "additional_sections": []
+        }
     }
 
     saved = await repo.save_revised_resume(
@@ -191,9 +193,7 @@ async def test_rollback_and_reset(test_db):
     )
 
     await repo.update_suggestion_decision(session.id, "s1", CvDecisionType.APPROVED)
-    await repo.save_revised_resume(
-        session.id, {"dummy": "data"}, pdf_url="http://example.com/a.pdf"
-    )
+    await repo.save_revised_resume(session.id, {"dummy": "data"}, pdf_url="http://example.com/a.pdf")
     await repo.transition_step(session.id, CvImprovementStep.PDF_GENERATED)
 
     # Rollback decisions when user rejects all or cancels
@@ -225,3 +225,4 @@ async def test_list_and_delete_sessions(test_db):
     # Confirm s1 is gone
     check = await repo.get_session(s1.id)
     assert check is None
+

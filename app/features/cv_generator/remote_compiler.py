@@ -82,3 +82,4 @@ class ResilientCvCompiler:
             if last_exc is not None:
                 raise last_exc
             raise
+

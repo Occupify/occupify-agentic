@@ -17,12 +17,12 @@
 \emergencystretch=2em
 \begin{document}
 \begin{center}
-{\LARGE\textbf{((( (contact.name if contact and contact.get('name') else "[YOUR NAME]")|tex )))}}\par
+{\LARGE\textbf{[YOUR NAME]}}\par
 ((* if cv.headline *))
 ((( cv.headline|tex )))\par
 ((* endif *))
-((( (contact.phone if contact and contact.get('phone') else "[YOUR PHONE]")|tex ))) \quad | \quad ((( (contact.email if contact and contact.get('email') else "[YOUR EMAIL]")|tex )))\par
-((( (contact.link if contact and contact.get('link') else "[YOUR PROFILE LINK]")|tex )))
+[YOUR PHONE] \quad | \quad [YOUR EMAIL]\par
+[YOUR PROFILE LINK]
 \end{center}
 ((* if cv.summary *))
 \section*{((( labels.summary|tex )))}

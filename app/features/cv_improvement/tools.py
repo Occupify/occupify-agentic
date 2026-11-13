@@ -38,93 +38,6 @@ from app.state.schemas import TaskStateUpdate
 from app.state.task_progress import TaskProgressManager
 
 
-def _extract_contact_dict(
-    raw_data: dict[str, Any] | BaseModel,
-    original_cv_text: str | None = None,
-) -> dict[str, str]:
-    """Extract contact information (name, phone, email, link) with robust placeholder fallbacks.
-
-    If fields are missing in raw_data or original_cv_text, standardized placeholders
-    (youremail@gmail.com, +84 123 456 789, github.com/yourusername) are provided.
-    """
-    data = raw_data.model_dump() if isinstance(raw_data, BaseModel) else dict(raw_data)
-    contact_sub = data.get("contact_info") or data.get("personal_info") or data.get("contact") or {}
-    if isinstance(contact_sub, BaseModel):
-        contact_sub = contact_sub.model_dump()
-    elif not isinstance(contact_sub, dict):
-        contact_sub = {"text": str(contact_sub)}
-
-    # Extract name
-    name = (
-        data.get("full_name")
-        or data.get("name")
-        or contact_sub.get("name")
-        or contact_sub.get("full_name")
-    )
-    if not name and original_cv_text:
-        for line in original_cv_text.splitlines():
-            line_str = line.strip().strip("#* ").strip()
-            if (
-                line_str
-                and len(line_str) < 50
-                and "@" not in line_str
-                and not any(
-                    kw in line_str.lower()
-                    for kw in ("cv", "curriculum", "resume", "mục tiêu", "kinh nghiệm")
-                )
-            ):
-                name = line_str
-                break
-    name = str(name).strip() if name else "Your Full Name"
-
-    # Extract email
-    email = data.get("email") or contact_sub.get("email")
-    if not email:
-        search_blob = f"{contact_sub.get('text', '')} {original_cv_text or ''}"
-        email_match = re.search(r"\b[A-Za-z0-9._%+-]+@[A-Za-z0-9.-]+\.[A-Z|a-z]{2,}\b", search_blob)
-        if email_match:
-            email = email_match.group(0)
-    email = str(email).strip() if email else "youremail@gmail.com"
-
-    # Extract phone
-    phone = data.get("phone") or contact_sub.get("phone")
-    if not phone:
-        search_blob = f"{contact_sub.get('text', '')} {original_cv_text or ''}"
-        phone_match = re.search(
-            r"(?:(?:\+?84|0)[3|5|7|8|9]\d{8}|\+?\d{1,3}[-.\s]?\d{2,4}[-.\s]?\d{3,4}[-.\s]?\d{3,4})",
-            search_blob,
-        )
-        if phone_match:
-            phone = phone_match.group(0)
-    phone = str(phone).strip() if phone else "+84 123 456 789"
-
-    # Extract link
-    link = (
-        data.get("github")
-        or data.get("linkedin")
-        or data.get("link")
-        or contact_sub.get("github")
-        or contact_sub.get("linkedin")
-        or contact_sub.get("link")
-    )
-    if not link:
-        search_blob = f"{contact_sub.get('text', '')} {original_cv_text or ''}"
-        link_match = re.search(
-            r"(?:https?://)?(?:www\.)?(github\.com/[a-zA-Z0-9_-]+|linkedin\.com/in/[a-zA-Z0-9_-]+)",
-            search_blob,
-        )
-        if link_match:
-            link = link_match.group(0)
-    link = str(link).strip() if link else "github.com/yourusername"
-
-    return {
-        "name": name,
-        "email": email,
-        "phone": phone,
-        "link": link,
-    }
-
-
 def _normalize_additional_items(raw_items: list[Any]) -> list[AdditionalItem]:
     """Helper to convert heterogeneous item formats into AdditionalItem models."""
     items: list[AdditionalItem] = []
@@ -184,11 +97,14 @@ def resume_data_to_cv_content(
         skill_groups = [
             SkillGroup(
                 label=skill_label,
-                items=[str(s) for s in raw_skills if str(s).strip()][:30] or [skill_label],
+                items=[str(s) for s in raw_skills if str(s).strip()][:30]
+                or [skill_label],
             )
         ]
     else:
-        skill_groups = [SkillGroup(label=skill_label, items=[skill_label])]
+        skill_groups = [
+            SkillGroup(label=skill_label, items=[skill_label])
+        ]
 
     # Experience mapping
     raw_exp = data.get("experiences") or []
@@ -220,32 +136,6 @@ def resume_data_to_cv_content(
             )
         )
 
-    if not experiences:
-        experiences = [
-            Experience(
-                company="Your Previous Company" if is_en else "Đơn vị Công tác",
-                roles=["Software Engineer" if is_en else "Kỹ sư Phần mềm"],
-                employment_type=None,
-                location=None,
-                start_date="2023",
-                end_date=None,
-                is_current=True,
-                team_size=None,
-                bullets=[
-                    (
-                        "Spearheaded feature development and optimized workflows across key services."
-                        if is_en
-                        else "Đảm nhiệm phát triển tính năng và tối ưu hóa quy trình dịch vụ."
-                    ),
-                    (
-                        "Implemented reliable automated tests and continuous integration pipelines."
-                        if is_en
-                        else "Thiết lập quy trình kiểm thử tự động và tích hợp liên tục (CI/CD)."
-                    ),
-                ],
-            )
-        ]
-
     # Project mapping
     raw_proj = data.get("projects") or []
     projects = []
@@ -265,8 +155,7 @@ def resume_data_to_cv_content(
             Project(
                 name=name,
                 roles=[role],
-                technologies=[t for t in tech if t.strip()][:30]
-                or (["Technologies"] if is_en else ["Công nghệ"]),
+                technologies=[t for t in tech if t.strip()][:30] or (["Technologies"] if is_en else ["Công nghệ"]),
                 start_date="2024",
                 end_date=None,
                 is_current=False,
@@ -274,35 +163,6 @@ def resume_data_to_cv_content(
                 bullets=bullets[:30],
             )
         )
-
-    if not projects:
-        projects = [
-            Project(
-                name="Your Highlighted Project" if is_en else "Dự án Nổi bật",
-                roles=["Lead Developer / Contributor" if is_en else "Lập trình viên chính"],
-                technologies=(
-                    ["Core Technologies", "Frameworks", "Database"]
-                    if is_en
-                    else ["Công nghệ lõi", "Frameworks", "Cơ sở dữ liệu"]
-                ),
-                start_date="2024",
-                end_date=None,
-                is_current=False,
-                team_size=None,
-                bullets=[
-                    (
-                        "Architected and implemented core modules, improving system performance and reliability."
-                        if is_en
-                        else "Thiết kế kiến trúc và phát triển các module chính, nâng cao hiệu năng hệ thống."
-                    ),
-                    (
-                        "Collaborated with cross-functional teams to deliver end-to-end features on schedule."
-                        if is_en
-                        else "Phối hợp với các nhóm chức năng triển khai tính năng đúng tiến độ."
-                    ),
-                ],
-            )
-        ]
 
     # Education mapping
     raw_edu = data.get("education") or []
@@ -341,9 +201,7 @@ def resume_data_to_cv_content(
                     Certification(
                         name=str(name),
                         issuer=cert.get("issuer"),
-                        issued_date=cert.get("issued_date")
-                        or cert.get("issue_date")
-                        or cert.get("date"),
+                        issued_date=cert.get("issued_date") or cert.get("issue_date") or cert.get("date"),
                         expiry_date=cert.get("expiry_date"),
                         result=cert.get("result"),
                     )
@@ -407,7 +265,9 @@ def _get_cv_generator_service(deps: AgentDeps | None = None) -> CvGeneratorServi
 
     compiler = ResilientCvCompiler(settings.CV_COMPILER_URL)
 
-    service = CvGeneratorService(compiler, storage, timeout_s=settings.CV_GENERATOR_TIMEOUT_S)
+    service = CvGeneratorService(
+        compiler, storage, timeout_s=settings.CV_GENERATOR_TIMEOUT_S
+    )
     if deps:
         deps.cv_generator_service = service
     return service
@@ -415,66 +275,26 @@ def _get_cv_generator_service(deps: AgentDeps | None = None) -> CvGeneratorServi
 
 async def _resolve_latest_session_id(
     ctx: RunContext[AgentDeps],
-    candidate_id: str | None = None,
 ) -> str | None:
-    """Finds the active CvImprovementSession ID for this chat turn or candidate ID.
-
-    Handles candidate_id being either a CvImprovementSession.id or a chat_session_id,
-    with fallback to current turn's chat_session_id or latest user CV session.
-    """
-    if not ctx.deps.db or not ctx.deps.user or not ctx.deps.user.user_id:
+    """Finds the most recent active CvImprovementSession for this chat turn."""
+    if not ctx.deps.db or not ctx.deps.user:
         return None
 
-    user_id = ctx.deps.user.user_id
-
-    # 1. If candidate_id is provided, check if it directly matches a CvImprovementSession.id
-    if candidate_id and candidate_id.strip():
-        cid = candidate_id.strip()
-        stmt_direct = select(CvImprovementSession.id).where(
-            CvImprovementSession.id == cid,
-            CvImprovementSession.user_id == user_id,
-        )
-        res = await ctx.deps.db.execute(stmt_direct)
-        if found := res.scalar_one_or_none():
-            return str(found)
-
-        # Candidate might be a chat_session_id
-        stmt_chat = (
-            select(CvImprovementSession.id)
-            .where(
-                CvImprovementSession.chat_session_id == cid,
-                CvImprovementSession.user_id == user_id,
-            )
-            .order_by(desc(CvImprovementSession.updated_at))
-            .limit(1)
-        )
-        res = await ctx.deps.db.execute(stmt_chat)
-        if found := res.scalar_one_or_none():
-            return str(found)
-
-    # 2. Check current turn's chat_session_id
+    stmt = (
+        select(CvImprovementSession.id)
+        .where(CvImprovementSession.user_id == ctx.deps.user.user_id)
+        .order_by(desc(CvImprovementSession.updated_at))
+        .limit(1)
+    )
     if ctx.deps.session_id:
-        chat_stmt = (
-            select(CvImprovementSession.id)
-            .where(
-                CvImprovementSession.chat_session_id == ctx.deps.session_id,
-                CvImprovementSession.user_id == user_id,
-            )
-            .order_by(desc(CvImprovementSession.updated_at))
-            .limit(1)
+        chat_stmt = stmt.where(
+            CvImprovementSession.chat_session_id == ctx.deps.session_id
         )
         res = await ctx.deps.db.execute(chat_stmt)
         found_id = res.scalar_one_or_none()
         if found_id:
             return str(found_id)
 
-    # 3. Fall back to user's most recent CV session
-    stmt = (
-        select(CvImprovementSession.id)
-        .where(CvImprovementSession.user_id == user_id)
-        .order_by(desc(CvImprovementSession.updated_at))
-        .limit(1)
-    )
     res = await ctx.deps.db.execute(stmt)
     found_id = res.scalar_one_or_none()
     return str(found_id) if found_id else None
@@ -515,15 +335,7 @@ async def execute_cv_finalization(
                     "Không thể xuất CV: Chưa có gợi ý nào được người dùng chấp thuận.",
                     {},
                 )
-        try:
-            session = await workflow.resume(session_id, user_id=user_id, deps=deps)
-        except Exception as exc:
-            log_step("cv_improvement.resume_error", error=str(exc))
-            return (
-                False,
-                f"Quá trình áp dụng thay đổi vào CV thất bại: {exc}. Bạn có thể thử lại.",
-                {"error": str(exc)},
-            )
+        session = await workflow.resume(session_id, user_id=user_id, deps=deps)
 
     if not session.revised_resume_data:
         return (
@@ -537,13 +349,9 @@ async def execute_cv_finalization(
 
     # Step 3: Run CV generator service
     generator_service = service or _get_cv_generator_service(deps)
-    contact = _extract_contact_dict(
-        session.revised_resume_data,
-        original_cv_text=session.original_cv_text,
-    )
     payload = GenerateCvInput(template_id=template_id, language=language, cv=cv_content)
     result: GenerateCvResult = await generator_service.generate(
-        payload, owner_id=user_id, contact=contact
+        payload, owner_id=user_id
     )
 
     if result.status != "succeeded":
@@ -602,7 +410,9 @@ async def execute_cv_finalization(
     if pdf_url:
         lines.append(f"- **Tải CV (PDF):** [{pdf_file.filename}]({pdf_url})")
     if tex_file and tex_file.download_url:
-        lines.append(f"- **Mã nguồn LaTeX (.tex):** [{tex_file.filename}]({tex_file.download_url})")
+        lines.append(
+            f"- **Mã nguồn LaTeX (.tex):** [{tex_file.filename}]({tex_file.download_url})"
+        )
 
     lines.append(
         "\nBạn có thể tải file PDF về để nộp hồ sơ hoặc mở file .tex để tiếp tục tùy biến theo nhu cầu."
@@ -644,7 +454,7 @@ async def finalize_and_generate_cv(
     if not ctx.deps.db:
         return "Lỗi: Kết nối cơ sở dữ liệu không khả dụng."
 
-    target_session_id = await _resolve_latest_session_id(ctx, session_id)
+    target_session_id = session_id or await _resolve_latest_session_id(ctx)
     if not target_session_id:
         return "Lỗi: Không tìm thấy phiên làm việc CV nào đang mở để xuất file."
 
@@ -658,3 +468,4 @@ async def finalize_and_generate_cv(
             language=language,
         )
         return message
+

@@ -95,3 +95,4 @@ def test_cv_improvement_session_model():
     assert "ix_cv_improvement_sessions_user_id" in index_names
     assert "ix_cv_improvement_sessions_chat_session_id" in index_names
     assert "ix_cv_improvement_sessions_user_updated" in index_names
+

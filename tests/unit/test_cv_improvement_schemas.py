@@ -37,7 +37,11 @@ def test_validate_suggest_cv_improvements_example():
 
 def test_validate_apply_cv_revisions_example():
     example_path = (
-        Path("skills") / "cv_improvement" / "apply-cv-revisions" / "examples" / "case1.output.json"
+        Path("skills")
+        / "cv_improvement"
+        / "apply-cv-revisions"
+        / "examples"
+        / "case1.output.json"
     )
     assert example_path.exists()
     data = json.loads(example_path.read_text(encoding="utf-8"))

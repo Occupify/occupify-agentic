@@ -24,10 +24,6 @@ Your task is to take the original candidate CV and apply ONLY the user-approved 
    - Standardize sections: Header/Contact, Professional Summary, Work Experience, Projects, Skills, Education, Certifications, and Additional Sections (e.g., Engineering Practices, Awards, Activities, Languages).
    - Ensure concise, professional, action-oriented bullet points.
    - If the candidate CV contains additional sections like Engineering Practices, Awards, Certifications, or Activities, preserve them in `certifications` or `additional_sections`.
-4. **Placeholder Guardrails for Missing Information:**
-   - If contact details (email, phone, or github/linkedin) are missing or not provided in the original CV, DO NOT leave them blank. Instead, provide standard professional placeholders in `contact_info` (e.g., `youremail@gmail.com | +84 123 456 789 | github.com/yourusername`).
-   - If the candidate CV has no projects, DO NOT omit `projects`. Provide at least one realistic starter project in `projects` (e.g. `name: "Your Highlighted Project"`, `role: "Lead Developer / Contributor"`, `tech_stack: [...]`, with 2 concise STAR bullet points).
-   - If the candidate CV has no experiences, provide a starter placeholder in `experiences` (e.g. `company: "Your Previous Company"`, `role: "Software Engineer"`).
 
 # Output Schema
 Return valid structured data strictly conforming to `app.skill_schemas.cv_improvement.ResumeData`.

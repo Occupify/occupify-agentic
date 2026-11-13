@@ -2,7 +2,6 @@
 
 import json
 import logging
-import re
 from typing import Any, Literal
 
 from pydantic_ai import RunContext
@@ -12,9 +11,9 @@ from app.db.repositories.cv_improvement import CvDecisionType
 from app.features.cv_improvement.tools import _resolve_latest_session_id
 from app.features.cv_improvement.workflow import CvImprovementWorkflow
 from app.features.job_match.chat_tool import _find_candidate_cv
+from app.messaging.core_client import get_core_rpc
 from app.memory.schemas import MemoryItemCreate
 from app.memory.service import MemoryService
-from app.messaging.core_client import get_core_rpc
 from app.state.schemas import TaskStateUpdate
 from app.state.task_progress import TaskProgressManager
 
@@ -39,9 +38,7 @@ async def _resolve_jd_text(
                 desc_text = proj.get("description") or proj.get("title") or ""
                 skills = proj.get("requiredSkills") or []
                 skills_str = ", ".join(skills) if skills else ""
-                return (
-                    f"Tiêu đề: {proj.get('title', '')}\nMô tả: {desc_text}\nKỹ năng: {skills_str}"
-                )
+                return f"Tiêu đề: {proj.get('title', '')}\nMô tả: {desc_text}\nKỹ năng: {skills_str}"
         except Exception as exc:
             logger.warning("Failed to fetch project detail via RPC for job_id %s: %s", job_id, exc)
 
@@ -89,70 +86,16 @@ async def _build_cv_from_memory(ctx: RunContext[AgentDeps]) -> str | None:
         if facts["skills"]:
             lines.append(f"**Kỹ năng chuyên môn:** {', '.join(facts['skills'])}")
         if facts["experience"]:
-            lines.append(
-                "**Kinh nghiệm làm việc:**\n" + "\n".join(f"- {e}" for e in facts["experience"])
-            )
+            lines.append("**Kinh nghiệm làm việc:**\n" + "\n".join(f"- {e}" for e in facts["experience"]))
         if facts["projects"]:
             lines.append("**Dự án tiêu biểu:**\n" + "\n".join(f"- {p}" for p in facts["projects"]))
         if facts["education"]:
-            lines.append(
-                "**Học vấn & Bằng cấp:**\n" + "\n".join(f"- {ed}" for ed in facts["education"])
-            )
+            lines.append("**Học vấn & Bằng cấp:**\n" + "\n".join(f"- {ed}" for ed in facts["education"]))
 
         return "\n\n".join(lines)
     except Exception as exc:
         logger.warning("Failed to construct CV from memory: %s", exc)
         return None
-
-
-def _synthesize_starter_cv_from_jd(jd_text: str) -> str:
-    """Synthesize a baseline candidate profile tailored to the JD when no CV is provided.
-
-    Guarantees standard placeholder contact fields and relevant starter project/experience
-    so the user can review and generate a starter CV immediately.
-    """
-    first_line = jd_text.strip().splitlines()[0] if jd_text.strip() else ""
-    role_match = re.search(
-        r"(?:vị trí|chức danh|role|position|title)?[:\s-]*([A-Za-z0-9\s/().+-]{4,40})",
-        first_line,
-        re.IGNORECASE,
-    )
-    role_title = role_match.group(1).strip() if role_match else "Software Engineer"
-    if len(role_title) > 40 or len(role_title) < 3:
-        role_title = "Software Engineer"
-
-    return f"""# HỒ SƠ ỨNG VIÊN (KHỞI TẠO TỰ ĐỘNG TỪ JD)
-Họ và tên: Your Full Name
-Email: youremail@gmail.com | SĐT: +84 123 456 789
-LinkedIn: linkedin.com/in/yourusername | GitHub: github.com/yourusername
-
-## Vị trí mục tiêu
-{role_title}
-
-## Tóm tắt chuyên môn
-Kỹ sư phần mềm định hướng phát triển chuyên sâu theo yêu cầu vị trí {role_title}. Có nền tảng vững chắc về tư duy giải thuật, kiến trúc hệ thống và quy trình phát triển phần mềm chuẩn mực.
-
-## Kỹ năng chuyên môn
-- Ngôn ngữ & Công nghệ: Khớp theo yêu cầu trọng tâm của mô tả công việc ({role_title})
-- Cơ sở dữ liệu & Caching: PostgreSQL, Redis, Database Optimization
-- Công cụ & Quy trình: Git, Docker, CI/CD, Automated Testing
-
-## Kinh nghiệm làm việc
-- Vị trí: Junior {role_title}
-  Đơn vị: Your Previous Company | 2023 - Hiện tại
-  * Tham gia phân tích thiết kế và hiện thực hóa các tính năng theo kiến trúc chuẩn.
-  * Tối ưu hóa truy vấn cơ sở dữ liệu và xử lý bất đồng bộ, cải thiện độ trễ phản hồi hệ thống.
-
-## Dự án tiêu biểu
-- Tên dự án: Your Highlighted Project
-  Vai trò: Developer chính | Công nghệ: Relevant Stack
-  * Thiết kế và xây dựng các dịch vụ backend phục vụ nghiệp vụ chính.
-  * Tích hợp kiểm thử tự động đạt độ bao phủ kiểm thử cao và triển khai qua CI/CD pipeline.
-
-## Học vấn
-- Bằng cấp: Cử nhân Công nghệ Thông tin / Khoa học Máy tính
-  Trường: Đại học Công nghệ | 2020 - 2024
-"""
 
 
 async def review_and_improve_cv(
@@ -161,7 +104,6 @@ async def review_and_improve_cv(
     job_id: str | None = None,
     general_review: bool = False,
     raw_cv_text: str | None = None,
-    create_starter: bool = False,
 ) -> str:
     """Analyze user's CV against a Job Description (JD) or general HR standards and produce structured improvement suggestions.
 
@@ -173,7 +115,6 @@ async def review_and_improve_cv(
     - job_id: Optional project ID on Occupify.
     - general_review: Set to True if user wants a general CV review according to HR standards without a specific JD.
     - raw_cv_text: Optional explicit CV text (e.g. collected via interview or chat when no PDF is uploaded).
-    - create_starter: Set to True if user has no CV and requests to create/draft a new starter CV from the JD.
 
     CRITICAL STOPPING RULE: After presenting the suggestions returned by this tool, you MUST STOP
     your turn. Do NOT auto-approve suggestions or call finalize_and_generate_cv automatically.
@@ -184,10 +125,25 @@ async def review_and_improve_cv(
     if not ctx.deps.db:
         return "Lỗi: Kết nối cơ sở dữ liệu không khả dụng."
 
-    # 1. Locate Target JD or apply General HR Review standards
+    # 1. Locate candidate CV
+    cv_text = raw_cv_text.strip() if raw_cv_text and raw_cv_text.strip() else ""
+    if not cv_text:
+        cv_obj = await _find_candidate_cv(ctx)
+        cv_text = cv_obj.text.strip() if cv_obj and cv_obj.text.strip() else ((await _build_cv_from_memory(ctx)) or "")
+
+    if not cv_text:
+        return (
+            "> ⚠️ **Vui lòng đính kèm file CV (PDF)** để mình có thể phân tích "
+            "kinh nghiệm và đưa ra các đề xuất cải thiện phù hợp nhất.\n\n"
+            "> 💡 **Nếu bạn chưa có CV:** Đừng lo lắng! Hãy chia sẻ với mình một vài thông tin "
+            "về **vị trí ứng tuyển (Target role)**, **kinh nghiệm làm việc**, **dự án**, "
+            "**kỹ năng** và **học vấn**. Mình sẽ lưu lại vào hồ sơ và hướng dẫn bạn tạo CV từ đầu!\n"
+            "> *(Lưu ý: Để bảo vệ quyền riêng tư, bạn không cần cung cấp các dữ liệu nhạy cảm như số CCCD, tài khoản ngân hàng hay địa chỉ nhà).* "
+        )
+
+    # 2. Locate Target JD or apply General HR Review standards
     is_general = general_review or (
-        bool(target_jd)
-        and target_jd.lower().strip() in ("general", "chung", "tổng quát", "mặc định", "hr")
+        bool(target_jd) and target_jd.lower().strip() in ("general", "chung", "tổng quát", "mặc định", "hr")
     )
     if is_general:
         jd_text = (
@@ -200,39 +156,13 @@ async def review_and_improve_cv(
     else:
         jd_text = await _resolve_jd_text(ctx, target_jd=target_jd, job_id=job_id)
 
-    # 2. Locate candidate CV
-    cv_text = raw_cv_text.strip() if raw_cv_text and raw_cv_text.strip() else ""
-    if not cv_text:
-        cv_obj = await _find_candidate_cv(ctx)
-        cv_text = (
-            cv_obj.text.strip()
-            if cv_obj and cv_obj.text.strip()
-            else ((await _build_cv_from_memory(ctx)) or "")
-        )
-
-    # 3. Handle Cold-Start (No CV provided but JD is available)
-    is_cold_start = False
-    if not cv_text:
-        if jd_text and create_starter:
-            cv_text = _synthesize_starter_cv_from_jd(jd_text)
-            is_cold_start = True
-        else:
-            return (
-                "> ⚠️ **Vui lòng đính kèm file CV (PDF)** để mình có thể phân tích "
-                "kinh nghiệm và đưa ra các đề xuất cải thiện phù hợp nhất.\n\n"
-                "> 💡 **Nếu bạn chưa có CV:** Đừng lo lắng! Hãy yêu cầu mình **tạo mẫu CV từ JD** "
-                "hoặc chia sẻ các thông tin về **kinh nghiệm làm việc**, **dự án**, **kỹ năng**, "
-                "mình sẽ tự động thiết lập khung CV chuẩn chỉnh theo đúng yêu cầu công việc để bạn bắt đầu!\n"
-                "> *(Lưu ý: Để bảo vệ quyền riêng tư, bạn không cần cung cấp các dữ liệu nhạy cảm như số CCCD, tài khoản ngân hàng hay địa chỉ nhà).* "
-            )
-
     if not jd_text:
         return (
             "Vui lòng cung cấp mô tả công việc (JD), vị trí tuyển dụng mục tiêu hoặc mã dự án (job_id) "
             "để mình tiến hành đối chiếu và tối ưu hóa CV cho bạn."
         )
 
-    # 4. Create session & run analysis
+    # 3. Create session & run analysis
     async with ctx.deps.db_lock:
         workflow = CvImprovementWorkflow(ctx.deps.db)
         session = await workflow.start_session(
@@ -280,41 +210,22 @@ async def review_and_improve_cv(
                 mem_items = [
                     ("target_role", "role", target_role, True),
                     ("skills", "strengths", ", ".join(strengths[:3]) if strengths else None, True),
-                    (
-                        "skills",
-                        "gaps",
-                        ", ".join(missing_skills[:3]) if missing_skills else None,
-                        False,
-                    ),
+                    ("skills", "gaps", ", ".join(missing_skills[:3]) if missing_skills else None, False),
                 ]
                 for cat, key, val, conf in mem_items:
                     if val:
                         await mem_svc.record_fact(
                             ctx.deps.user.user_id,
-                            MemoryItemCreate(
-                                category=cat,
-                                key=key,
-                                value=val,
-                                is_confirmed=conf,
-                                source="cv_improvement",
-                            ),
+                            MemoryItemCreate(category=cat, key=key, value=val, is_confirmed=conf, source="cv_improvement"),
                         )
         except Exception as exc:
             logger.warning("Failed to update task checkpoint or memory: %s", exc)
 
     # 4. Build Markdown Response
-    lines = []
-    if is_cold_start:
-        lines.append(
-            "> ℹ️ **Khởi tạo CV mẫu từ JD:** Mình đã tự động tạo khung CV khởi điểm phù hợp với vị trí tuyển dụng "
-            "kèm các trường thông tin chuẩn (placeholder) để bạn có thể xem xét, tối ưu và xuất file ngay.\n"
-        )
-    lines.extend(
-        [
-            f"### 📋 Kết Quả Phân Tích & Đề Xuất Cải Thiện CV ({target_role})\n",
-            f"**Đánh giá chung:** {summary_text}\n",
-        ]
-    )
+    lines = [
+        f"### 📋 Kết Quả Phân Tích & Đề Xuất Cải Thiện CV ({target_role})\n",
+        f"**Đánh giá chung:** {summary_text}\n",
+    ]
 
     if strengths:
         lines.append("**Điểm mạnh phù hợp:**")
@@ -337,8 +248,8 @@ async def review_and_improve_cv(
         reason = sug.get("reason", "")
 
         lines.append(f"#### Gợi ý #{s_id} [{section}]")
-        lines.append(f'- **Văn bản gốc:** *"{orig}"*')
-        lines.append(f'- **Đề xuất mới:** **"{revised}"**')
+        lines.append(f"- **Văn bản gốc:** *\"{orig}\"*")
+        lines.append(f"- **Đề xuất mới:** **\"{revised}\"**")
         lines.append(f"- **Lý do cải thiện:** {reason}")
         lines.append("")
 
@@ -376,21 +287,21 @@ async def record_cv_decisions(
     if not ctx.deps.db:
         return "Lỗi: Kết nối cơ sở dữ liệu không khả dụng."
 
-    target_session_id = await _resolve_latest_session_id(ctx, session_id)
+    target_session_id = session_id or await _resolve_latest_session_id(ctx)
     if not target_session_id:
         return "Không tìm thấy phiên làm việc CV nào đang mở để ghi nhận quyết định."
 
     async with ctx.deps.db_lock:
         workflow = CvImprovementWorkflow(ctx.deps.db)
-        session = await workflow.get_session(target_session_id, user_id=ctx.deps.user.user_id)
+        session = await workflow.get_session(
+            target_session_id, user_id=ctx.deps.user.user_id
+        )
 
         decisions_list: list[dict[str, Any]] = []
         suggestions = (session.proposals or {}).get("suggestions", [])
 
         if action in ("approve_all", "reject_all"):
-            dec_type = (
-                CvDecisionType.APPROVED if action == "approve_all" else CvDecisionType.REJECTED
-            )
+            dec_type = CvDecisionType.APPROVED if action == "approve_all" else CvDecisionType.REJECTED
             decisions_list = [
                 {"suggestion_id": s.get("id"), "decision": dec_type}
                 for s in suggestions

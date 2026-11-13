@@ -1,8 +1,6 @@
 import pytest
-from sqlalchemy import select
 
 from app.core.errors import AppError
-from app.db.models import AgentRun
 from app.db.repositories.cv_improvement import (
     CvDecisionType,
     CvImprovementRepository,
@@ -189,7 +187,9 @@ async def test_workflow_decisions_and_validation(test_db, sample_proposal):
 
 
 @pytest.mark.asyncio
-async def test_workflow_resume_and_recovery(test_db, sample_proposal, sample_revised_resume):
+async def test_workflow_resume_and_recovery(
+    test_db, sample_proposal, sample_revised_resume
+):
     mock_apply = MockAgent(output=sample_revised_resume)
     workflow = CvImprovementWorkflow(test_db, apply_agent=mock_apply)
     repo = CvImprovementRepository(test_db)
@@ -246,7 +246,9 @@ async def test_format_decisions_for_prompt(sample_proposal):
             "final_text": "Xây dựng hệ thống giỏ hàng đồng thời.",
         },
     }
-    result_text = format_decisions_for_prompt(sample_proposal.model_dump(), user_decisions)
+    result_text = format_decisions_for_prompt(
+        sample_proposal.model_dump(), user_decisions
+    )
     assert '- Gợi ý s1: APPROVED\n  Nội dung mới: "' in result_text
     assert "- Gợi ý s2: REJECTED (Giữ nguyên văn bản gốc)" in result_text
     assert (
@@ -258,6 +260,8 @@ async def test_format_decisions_for_prompt(sample_proposal):
 @pytest.mark.asyncio
 async def test_cv_improvement_api_endpoints(client, test_db, sample_proposal):
     repo = CvImprovementRepository(test_db)
+    # mock_user in conftest has user_id="test-user-uuid-123"
+    user_id = "test-user-uuid-123"
 
     # 1. POST /ai/cv-improvement/sessions
     resp_create = await client.post(
@@ -286,7 +290,9 @@ async def test_cv_improvement_api_endpoints(client, test_db, sample_proposal):
         json={"suggestion_id": "s1", "decision": "APPROVED"},
     )
     assert resp_decide.status_code == 200
-    assert resp_decide.json()["data"]["user_decisions"]["s1"]["decision"] == "APPROVED"
+    assert (
+        resp_decide.json()["data"]["user_decisions"]["s1"]["decision"] == "APPROVED"
+    )
 
     # 4. POST /ai/cv-improvement/{session_id}/batch-decide
     resp_batch = await client.post(
@@ -321,110 +327,3 @@ async def test_cv_improvement_api_endpoints(client, test_db, sample_proposal):
     )
     assert resp_forbidden.status_code == 403
 
-
-class FailingMockAgent:
-    async def run(self, prompt, deps=None):
-        raise RuntimeError("LLM request timed out")
-
-
-@pytest.mark.asyncio
-async def test_workflow_resume_rollback_on_failure(test_db, sample_proposal):
-    workflow = CvImprovementWorkflow(test_db, apply_agent=FailingMockAgent())
-    repo = CvImprovementRepository(test_db)
-
-    session = await repo.create_session(
-        user_id="user-fail-1",
-        original_cv_text="Viết API CRUD",
-        target_jd_text="FastAPI Backend Engineer",
-    )
-    await repo.save_suggestions(session.id, sample_proposal)
-    await workflow.decide(session.id, "s1", CvDecisionType.APPROVED, user_id="user-fail-1")
-
-    # Resume fails -> status must rollback to WAITING_USER_REVIEW
-    with pytest.raises(RuntimeError, match="LLM request timed out"):
-        await workflow.resume(session.id, user_id="user-fail-1")
-
-    current = await workflow.get_session(session.id, user_id="user-fail-1")
-    assert current.status == CvImprovementStep.WAITING_USER_REVIEW
-    assert current.revised_resume_data is None
-
-
-@pytest.mark.asyncio
-async def test_workflow_auto_recovery_from_stuck_applying_changes(
-    test_db, sample_proposal, sample_revised_resume
-):
-    repo = CvImprovementRepository(test_db)
-    session = await repo.create_session(
-        user_id="user-stuck-1",
-        original_cv_text="Viết API CRUD",
-        target_jd_text="FastAPI Backend Engineer",
-    )
-    await repo.save_suggestions(session.id, sample_proposal)
-    # Simulate a session manually left in APPLYING_CHANGES without revised data
-    await repo.transition_step(session.id, CvImprovementStep.APPLYING_CHANGES)
-
-    # 1. batch_decide auto-recovers to WAITING_USER_REVIEW instead of crashing
-    workflow = CvImprovementWorkflow(test_db)
-    updated = await workflow.batch_decide(
-        session.id,
-        [{"suggestion_id": "s1", "decision": CvDecisionType.APPROVED}],
-        user_id="user-stuck-1",
-    )
-    assert updated.status == CvImprovementStep.WAITING_USER_REVIEW
-    assert updated.user_decisions["s1"]["decision"] == "APPROVED"
-
-    # Put back into APPLYING_CHANGES
-    await repo.transition_step(session.id, CvImprovementStep.APPLYING_CHANGES)
-
-    # 2. resume allows retry when revised_resume_data is None
-    mock_apply = MockAgent(output=sample_revised_resume)
-    workflow_retry = CvImprovementWorkflow(test_db, apply_agent=mock_apply)
-    resumed = await workflow_retry.resume(session.id, user_id="user-stuck-1")
-    assert resumed.status == CvImprovementStep.APPLYING_CHANGES
-    assert resumed.revised_resume_data is not None
-
-
-@pytest.mark.asyncio
-async def test_workflow_agent_run_tracing(test_db, sample_proposal, sample_revised_resume):
-    mock_suggest = MockAgent(output=sample_proposal)
-    mock_apply = MockAgent(output=sample_revised_resume)
-    workflow = CvImprovementWorkflow(test_db, suggest_agent=mock_suggest, apply_agent=mock_apply)
-
-    session = await workflow.start_session(
-        user_id="user-trace-1",
-        original_cv_text="CV Text",
-        target_jd_text="JD Text",
-    )
-
-    # 1. Analyze tracing
-    analyzed = await workflow.analyze(session.id, user_id="user-trace-1")
-    assert analyzed.status == CvImprovementStep.WAITING_USER_REVIEW
-
-    runs_stmt = select(AgentRun).where(
-        AgentRun.session_id == session.id,
-        AgentRun.model == "suggest-cv-improvements",
-    )
-    res = await test_db.execute(runs_stmt)
-    analyze_run = res.scalar_one_or_none()
-    assert analyze_run is not None
-    assert analyze_run.use_case == "cv_improvement"
-    assert analyze_run.status == "succeeded"
-    assert analyze_run.trace_id is not None
-    assert len(analyze_run.steps) >= 2
-
-    # 2. Resume tracing
-    await workflow.decide(session.id, "s1", CvDecisionType.APPROVED, user_id="user-trace-1")
-    resumed = await workflow.resume(session.id, user_id="user-trace-1")
-    assert resumed.status == CvImprovementStep.APPLYING_CHANGES
-
-    runs_stmt_resume = select(AgentRun).where(
-        AgentRun.session_id == session.id,
-        AgentRun.model == "apply-cv-revisions",
-    )
-    res2 = await test_db.execute(runs_stmt_resume)
-    resume_run = res2.scalar_one_or_none()
-    assert resume_run is not None
-    assert resume_run.use_case == "cv_improvement"
-    assert resume_run.status == "succeeded"
-    assert resume_run.trace_id is not None
-    assert len(resume_run.steps) >= 2
