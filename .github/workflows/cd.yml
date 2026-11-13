@@ -13,6 +13,7 @@ concurrency:
 env:
   REGISTRY: ghcr.io
   IMAGE_NAME: ${{ github.repository_owner }}/occupify-agentic
+  CV_COMPILER_IMAGE_NAME: ${{ github.repository_owner }}/occupify-cv-compiler
   GITOPS_REPO: Occupify/occupify-gitops
   FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: true
 
@@ -45,8 +46,9 @@ jobs:
       - name: Format image name to lowercase
         run: |
           echo "IMAGE_NAME_LOWER=${IMAGE_NAME,,}" >> "$GITHUB_ENV"
+          echo "CV_COMPILER_IMAGE_NAME_LOWER=${CV_COMPILER_IMAGE_NAME,,}" >> "$GITHUB_ENV"
 
-      - name: Build and push image
+      - name: Build and push agentic image
         uses: docker/build-push-action@v5
         with:
           context: .
@@ -56,6 +58,17 @@ jobs:
           tags: |
             ${{ env.REGISTRY }}/${{ env.IMAGE_NAME_LOWER }}:${{ github.sha }}
             ${{ env.REGISTRY }}/${{ env.IMAGE_NAME_LOWER }}:latest
+
+      - name: Build and push cv-compiler image
+        uses: docker/build-push-action@v5
+        with:
+          context: .
+          file: Dockerfile.cv-compiler
+          platforms: linux/arm64
+          push: true
+          tags: |
+            ${{ env.REGISTRY }}/${{ env.CV_COMPILER_IMAGE_NAME_LOWER }}:${{ github.sha }}
+            ${{ env.REGISTRY }}/${{ env.CV_COMPILER_IMAGE_NAME_LOWER }}:latest
 
   deploy:
     name: Deploy Agentic Service
@@ -135,12 +148,16 @@ jobs:
           sleep 5s
           echo "===== CONTAINERS ====="
           podman ps -a --filter name=occupify-agentic
+          podman ps -a --filter name=occupify-cv-compiler
 
           echo "===== STATUS & EXIT CODE ====="
-          podman inspect occupify-agentic --format 'Status={{.State.Status}} ExitCode={{.State.ExitCode}}'
+          podman inspect occupify-agentic --format 'Status={{.State.Status}} ExitCode={{.State.ExitCode}}' || true
+          podman inspect occupify-cv-compiler --format 'Status={{.State.Status}} ExitCode={{.State.ExitCode}}' || true
 
           echo "===== RECENT LOGS ====="
-          podman logs --tail 50 occupify-agentic
+          podman logs --tail 50 occupify-agentic || true
+          podman logs --tail 50 occupify-cv-compiler || true
 
           echo "===== PORT MAPPING ====="
-          podman port occupify-agentic
+          podman port occupify-agentic || true
+
