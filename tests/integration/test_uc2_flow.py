@@ -9,6 +9,7 @@ Validates end-to-end flows:
 """
 
 from datetime import UTC, datetime
+from pathlib import Path
 from typing import Any
 from unittest.mock import AsyncMock, MagicMock
 
@@ -24,6 +25,7 @@ from app.db.repositories.cv_improvement import (
     CvImprovementRepository,
     CvImprovementStep,
 )
+from app.documents.extract import _extract_pdfium_text
 from app.features.cv_generator.schemas import (
     ArtifactFile,
     GenerateCvResult,
@@ -397,3 +399,42 @@ async def test_cv_improvement_cold_start_flow(test_db: AsyncSession, mock_user, 
     assert "HỒ SƠ ỨNG VIÊN (KHỞI TẠO TỰ ĐỘNG TỪ JD)" in session.original_cv_text
     assert "youremail@gmail.com" in session.original_cv_text
     assert "Your Highlighted Project" in session.original_cv_text
+
+
+@pytest.mark.asyncio
+async def test_cv_improvement_from_uploaded_pdf_file(
+    test_db: AsyncSession,
+    mock_user: Any,
+) -> None:
+    """Validates that real persona PDF files can be extracted and processed through the workflow."""
+    pdf_path = (
+        Path(__file__).resolve().parents[2]
+        / "evals"
+        / "uc2"
+        / "personas"
+        / "case_1_junior_crud.pdf"
+    )
+    assert pdf_path.exists(), f"Persona PDF not found: {pdf_path}"
+
+    extracted_text, page_count = _extract_pdfium_text(pdf_path.read_bytes())
+    assert page_count == 1
+    assert "NGUYEN VAN AN" in extracted_text
+    assert "Junior Web Developer" in extracted_text
+
+    # Run workflow start session with extracted text
+    suggest_agent = MockSkillAgent("suggest")
+    apply_agent = MockSkillAgent("apply")
+    workflow = CvImprovementWorkflow(test_db, suggest_agent=suggest_agent, apply_agent=apply_agent)
+
+    session = await workflow.start_session(
+        user_id=mock_user.user_id,
+        original_cv_text=extracted_text,
+        target_jd_text="Backend Python FastAPI",
+        chat_session_id="chat-pdf-upload",
+    )
+    assert session.status == CvImprovementStep.INIT
+
+    analyzed = await workflow.analyze(session.id, user_id=mock_user.user_id)
+    assert analyzed.status == CvImprovementStep.WAITING_USER_REVIEW
+    suggestions = analyzed.proposals.get("suggestions", [])
+    assert "sug-1" in [s["id"] for s in suggestions]

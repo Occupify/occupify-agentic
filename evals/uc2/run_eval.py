@@ -230,14 +230,24 @@ async def run_single_test_case(
 
     if cv_file:
         cv_path = base_dir / cv_file
-        cv_text = cv_path.read_text(encoding="utf-8")
+        if cv_path.suffix.lower() == ".pdf":
+            from app.documents.extract import _extract_pdfium_text
+
+            cv_text, _ = _extract_pdfium_text(cv_path.read_bytes())
+        else:
+            cv_text = cv_path.read_text(encoding="utf-8")
     else:
         # Cold start case
         cv_text = None
 
     if jd_file:
         jd_path = base_dir / jd_file
-        jd_text = jd_path.read_text(encoding="utf-8")
+        if jd_path.suffix.lower() == ".pdf":
+            from app.documents.extract import _extract_pdfium_text
+
+            jd_text, _ = _extract_pdfium_text(jd_path.read_bytes())
+        else:
+            jd_text = jd_path.read_text(encoding="utf-8")
     else:
         jd_text = (
             "Tiêu chuẩn tuyển dụng chung (General HR Review): chuẩn hóa kinh nghiệm theo STAR/XYZ."
