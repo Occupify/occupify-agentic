@@ -1,6 +1,8 @@
 import pytest
+from sqlalchemy import select
 
 from app.core.errors import AppError
+from app.db.models import AgentRun
 from app.db.repositories.cv_improvement import (
     CvDecisionType,
     CvImprovementRepository,
@@ -380,3 +382,49 @@ async def test_workflow_auto_recovery_from_stuck_applying_changes(
     resumed = await workflow_retry.resume(session.id, user_id="user-stuck-1")
     assert resumed.status == CvImprovementStep.APPLYING_CHANGES
     assert resumed.revised_resume_data is not None
+
+
+@pytest.mark.asyncio
+async def test_workflow_agent_run_tracing(test_db, sample_proposal, sample_revised_resume):
+    mock_suggest = MockAgent(output=sample_proposal)
+    mock_apply = MockAgent(output=sample_revised_resume)
+    workflow = CvImprovementWorkflow(test_db, suggest_agent=mock_suggest, apply_agent=mock_apply)
+
+    session = await workflow.start_session(
+        user_id="user-trace-1",
+        original_cv_text="CV Text",
+        target_jd_text="JD Text",
+    )
+
+    # 1. Analyze tracing
+    analyzed = await workflow.analyze(session.id, user_id="user-trace-1")
+    assert analyzed.status == CvImprovementStep.WAITING_USER_REVIEW
+
+    runs_stmt = select(AgentRun).where(
+        AgentRun.session_id == session.id,
+        AgentRun.model == "suggest-cv-improvements",
+    )
+    res = await test_db.execute(runs_stmt)
+    analyze_run = res.scalar_one_or_none()
+    assert analyze_run is not None
+    assert analyze_run.use_case == "cv_improvement"
+    assert analyze_run.status == "succeeded"
+    assert analyze_run.trace_id is not None
+    assert len(analyze_run.steps) >= 2
+
+    # 2. Resume tracing
+    await workflow.decide(session.id, "s1", CvDecisionType.APPROVED, user_id="user-trace-1")
+    resumed = await workflow.resume(session.id, user_id="user-trace-1")
+    assert resumed.status == CvImprovementStep.APPLYING_CHANGES
+
+    runs_stmt_resume = select(AgentRun).where(
+        AgentRun.session_id == session.id,
+        AgentRun.model == "apply-cv-revisions",
+    )
+    res2 = await test_db.execute(runs_stmt_resume)
+    resume_run = res2.scalar_one_or_none()
+    assert resume_run is not None
+    assert resume_run.use_case == "cv_improvement"
+    assert resume_run.status == "succeeded"
+    assert resume_run.trace_id is not None
+    assert len(resume_run.steps) >= 2

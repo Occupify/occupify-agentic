@@ -25,6 +25,7 @@ from app.features.cv_generator.schemas import (
     GenerateCvResult,
 )
 from app.features.cv_improvement.tools import (
+    _extract_contact_dict,
     execute_cv_finalization,
     finalize_and_generate_cv,
     resume_data_to_cv_content,
@@ -444,3 +445,57 @@ async def test_download_endpoint(tmp_path, client):
         assert res_404.status_code == 404
     finally:
         set_storage_client(None)
+
+
+def test_extract_contact_dict_with_placeholders():
+    empty_data = {}
+    contact = _extract_contact_dict(empty_data, original_cv_text=None)
+    assert contact["name"] == "Your Full Name"
+    assert contact["email"] == "youremail@gmail.com"
+    assert contact["phone"] == "+84 123 456 789"
+    assert contact["link"] == "github.com/yourusername"
+
+
+def test_extract_contact_dict_with_real_data():
+    data = {
+        "full_name": "Nguyen Van A",
+        "email": "nguyenvana@gmail.com",
+        "phone": "0987654321",
+        "github": "github.com/nguyenvana",
+    }
+    contact = _extract_contact_dict(data)
+    assert contact["name"] == "Nguyen Van A"
+    assert contact["email"] == "nguyenvana@gmail.com"
+    assert contact["phone"] == "0987654321"
+    assert contact["link"] == "github.com/nguyenvana"
+
+
+def test_extract_contact_dict_from_cv_text():
+    data = {}
+    cv_text = (
+        "Le Thi B\nEmail: lethib@outlook.com | Phone: +84901234567\nGitHub: github.com/lethib\n"
+    )
+    contact = _extract_contact_dict(data, original_cv_text=cv_text)
+    assert contact["name"] == "Le Thi B"
+    assert contact["email"] == "lethib@outlook.com"
+    assert contact["phone"] == "+84901234567"
+    assert "github.com/lethib" in contact["link"]
+
+
+def test_resume_data_to_cv_content_with_empty_projects_and_experience():
+    sparse_data = {
+        "full_name": "Tran Van C",
+        "title": "Software Developer",
+        "summary": "Junior dev passionate about learning.",
+        "skills": ["Python", "FastAPI"],
+        "experiences": [],
+        "projects": [],
+    }
+    content = resume_data_to_cv_content(sparse_data, language="en")
+    assert len(content.experience) == 1
+    assert content.experience[0].company == "Your Previous Company"
+    assert len(content.experience[0].bullets) >= 2
+
+    assert len(content.projects) == 1
+    assert content.projects[0].name == "Your Highlighted Project"
+    assert len(content.projects[0].bullets) >= 2

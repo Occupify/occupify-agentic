@@ -14,7 +14,12 @@ class CvGeneratorService:
         self.storage = storage
         self.timeout_s = timeout_s
 
-    async def generate(self, payload: GenerateCvInput, owner_id: str) -> GenerateCvResult:
+    async def generate(
+        self,
+        payload: GenerateCvInput,
+        owner_id: str,
+        contact: dict[str, str] | None = None,
+    ) -> GenerateCvResult:
         if not owner_id or not owner_id.strip():
             return GenerateCvResult.failure(CvGenerationError("UNAUTHORIZED"))
         artifact_id = str(uuid.uuid4())
@@ -22,7 +27,7 @@ class CvGeneratorService:
         log_step("cv_generator.start", artifact_id=artifact_id)
         try:
             async with asyncio.timeout(self.timeout_s):
-                tex = render_cv(payload)
+                tex = render_cv(payload, contact=contact)
                 log_step(
                     "cv_generator.rendered", artifact_id=artifact_id, size_bytes=len(tex.encode())
                 )
