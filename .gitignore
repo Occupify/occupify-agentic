@@ -47,5 +47,6 @@ doc/
 agent-docs/
 
 /docs/
+!/docs/CV_GENERATOR_TOOL_INPUT.md
 /ARCHITECTURE.md
 /AGENT.md

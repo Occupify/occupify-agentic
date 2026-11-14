@@ -2,6 +2,9 @@ from app.skill_schemas.candidate import CandidateProfile, RoleItem, SkillItem
 from app.skill_schemas.cv_improvement import (
     CvImprovementProposal,
     CvSuggestionItem,
+    ResumeAdditionalItem,
+    ResumeAdditionalSection,
+    ResumeCertificationItem,
     ResumeData,
     ResumeEducationItem,
     ResumeExperienceItem,
@@ -32,5 +35,8 @@ __all__ = [
     "ResumeExperienceItem",
     "ResumeProjectItem",
     "ResumeEducationItem",
+    "ResumeCertificationItem",
+    "ResumeAdditionalItem",
+    "ResumeAdditionalSection",
     "ResumeData",
 ]

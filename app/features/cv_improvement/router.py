@@ -1,35 +1,26 @@
 from fastapi import APIRouter, Depends
+from fastapi.responses import FileResponse
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from app.core.errors import AppError
 from app.core.responses import success_response
 from app.core.security import CurrentUser, get_current_user
+from app.core.storage import LocalStorageClient, get_storage_client
 from app.db.session import get_db_session
 from app.features.cv_improvement.schemas import (
     BatchCvDecisionRequest,
     CreateCvSessionRequest,
     CvDecisionRequest,
+    CvSessionResponse,
 )
+from app.features.cv_improvement.tools import execute_cv_finalization
 from app.features.cv_improvement.workflow import CvImprovementWorkflow
 
 router = APIRouter(prefix="/ai/cv-improvement", tags=["cv-improvement"])
 
 
 def session_to_dict(session) -> dict:
-    return {
-        "id": session.id,
-        "user_id": session.user_id,
-        "chat_session_id": session.chat_session_id,
-        "status": session.status,
-        "step": session.step,
-        "original_cv_text": session.original_cv_text,
-        "target_jd_text": session.target_jd_text,
-        "proposals": session.proposals,
-        "user_decisions": session.user_decisions,
-        "revised_resume_data": session.revised_resume_data,
-        "pdf_url": session.pdf_url,
-        "created_at": session.created_at.isoformat() if session.created_at else None,
-        "updated_at": session.updated_at.isoformat() if session.updated_at else None,
-    }
+    return CvSessionResponse.model_validate(session).model_dump(mode="json")
 
 
 @router.post("/sessions")
@@ -45,9 +36,7 @@ async def create_session(
         target_jd_text=body.target_jd_text,
         chat_session_id=body.chat_session_id,
     )
-    return success_response(
-        session_to_dict(session), message="Session created", status_code=201
-    )
+    return success_response(session_to_dict(session), message="Session created", status_code=201)
 
 
 @router.get("/{session_id}")
@@ -117,7 +106,44 @@ async def recover_workflow(
 ):
     workflow = CvImprovementWorkflow(db)
     session = await workflow.recovery(session_id, user_id=user.user_id)
-    return success_response(
-        session_to_dict(session), message="Workflow state rolled back"
-    )
+    return success_response(session_to_dict(session), message="Workflow state rolled back")
 
+
+@router.post("/{session_id}/generate")
+async def generate_cv_endpoint(
+    session_id: str,
+    user: CurrentUser = Depends(get_current_user),
+    db: AsyncSession = Depends(get_db_session),
+):
+    ok, message, data = await execute_cv_finalization(
+        db=db,
+        session_id=session_id,
+        user_id=user.user_id,
+    )
+    if not ok:
+        raise AppError(
+            status_code=400,
+            message=message,
+            error_code=data.get("error_code", "GENERATION_FAILED"),
+        )
+    workflow = CvImprovementWorkflow(db)
+    session = await workflow.get_session(session_id, user_id=user.user_id)
+    return success_response(session_to_dict(session), message=message)
+
+
+@router.get("/download/{filename}")
+async def download_cv_artifact(filename: str):
+    storage = get_storage_client()
+    if hasattr(storage, "get_file_path"):
+        path = storage.get_file_path(filename)
+    else:
+        path = LocalStorageClient().get_file_path(filename)
+    if not path or not path.is_file():
+        raise AppError(
+            status_code=404,
+            message=f"File '{filename}' not found or has expired.",
+            error_code="FILE_NOT_FOUND",
+        )
+    MEDIA_TYPES = {".pdf": "application/pdf", ".tex": "application/x-tex; charset=utf-8"}
+    media_type = MEDIA_TYPES.get(path.suffix.lower(), "application/octet-stream")
+    return FileResponse(path, media_type=media_type, filename=path.name)

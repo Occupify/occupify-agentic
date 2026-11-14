@@ -30,7 +30,14 @@
   const filesInputEl = document.getElementById("files-input");
   const filesSelectedCountEl = document.getElementById("files-selected-count");
   const sendBtn = document.getElementById("send-btn");
+  const stopBtn = document.getElementById("stop-btn");
+  const attachBtn = document.getElementById("attach-btn");
+  const attachmentsPreviewEl = document.getElementById("attachments-preview");
+  const composerBoxEl = document.getElementById("composer-box");
   const formErrorEl = document.getElementById("form-error");
+
+  let currentAbortController = null;
+  let selectedFiles = [];
 
   // Trace & Log Panel Elements
   const togglePanelBtn = document.getElementById("toggle-panel-btn");
@@ -97,7 +104,7 @@
           });
         }
       }
-    } catch (_) {}
+    } catch (_) { }
   }
 
   function renderStateProofDetails(card, state, memory) {
@@ -170,6 +177,275 @@
     card.appendChild(details);
   }
 
+  function escapeHtml(str) {
+    if (!str) return "";
+    return String(str)
+      .replace(/&/g, "&amp;")
+      .replace(/</g, "&lt;")
+      .replace(/>/g, "&gt;")
+      .replace(/"/g, "&quot;")
+      .replace(/'/g, "&#039;");
+  }
+
+  function formatMessageText(str) {
+    if (!str) return "";
+    let escaped = escapeHtml(str);
+
+    // Bold: **text**
+    escaped = escaped.replace(/\*\*(.*?)\*\*/g, "<strong>$1</strong>");
+
+    // Markdown links: [Title](URL)
+    escaped = escaped.replace(/\[(.*?)\]\((.*?)\)/g, function (match, title, url) {
+      const cleanUrl = url.replace(/&amp;/g, "&");
+      const isDownload = cleanUrl.includes("/ai/cv-improvement/download/") || cleanUrl.endsWith(".pdf") || cleanUrl.endsWith(".tex");
+      if (isDownload) {
+        return `<a href="${cleanUrl}" download target="_blank" class="chat-download-btn">📥 ${title}</a>`;
+      }
+      return `<a href="${cleanUrl}" target="_blank" rel="noopener noreferrer" class="chat-inline-link">${title}</a>`;
+    });
+
+    return escaped;
+  }
+
+  function renderCvSuggestions(card, bodyText, rawText) {
+    if (!rawText || !rawText.includes("<!-- CV_SUGGESTIONS_START")) return;
+    if (card.querySelector(".cv-suggestions-container")) return; // Prevent duplicate render
+
+    const match = rawText.match(/<!-- CV_SUGGESTIONS_START\s*([\s\S]*?)\s*CV_SUGGESTIONS_END -->/);
+    if (!match) return;
+
+    let payload = null;
+    try {
+      payload = JSON.parse(match[1]);
+    } catch (e) {
+      console.error("Failed to parse CV suggestions payload", e);
+      return;
+    }
+
+    const { sessionId, targetRole, suggestions } = payload;
+    if (!sessionId || !suggestions || suggestions.length === 0) return;
+
+    // Clean comment from displayed text
+    if (bodyText) {
+      const cleanText = rawText.replace(/<!-- CV_SUGGESTIONS_START[\s\S]*?CV_SUGGESTIONS_END -->/, "").trim();
+      bodyText.innerHTML = formatMessageText(cleanText);
+    }
+
+    const container = document.createElement("div");
+    container.className = "cv-suggestions-container";
+    container.dataset.sessionId = sessionId;
+
+    const titleEl = document.createElement("div");
+    titleEl.className = "cv-suggestions-title";
+    titleEl.innerHTML = `<span>🎯 Đề Xuất Cải Thiện CV</span> <span class="badge-role">${escapeHtml(targetRole || "Mục tiêu")}</span>`;
+    container.appendChild(titleEl);
+
+    const subhint = document.createElement("div");
+    subhint.className = "cv-suggestions-hint";
+    subhint.textContent = "Bạn hãy xem xét từng đề xuất bên dưới và đưa ra quyết định duyệt trước khi xuất CV:";
+    container.appendChild(subhint);
+
+    const listEl = document.createElement("div");
+    listEl.className = "cv-suggestions-list";
+
+    suggestions.forEach((sug, idx) => {
+      const sugId = sug.id || `sug-${idx + 1}`;
+      const cardEl = document.createElement("div");
+      cardEl.className = "suggestion-card";
+      cardEl.dataset.suggestionId = sugId;
+
+      const header = document.createElement("div");
+      header.className = "suggestion-header";
+      header.innerHTML = `<strong>#${escapeHtml(sugId)} [${escapeHtml(sug.section || "Mục CV")}]</strong> <span class="suggestion-status-badge pending">Chờ duyệt</span>`;
+      cardEl.appendChild(header);
+
+      const origEl = document.createElement("div");
+      origEl.className = "suggestion-orig";
+      origEl.innerHTML = `<span class="label">Văn bản gốc:</span> <em>"${escapeHtml(sug.target_original_text || "")}"</em>`;
+      cardEl.appendChild(origEl);
+
+      const revEl = document.createElement("div");
+      revEl.className = "suggestion-revised";
+      revEl.innerHTML = `<span class="label">Đề xuất cải thiện:</span> <strong>"${escapeHtml(sug.suggested_revised_text || "")}"</strong>`;
+      cardEl.appendChild(revEl);
+
+      if (sug.reason) {
+        const reasonEl = document.createElement("div");
+        reasonEl.className = "suggestion-reason";
+        reasonEl.innerHTML = `<span class="label">Lý do:</span> ${escapeHtml(sug.reason)}`;
+        cardEl.appendChild(reasonEl);
+      }
+
+      // Inline edit box
+      const editBox = document.createElement("div");
+      editBox.className = "suggestion-edit-box";
+      editBox.style.display = "none";
+      const editArea = document.createElement("textarea");
+      editArea.className = "suggestion-edit-textarea";
+      editArea.rows = 2;
+      editArea.value = sug.suggested_revised_text || "";
+      const saveEditBtn = document.createElement("button");
+      saveEditBtn.className = "btn btn-sm btn-primary";
+      saveEditBtn.textContent = "Lưu sửa đổi";
+      editBox.appendChild(editArea);
+      editBox.appendChild(saveEditBtn);
+      cardEl.appendChild(editBox);
+
+      // Actions row
+      const actions = document.createElement("div");
+      actions.className = "suggestion-actions";
+
+      const approveBtn = document.createElement("button");
+      approveBtn.type = "button";
+      approveBtn.className = "btn btn-sm btn-outline-success btn-approve";
+      approveBtn.textContent = "✓ Chấp thuận";
+
+      const rejectBtn = document.createElement("button");
+      rejectBtn.type = "button";
+      rejectBtn.className = "btn btn-sm btn-outline-danger btn-reject";
+      rejectBtn.textContent = "✕ Từ chối";
+
+      const editBtn = document.createElement("button");
+      editBtn.type = "button";
+      editBtn.className = "btn btn-sm btn-outline btn-edit";
+      editBtn.textContent = "Chỉnh sửa";
+
+      actions.appendChild(approveBtn);
+      actions.appendChild(rejectBtn);
+      actions.appendChild(editBtn);
+      cardEl.appendChild(actions);
+
+      const statusBadge = header.querySelector(".suggestion-status-badge");
+
+      approveBtn.addEventListener("click", async () => {
+        approveBtn.disabled = true;
+        try {
+          const res = await fetch(`/ai/cv-improvement/${sessionId}/decide`, {
+            method: "POST",
+            headers: { ...getHeaders(), "Content-Type": "application/json" },
+            body: JSON.stringify({ suggestion_id: sugId, decision: "APPROVED" })
+          });
+          if (res.ok) {
+            statusBadge.textContent = "✓ Đã duyệt";
+            statusBadge.className = "suggestion-status-badge approved";
+            editBox.style.display = "none";
+          }
+        } catch (e) {
+          console.error("Failed to approve suggestion", e);
+        } finally {
+          approveBtn.disabled = false;
+        }
+      });
+
+      rejectBtn.addEventListener("click", async () => {
+        rejectBtn.disabled = true;
+        try {
+          const res = await fetch(`/ai/cv-improvement/${sessionId}/decide`, {
+            method: "POST",
+            headers: { ...getHeaders(), "Content-Type": "application/json" },
+            body: JSON.stringify({ suggestion_id: sugId, decision: "REJECTED" })
+          });
+          if (res.ok) {
+            statusBadge.textContent = "✕ Đã từ chối";
+            statusBadge.className = "suggestion-status-badge rejected";
+            editBox.style.display = "none";
+          }
+        } catch (e) {
+          console.error("Failed to reject suggestion", e);
+        } finally {
+          rejectBtn.disabled = false;
+        }
+      });
+
+      editBtn.addEventListener("click", () => {
+        editBox.style.display = editBox.style.display === "none" ? "block" : "none";
+        if (editBox.style.display === "block") {
+          editArea.focus();
+        }
+      });
+
+      saveEditBtn.addEventListener("click", async () => {
+        const newText = editArea.value.trim();
+        if (!newText) return;
+        saveEditBtn.disabled = true;
+        try {
+          const res = await fetch(`/ai/cv-improvement/${sessionId}/decide`, {
+            method: "POST",
+            headers: { ...getHeaders(), "Content-Type": "application/json" },
+            body: JSON.stringify({ suggestion_id: sugId, decision: "EDITED", user_text: newText })
+          });
+          if (res.ok) {
+            statusBadge.textContent = "✎ Đã sửa";
+            statusBadge.className = "suggestion-status-badge edited";
+            revEl.querySelector("strong").textContent = `"${newText}"`;
+            editBox.style.display = "none";
+          }
+        } catch (e) {
+          console.error("Failed to save edited suggestion", e);
+        } finally {
+          saveEditBtn.disabled = false;
+        }
+      });
+
+      listEl.appendChild(cardEl);
+    });
+
+    container.appendChild(listEl);
+
+    // Bottom action bar
+    const footerBar = document.createElement("div");
+    footerBar.className = "cv-suggestions-footer";
+
+    const finalizeBtn = document.createElement("button");
+    finalizeBtn.type = "button";
+    finalizeBtn.className = "btn btn-primary btn-finalize-cv";
+    finalizeBtn.innerHTML = "Xuất File PDF";
+
+    const downloadContainer = document.createElement("div");
+    downloadContainer.className = "cv-download-result";
+    downloadContainer.style.display = "none";
+
+    finalizeBtn.addEventListener("click", async () => {
+      finalizeBtn.disabled = true;
+      finalizeBtn.textContent = "Đang tạo file PDF & tải lên...";
+      try {
+        const res = await fetch(`/ai/cv-improvement/${sessionId}/generate`, {
+          method: "POST",
+          headers: getHeaders(),
+        });
+        const json = await res.json();
+        if (res.ok && json.data && json.data.pdf_url) {
+          const pdfUrl = json.data.pdf_url;
+          downloadContainer.style.display = "block";
+          downloadContainer.innerHTML = `
+            <div style="background-color: #064e3b; border: 1px solid #059669; border-radius: 4px; padding: 0.6rem; color: #a7f3d0; margin-top: 0.4rem;">
+              <strong>Xuất CV thành công!</strong><br/>
+              <a href="${pdfUrl}" target="_blank" class="btn btn-sm btn-outline-success" style="margin-top:0.4rem; display:inline-block; text-decoration:none; font-weight:600;">📥 Tải File PDF CV</a>
+            </div>
+          `;
+          finalizeBtn.style.display = "none";
+        } else {
+          const errMsg = (json && json.message) || "Không thể tạo file PDF.";
+          alert(`Lỗi xuất CV: ${errMsg}`);
+          finalizeBtn.textContent = "Thử Xuất PDF Lại";
+          finalizeBtn.disabled = false;
+        }
+      } catch (e) {
+        console.error("Failed to generate CV", e);
+        alert("Đã xảy ra lỗi khi kết nối tới máy chủ.");
+        finalizeBtn.textContent = "Thử Xuất PDF Lại";
+        finalizeBtn.disabled = false;
+      }
+    });
+
+    footerBar.appendChild(finalizeBtn);
+    footerBar.appendChild(downloadContainer);
+    container.appendChild(footerBar);
+
+    card.appendChild(container);
+  }
+
+
   // User ID setup
   function getUserId() {
     return userIdInput.value.trim() || "dev-user-1";
@@ -187,15 +463,118 @@
     });
   }
 
-  // File selection indicator
-  filesInputEl.addEventListener("change", function () {
-    const count = filesInputEl.files.length;
-    if (count > 0) {
-      filesSelectedCountEl.textContent = `${count} PDF${count > 1 ? "s" : ""} selected`;
-    } else {
-      filesSelectedCountEl.textContent = "";
+  // File selection & preview
+  function updateFilesPreview() {
+    if (!attachmentsPreviewEl) return;
+    attachmentsPreviewEl.innerHTML = "";
+    if (selectedFiles.length === 0) {
+      attachmentsPreviewEl.style.display = "none";
+      if (filesSelectedCountEl) filesSelectedCountEl.textContent = "";
+      return;
     }
+    attachmentsPreviewEl.style.display = "flex";
+    if (filesSelectedCountEl) {
+      filesSelectedCountEl.textContent = `${selectedFiles.length}/3`;
+    }
+
+    selectedFiles.forEach((file, index) => {
+      const chip = document.createElement("div");
+      chip.className = "file-preview-chip";
+
+      const nameSpan = document.createElement("span");
+      nameSpan.className = "file-chip-name";
+      nameSpan.title = file.name;
+      nameSpan.textContent = `📄 ${file.name}`;
+
+      const removeBtn = document.createElement("button");
+      removeBtn.type = "button";
+      removeBtn.className = "file-chip-remove";
+      removeBtn.title = "Bỏ file này";
+      removeBtn.innerHTML = "&times;";
+      removeBtn.addEventListener("click", (e) => {
+        e.stopPropagation();
+        selectedFiles.splice(index, 1);
+        updateFilesPreview();
+      });
+
+      chip.appendChild(nameSpan);
+      chip.appendChild(removeBtn);
+      attachmentsPreviewEl.appendChild(chip);
+    });
+  }
+
+  if (attachBtn) {
+    attachBtn.addEventListener("click", () => {
+      filesInputEl.click();
+    });
+  }
+
+  filesInputEl.addEventListener("change", function () {
+    const newFiles = Array.from(filesInputEl.files);
+    for (const f of newFiles) {
+      if (selectedFiles.length >= 3) {
+        showError("Chỉ được đính kèm tối đa 3 file PDF.");
+        break;
+      }
+      if (!selectedFiles.some((existing) => existing.name === f.name && existing.size === f.size)) {
+        selectedFiles.push(f);
+      }
+    }
+    filesInputEl.value = "";
+    updateFilesPreview();
   });
+
+  // Drag & drop files onto composer box
+  if (composerBoxEl) {
+    composerBoxEl.addEventListener("dragover", (e) => {
+      e.preventDefault();
+      composerBoxEl.classList.add("drag-over");
+    });
+    composerBoxEl.addEventListener("dragleave", () => {
+      composerBoxEl.classList.remove("drag-over");
+    });
+    composerBoxEl.addEventListener("drop", (e) => {
+      e.preventDefault();
+      composerBoxEl.classList.remove("drag-over");
+      if (e.dataTransfer && e.dataTransfer.files) {
+        const dropped = Array.from(e.dataTransfer.files).filter((f) =>
+          f.name.toLowerCase().endsWith(".pdf")
+        );
+        if (dropped.length === 0) {
+          showError("Chỉ chấp nhận file định dạng PDF.");
+          return;
+        }
+        for (const f of dropped) {
+          if (selectedFiles.length >= 3) {
+            showError("Chỉ được đính kèm tối đa 3 file PDF.");
+            break;
+          }
+          if (!selectedFiles.some((existing) => existing.name === f.name && existing.size === f.size)) {
+            selectedFiles.push(f);
+          }
+        }
+        updateFilesPreview();
+      }
+    });
+  }
+
+  // Auto-resize textarea
+  function autoResizeTextarea() {
+    messageInputEl.style.height = "auto";
+    messageInputEl.style.height = Math.min(messageInputEl.scrollHeight, 180) + "px";
+  }
+  messageInputEl.addEventListener("input", autoResizeTextarea);
+
+  // Stop button listener
+  if (stopBtn) {
+    stopBtn.addEventListener("click", function () {
+      if (currentAbortController) {
+        currentAbortController.abort();
+        chatStatusEl.textContent = "Đã dừng";
+        chatStatusEl.className = "chat-status-badge interrupted";
+      }
+    });
+  }
 
   // Enter to send in textarea
   messageInputEl.addEventListener("keydown", function (e) {
@@ -414,7 +793,11 @@
 
     const bodyText = document.createElement("div");
     bodyText.className = "message-body";
-    bodyText.textContent = text;
+    if (role === "assistant") {
+      bodyText.innerHTML = formatMessageText(text);
+    } else {
+      bodyText.textContent = text;
+    }
     card.appendChild(bodyText);
 
     if (role === "assistant" && (model || tokensIn || tokensOut)) {
@@ -437,6 +820,10 @@
       renderAttachments(card, attachments);
     }
 
+    if (role === "assistant" && text) {
+      renderCvSuggestions(card, bodyText, text);
+    }
+
     chatMessagesEl.appendChild(card);
     chatMessagesEl.scrollTop = chatMessagesEl.scrollHeight;
     return { card, bodyText };
@@ -451,22 +838,24 @@
     if (!messageText) return;
 
     const contextText = contextInputEl.value.trim();
-    const files = filesInputEl.files;
 
-    if (files.length > 3) {
-      showError("Maximum 3 PDF attachments allowed.");
+    if (selectedFiles.length > 3) {
+      showError("Chỉ được đính kèm tối đa 3 file PDF.");
       return;
     }
 
     clearError();
     isStreaming = true;
-    sendBtn.disabled = true;
+    currentAbortController = new AbortController();
+    sendBtn.style.display = "none";
+    if (stopBtn) stopBtn.style.display = "inline-flex";
     chatStatusEl.textContent = "Streaming...";
     chatStatusEl.className = "chat-status-badge streaming";
 
     // 1. Append user bubble
     const userElements = appendMessageCard("user", messageText);
     messageInputEl.value = "";
+    messageInputEl.style.height = "auto";
 
     // 2. Prepare assistant bubble with live streaming cursor
     const asstElements = appendMessageCard("assistant", "");
@@ -483,8 +872,8 @@
     if (contextText) {
       formData.append("context", contextText);
     }
-    for (let i = 0; i < files.length; i++) {
-      formData.append("files", files[i]);
+    for (let i = 0; i < selectedFiles.length; i++) {
+      formData.append("files", selectedFiles[i]);
     }
 
     let fullReply = "";
@@ -498,13 +887,14 @@
         method: "POST",
         headers: getHeaders(),
         body: formData,
+        signal: currentAbortController.signal,
       });
 
       if (!res.ok) {
         let errJson = null;
         try {
           errJson = await res.json();
-        } catch (_) {}
+        } catch (_) { }
         const errMsg = (errJson && errJson.message) || `Request failed with status ${res.status}`;
         throw new Error(errMsg);
       }
@@ -551,7 +941,7 @@
               if (meta.attachments && meta.attachments.length > 0) {
                 renderAttachments(userElements.card, meta.attachments);
               }
-            } catch (_) {}
+            } catch (_) { }
           } else if (eventName === "delta" && dataStr) {
             try {
               const delta = JSON.parse(dataStr);
@@ -561,7 +951,7 @@
                 asstElements.bodyText.appendChild(cursor);
                 chatMessagesEl.scrollTop = chatMessagesEl.scrollHeight;
               }
-            } catch (_) {}
+            } catch (_) { }
           } else if (eventName === "done" && dataStr) {
             try {
               const doneData = JSON.parse(dataStr);
@@ -569,15 +959,15 @@
               finalUsage = doneData.usage || null;
               lastDoneState = doneData.state || null;
               lastDoneMemory = doneData.memory || null;
-            } catch (_) {}
+            } catch (_) { }
           } else if (eventName === "error" && dataStr) {
             try {
               const errPayload = JSON.parse(dataStr);
               const errMsg = errPayload.message || "Failed to generate reply.";
               showError(errMsg);
               fullReply += `\n[${errMsg}]`;
-              asstElements.bodyText.textContent = fullReply;
-            } catch (_) {}
+              asstElements.bodyText.innerHTML = formatMessageText(fullReply);
+            } catch (_) { }
           }
         }
       }
@@ -586,7 +976,7 @@
       if (cursor.parentNode) {
         cursor.parentNode.removeChild(cursor);
       }
-      asstElements.bodyText.textContent = fullReply;
+      asstElements.bodyText.innerHTML = formatMessageText(fullReply);
 
       if (responseModel || finalUsage) {
         const footer = document.createElement("div");
@@ -608,28 +998,40 @@
       if (lastDoneState || (lastDoneMemory && lastDoneMemory.length > 0)) {
         renderStateProofDetails(asstElements.card, lastDoneState, lastDoneMemory);
       }
+      renderCvSuggestions(asstElements.card, asstElements.bodyText, fullReply);
       if (currentSessionId) {
         refreshStateAndMemory(currentSessionId);
       }
 
       // Clear file selection
-      filesInputEl.value = "";
-      filesSelectedCountEl.textContent = "";
+      selectedFiles = [];
+      updateFilesPreview();
       loadSessions();
 
     } catch (err) {
       if (cursor.parentNode) {
         cursor.parentNode.removeChild(cursor);
       }
-      const msg = err.message || "Failed to send message.";
-      showError(msg);
-      asstElements.bodyText.textContent = fullReply ? (fullReply + `\n[${msg}]`) : `[${msg}]`;
-      asstElements.card.classList.add("interrupted");
+      if (err.name === "AbortError") {
+        fullReply += (fullReply ? "\n\n" : "") + "*⏹ Phản hồi đã được dừng bởi người dùng.*";
+        asstElements.bodyText.textContent = fullReply;
+        asstElements.card.classList.add("interrupted");
+      } else {
+        const msg = err.message || "Failed to send message.";
+        showError(msg);
+        asstElements.bodyText.textContent = fullReply ? (fullReply + `\n[${msg}]`) : `[${msg}]`;
+        asstElements.card.classList.add("interrupted");
+      }
     } finally {
       isStreaming = false;
+      currentAbortController = null;
+      sendBtn.style.display = "inline-flex";
       sendBtn.disabled = false;
-      chatStatusEl.textContent = "Ready";
-      chatStatusEl.className = "chat-status-badge";
+      if (stopBtn) stopBtn.style.display = "none";
+      if (chatStatusEl.textContent !== "Đã dừng") {
+        chatStatusEl.textContent = "Ready";
+        chatStatusEl.className = "chat-status-badge";
+      }
       messageInputEl.focus();
     }
   });
@@ -740,7 +1142,7 @@
       try {
         const entry = JSON.parse(evt.data);
         pushLogEntry(entry, true);
-      } catch (_) {}
+      } catch (_) { }
     });
 
     eventSource.onerror = function () {

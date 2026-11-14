@@ -227,4 +227,3 @@ class CvImprovementRepository:
         await self.session.delete(cv_session)
         await self.session.commit()
         return True
-
