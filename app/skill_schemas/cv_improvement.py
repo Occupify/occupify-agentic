@@ -47,6 +47,30 @@ class ResumeEducationItem(BaseModel):
     period: str
 
 
+class ResumeAdditionalItem(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+
+    label: str | None = None
+    text: str
+
+
+class ResumeAdditionalSection(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+
+    title: str
+    items: list[ResumeAdditionalItem] = []
+
+
+class ResumeCertificationItem(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+
+    name: str
+    issuer: str | None = None
+    issue_date: str | None = None
+    expiry_date: str | None = None
+    result: str | None = None
+
+
 class ResumeData(BaseModel):
     model_config = ConfigDict(extra="forbid")
 
@@ -58,3 +82,5 @@ class ResumeData(BaseModel):
     experiences: list[ResumeExperienceItem] = []
     projects: list[ResumeProjectItem] = []
     education: list[ResumeEducationItem] = []
+    certifications: list[ResumeCertificationItem] = []
+    additional_sections: list[ResumeAdditionalSection] = []

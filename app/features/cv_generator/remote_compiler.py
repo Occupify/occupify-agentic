@@ -46,3 +46,40 @@ class RemoteCvCompiler:
         if not response.content.startswith(b"%PDF-") or len(response.content) > MAX_PDF_BYTES:
             raise CvGenerationError("PDF_INVALID")
         return response.content
+
+
+class ResilientCvCompiler:
+    """Tries remote compiler URLs and adapts Docker container hostnames to localhost when running on host."""
+
+    def __init__(self, primary_url: str | None = None, *, timeout_s: float = 35):
+        urls: list[str] = []
+        if primary_url:
+            urls.append(primary_url)
+            if "cv-compiler" in primary_url:
+                urls.append("http://127.0.0.1:8190")
+                urls.append("http://localhost:8190")
+        else:
+            urls.extend(["http://127.0.0.1:8190", "http://localhost:8190"])
+
+        unique_urls = list(dict.fromkeys(urls))
+        self.compilers = [RemoteCvCompiler(u, timeout_s=timeout_s) for u in unique_urls]
+
+    async def compile(self, tex: str) -> bytes:
+        last_exc: Exception | None = None
+        for compiler in self.compilers:
+            try:
+                return await compiler.compile(tex)
+            except Exception as exc:
+                last_exc = exc
+                continue
+
+        try:
+            from app.features.cv_generator.compiler import LocalCvCompiler
+
+            local = LocalCvCompiler()
+            return await local.compile(tex)
+        except Exception:
+            if last_exc is not None:
+                raise last_exc
+            raise
+

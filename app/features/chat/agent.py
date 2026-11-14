@@ -4,6 +4,11 @@ from app.agents.deps import AgentDeps
 from app.agents.subagent import invoke_subagent
 from app.features.career_rag.chat_tool import consult_career_knowledge
 from app.features.chat.prompts import CHAT_SYSTEM_PROMPT
+from app.features.cv_improvement.chat_tool import (
+    record_cv_decisions,
+    review_and_improve_cv,
+)
+from app.features.cv_improvement.tools import finalize_and_generate_cv
 from app.features.job_match.chat_tool import match_jobs_for_cv
 from app.features.projects.tools import get_project_detail, search_filter_projects
 from app.llm.glm import get_model
@@ -24,6 +29,9 @@ def get_chat_agent() -> Agent[AgentDeps, str]:
     agent.tool(consult_career_knowledge)
     agent.tool(record_user_memory)
     agent.tool(update_consulting_progress)
+    agent.tool(review_and_improve_cv)
+    agent.tool(record_cv_decisions)
+    agent.tool(finalize_and_generate_cv)
     return agent
 
 

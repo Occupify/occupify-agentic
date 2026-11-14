@@ -260,8 +260,6 @@ async def test_format_decisions_for_prompt(sample_proposal):
 @pytest.mark.asyncio
 async def test_cv_improvement_api_endpoints(client, test_db, sample_proposal):
     repo = CvImprovementRepository(test_db)
-    # mock_user in conftest has user_id="test-user-uuid-123"
-    user_id = "test-user-uuid-123"
 
     # 1. POST /ai/cv-improvement/sessions
     resp_create = await client.post(

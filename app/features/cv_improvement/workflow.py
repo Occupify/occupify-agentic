@@ -1,3 +1,4 @@
+from datetime import UTC, datetime
 from typing import Any
 
 from pydantic_ai import Agent
@@ -121,42 +122,17 @@ class CvImprovementWorkflow:
         user_text: str | None = None,
         user_id: str | None = None,
     ) -> CvImprovementSession:
-        session = await self.get_session(session_id, user_id=user_id)
-
-        if session.status != CvImprovementStep.WAITING_USER_REVIEW:
-            raise AppError(
-                status_code=400,
-                message=f"Cannot record decision: session is currently in '{session.status}' state. Expected 'WAITING_USER_REVIEW'.",
-                error_code="INVALID_SESSION_STATE",
-            )
-
-        decision_val = (
-            decision.value if isinstance(decision, CvDecisionType) else str(decision)
+        return await self.batch_decide(
+            session_id=session_id,
+            decisions=[
+                {
+                    "suggestion_id": suggestion_id,
+                    "decision": decision,
+                    "user_text": user_text,
+                }
+            ],
+            user_id=user_id,
         )
-        valid_decisions = {d.value for d in CvDecisionType}
-        if decision_val not in valid_decisions:
-            raise AppError(
-                status_code=400,
-                message=f"Invalid decision '{decision_val}'. Must be one of: {sorted(valid_decisions)}.",
-                error_code="INVALID_DECISION",
-            )
-
-        if decision_val == CvDecisionType.EDITED and not (
-            user_text and user_text.strip()
-        ):
-            raise AppError(
-                status_code=400,
-                message="user_text is required when decision is EDITED.",
-                error_code="USER_TEXT_REQUIRED",
-            )
-
-        updated = await self.repo.update_suggestion_decision(
-            session_id=session.id,
-            suggestion_id=suggestion_id,
-            decision=decision_val,
-            user_text=user_text,
-        )
-        return updated or session
 
     async def batch_decide(
         self,
@@ -173,20 +149,37 @@ class CvImprovementWorkflow:
                 error_code="INVALID_SESSION_STATE",
             )
 
+        valid_decisions = {d.value for d in CvDecisionType}
+        now_iso = datetime.now(UTC).isoformat()
+        decisions_map: dict[str, dict[str, Any]] = {}
         for d in decisions:
             s_id = d.get("suggestion_id")
             dec = d.get("decision")
-            u_text = d.get("user_text")
             if s_id and dec:
-                await self.decide(
-                    session_id=session.id,
-                    suggestion_id=s_id,
-                    decision=dec,
-                    user_text=u_text,
-                    user_id=user_id,
-                )
+                dec_val = dec.value if isinstance(dec, CvDecisionType) else str(dec)
+                if dec_val not in valid_decisions:
+                    raise AppError(
+                        status_code=400,
+                        message=f"Invalid decision '{dec_val}'. Must be one of: {sorted(valid_decisions)}.",
+                        error_code="INVALID_DECISION",
+                    )
+                u_text = d.get("user_text")
+                if dec_val == CvDecisionType.EDITED and not (u_text and u_text.strip()):
+                    raise AppError(
+                        status_code=400,
+                        message="user_text is required when decision is EDITED.",
+                        error_code="USER_TEXT_REQUIRED",
+                    )
+                decisions_map[s_id] = {
+                    "decision": dec_val,
+                    "final_text": u_text,
+                    "updated_at": now_iso,
+                }
 
-        return await self.get_session(session_id, user_id=user_id)
+        if decisions_map:
+            updated = await self.repo.update_all_decisions(session.id, decisions_map)
+            return updated or session
+        return session
 
     async def resume(
         self,

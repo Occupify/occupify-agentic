@@ -21,8 +21,9 @@ Your task is to take the original candidate CV and apply ONLY the user-approved 
 2. **Preserve Truthfulness:**
    - Do NOT add new unverified facts, companies, or degrees outside the original CV and approved changes.
 3. **Format & Organization:**
-   - Standardize sections: Header/Contact, Professional Summary, Work Experience, Projects, Skills, and Education.
+   - Standardize sections: Header/Contact, Professional Summary, Work Experience, Projects, Skills, Education, Certifications, and Additional Sections (e.g., Engineering Practices, Awards, Activities, Languages).
    - Ensure concise, professional, action-oriented bullet points.
+   - If the candidate CV contains additional sections like Engineering Practices, Awards, Certifications, or Activities, preserve them in `certifications` or `additional_sections`.
 
 # Output Schema
 Return valid structured data strictly conforming to `app.skill_schemas.cv_improvement.ResumeData`.

@@ -1,9 +1,9 @@
 from datetime import datetime
 from typing import Any
 
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, ConfigDict, Field
 
-from app.db.repositories.cv_improvement import CvDecisionType, CvImprovementStep
+from app.db.repositories.cv_improvement import CvDecisionType
 
 
 class CreateCvSessionRequest(BaseModel):
@@ -31,16 +31,19 @@ class BatchCvDecisionRequest(BaseModel):
 
 
 class CvSessionResponse(BaseModel):
+    model_config = ConfigDict(from_attributes=True)
+
     id: str
     user_id: str
-    chat_session_id: str | None
+    chat_session_id: str | None = None
     status: str
+    step: str | None = None
     original_cv_text: str
     target_jd_text: str
-    proposals: dict[str, Any]
-    user_decisions: dict[str, Any]
-    revised_resume_data: dict[str, Any] | None
-    pdf_url: str | None
-    created_at: datetime
-    updated_at: datetime
+    proposals: dict[str, Any] = {}
+    user_decisions: dict[str, Any] = {}
+    revised_resume_data: dict[str, Any] | None = None
+    pdf_url: str | None = None
+    created_at: datetime | None = None
+    updated_at: datetime | None = None
 
