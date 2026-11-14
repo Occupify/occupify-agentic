@@ -44,7 +44,7 @@ def environment() -> Environment:
     return env
 
 
-def render_cv(payload: GenerateCvInput, contact: dict[str, str] | None = None) -> str:
+def render_cv(payload: GenerateCvInput) -> str:
     vi = payload.language == "vi"
     labels = {
         "summary": "TÓM TẮT" if vi else "PROFESSIONAL SUMMARY",
@@ -75,6 +75,5 @@ def render_cv(payload: GenerateCvInput, contact: dict[str, str] | None = None) -
             labels=labels,
             period=period,
             date=lambda value: display_date(value, payload.language),
-            contact=contact or {},
         )
     )

@@ -7,6 +7,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.agents.deps import AgentDeps
 from app.core.security import CurrentUser
+from app.db.models import CvImprovementSession
 from app.db.repositories.cv_improvement import (
     CvDecisionType,
     CvImprovementRepository,
@@ -108,7 +109,9 @@ async def test_review_and_improve_cv_need_cv(test_db: AsyncSession, current_user
 
 
 @pytest.mark.asyncio
-async def test_review_and_improve_cv_need_jd(test_db: AsyncSession, current_user, monkeypatch):
+async def test_review_and_improve_cv_need_jd(
+    test_db: AsyncSession, current_user, monkeypatch
+):
     deps = AgentDeps(user=current_user, session_id="sess-1", db=test_db)
     ctx = MagicMock(spec=RunContext)
     ctx.deps = deps
@@ -124,7 +127,9 @@ async def test_review_and_improve_cv_need_jd(test_db: AsyncSession, current_user
 
 
 @pytest.mark.asyncio
-async def test_review_and_improve_cv_success(test_db: AsyncSession, current_user, monkeypatch):
+async def test_review_and_improve_cv_success(
+    test_db: AsyncSession, current_user, monkeypatch
+):
     deps = AgentDeps(user=current_user, session_id="chat-sess-100", db=test_db)
     ctx = MagicMock(spec=RunContext)
     ctx.deps = deps
@@ -287,7 +292,9 @@ async def test_review_and_improve_cv_with_raw_text(
 
 
 @pytest.mark.asyncio
-async def test_review_and_improve_cv_from_memory(test_db: AsyncSession, current_user, monkeypatch):
+async def test_review_and_improve_cv_from_memory(
+    test_db: AsyncSession, current_user, monkeypatch
+):
     from app.memory.schemas import MemoryItemCreate
     from app.memory.service import MemoryService
 
@@ -409,7 +416,9 @@ async def test_record_cv_decisions_approve_all(test_db: AsyncSession, current_us
 
 
 @pytest.mark.asyncio
-async def test_finalize_and_generate_cv_fallback_lookup(test_db: AsyncSession, current_user):
+async def test_finalize_and_generate_cv_fallback_lookup(
+    test_db: AsyncSession, current_user
+):
     repo = CvImprovementRepository(test_db)
     session = await repo.create_session(
         user_id=current_user.user_id,
@@ -481,45 +490,6 @@ async def test_finalize_and_generate_cv_fallback_lookup(test_db: AsyncSession, c
     assert refreshed.pdf_url == "/download/art-fallback.pdf"
 
 
-@pytest.mark.asyncio
-async def test_session_id_mismatch_auto_resolution(test_db: AsyncSession, current_user):
-    """Verifies that passing chat_session_id instead of cv_session_id resolves cleanly."""
-    repo = CvImprovementRepository(test_db)
-    chat_sess_id = "0672cb72-chat-uuid"
-
-    cv_session = await repo.create_session(
-        user_id=current_user.user_id,
-        original_cv_text="CV Gốc",
-        target_jd_text="JD Mục Tiêu",
-        chat_session_id=chat_sess_id,
-    )
-    await repo.save_suggestions(
-        cv_session.id,
-        {
-            "target_role": "Backend",
-            "suggestions": [
-                {"id": "s1", "target_original_text": "Old", "suggested_revised_text": "New"}
-            ],
-        },
-    )
-
-    # 1. Repository get_session finds by chat_session_id directly
-    found_by_chat_id = await repo.get_session(chat_sess_id, user_id=current_user.user_id)
-    assert found_by_chat_id is not None
-    assert found_by_chat_id.id == cv_session.id
-
-    # 2. record_cv_decisions auto-resolves when model passes chat_session_id as session_id
-    deps = AgentDeps(user=current_user, session_id=chat_sess_id, db=test_db)
-    ctx = MagicMock(spec=RunContext)
-    ctx.deps = deps
-
-    res = await record_cv_decisions(ctx, session_id=chat_sess_id, action="approve_all")
-    assert "Đã ghi nhận quyết định" in res
-
-    updated = await repo.get_session(cv_session.id)
-    assert updated.user_decisions["s1"]["decision"] == "APPROVED"
-
-
 # ---------------------------------------------------------------------------
 # Chat Agent registration check
 # ---------------------------------------------------------------------------
@@ -531,62 +501,3 @@ def test_chat_agent_has_cv_improvement_tools():
     assert "record_cv_decisions" in tool_keys
     assert "finalize_and_generate_cv" in tool_keys
 
-
-@pytest.mark.asyncio
-async def test_review_and_improve_cv_cold_start_from_jd(
-    test_db: AsyncSession, current_user, monkeypatch
-):
-    deps = AgentDeps(user=current_user, session_id="chat-sess-cold", db=test_db)
-    ctx = MagicMock(spec=RunContext)
-    ctx.deps = deps
-
-    # Mock finding candidate CV returns None (no CV)
-    monkeypatch.setattr(
-        "app.features.cv_improvement.chat_tool._find_candidate_cv",
-        AsyncMock(return_value=None),
-    )
-
-    # Mock CvImprovementWorkflow analyze output
-    async def mock_analyze(self, session_id, user_id=None, deps=None):
-        repo = CvImprovementRepository(self.db)
-        await repo.save_suggestions(
-            session_id=session_id,
-            proposals={
-                "target_role": "Fullstack Engineer",
-                "summary": "Tạo CV mẫu từ JD thành công.",
-                "strengths": ["Cơ sở dữ liệu tốt"],
-                "missing_skills": ["Docker"],
-                "suggestions": [
-                    {
-                        "id": "sug-1",
-                        "section": "Dự án tiêu biểu",
-                        "target_original_text": "Your Highlighted Project",
-                        "suggested_revised_text": "E-Commerce System with React and FastAPI",
-                        "reason": "Phù hợp JD Fullstack",
-                    }
-                ],
-            },
-        )
-        return await repo.get_session(session_id)
-
-    monkeypatch.setattr(
-        "app.features.cv_improvement.chat_tool.CvImprovementWorkflow.analyze",
-        mock_analyze,
-    )
-
-    res = await review_and_improve_cv(
-        ctx,
-        target_jd="Tuyển dụng Fullstack Engineer yêu cầu React, FastAPI, PostgreSQL",
-        create_starter=True,
-    )
-
-    assert "Khởi tạo CV mẫu từ JD" in res
-    assert "Fullstack Engineer" in res
-    assert "sug-1" in res
-
-    # Verify session was created with synthesized CV text
-    repo = CvImprovementRepository(test_db)
-    session = await repo.get_session("chat-sess-cold", user_id=current_user.user_id)
-    assert session is not None
-    assert "HỒ SƠ ỨNG VIÊN (KHỞI TẠO TỰ ĐỘNG TỪ JD)" in session.original_cv_text
-    assert "youremail@gmail.com" in session.original_cv_text

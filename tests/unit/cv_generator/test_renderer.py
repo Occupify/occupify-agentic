@@ -25,18 +25,3 @@ def test_empty_roles_and_nullable_dates_do_not_print_none_or_dangling_separators
     assert "None" not in tex
     assert "Demo Company" in tex
     assert "DevOps Engineer" not in tex
-
-
-def test_render_with_custom_contact_and_placeholders():
-    payload = sample_payload()
-    contact = {
-        "name": "Nguyen Van B",
-        "email": "youremail@gmail.com",
-        "phone": "+84 123 456 789",
-        "link": "github.com/yourusername",
-    }
-    tex = render_cv(GenerateCvInput.model_validate(payload), contact=contact)
-    assert "Nguyen Van B" in tex
-    assert "youremail@gmail.com" in tex
-    assert "+84 123 456 789" in tex
-    assert "github.com/yourusername" in tex

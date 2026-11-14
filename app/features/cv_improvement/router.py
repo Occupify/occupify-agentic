@@ -36,7 +36,9 @@ async def create_session(
         target_jd_text=body.target_jd_text,
         chat_session_id=body.chat_session_id,
     )
-    return success_response(session_to_dict(session), message="Session created", status_code=201)
+    return success_response(
+        session_to_dict(session), message="Session created", status_code=201
+    )
 
 
 @router.get("/{session_id}")
@@ -106,7 +108,9 @@ async def recover_workflow(
 ):
     workflow = CvImprovementWorkflow(db)
     session = await workflow.recovery(session_id, user_id=user.user_id)
-    return success_response(session_to_dict(session), message="Workflow state rolled back")
+    return success_response(
+        session_to_dict(session), message="Workflow state rolled back"
+    )
 
 
 @router.post("/{session_id}/generate")
@@ -147,3 +151,5 @@ async def download_cv_artifact(filename: str):
     MEDIA_TYPES = {".pdf": "application/pdf", ".tex": "application/x-tex; charset=utf-8"}
     media_type = MEDIA_TYPES.get(path.suffix.lower(), "application/octet-stream")
     return FileResponse(path, media_type=media_type, filename=path.name)
+
+

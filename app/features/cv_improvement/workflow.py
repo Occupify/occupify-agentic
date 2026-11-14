@@ -1,5 +1,3 @@
-import time
-import uuid
 from datetime import UTC, datetime
 from typing import Any
 
@@ -9,17 +7,17 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from app.agents.deps import AgentDeps
 from app.agents.subagent import create_skill_agent
 from app.core.errors import AppError
-from app.core.logging import log_step
 from app.db.models import CvImprovementSession
 from app.db.repositories.cv_improvement import (
     CvDecisionType,
     CvImprovementRepository,
     CvImprovementStep,
 )
-from app.db.repositories.runs import RunRepository
 
 
-def format_decisions_for_prompt(proposals: dict[str, Any], user_decisions: dict[str, Any]) -> str:
+def format_decisions_for_prompt(
+    proposals: dict[str, Any], user_decisions: dict[str, Any]
+) -> str:
     """Formats proposals and user review decisions for the apply-cv-revisions skill prompt."""
     suggestions = proposals.get("suggestions", [])
     if not suggestions:
@@ -35,7 +33,9 @@ def format_decisions_for_prompt(proposals: dict[str, Any], user_decisions: dict[
             revised_text = s.get("suggested_revised_text", "")
             lines.append(f'- Gợi ý {s_id}: APPROVED\n  Nội dung mới: "{revised_text}"')
         elif decision_type == CvDecisionType.EDITED:
-            final_text = decision_info.get("final_text") or s.get("suggested_revised_text", "")
+            final_text = decision_info.get("final_text") or s.get(
+                "suggested_revised_text", ""
+            )
             lines.append(
                 f'- Gợi ý {s_id}: EDITED (Người dùng tự sửa)\n  Nội dung mới: "{final_text}"'
             )
@@ -107,69 +107,11 @@ class CvImprovementWorkflow:
         )
 
         agent = self._suggest_agent or create_skill_agent("suggest-cv-improvements")
-        trace_id = (getattr(deps, "trace_id", None) if deps else None) or str(uuid.uuid4())
-        run_repo = RunRepository(self.db)
-        agent_run = await run_repo.create_run(
-            use_case="cv_improvement",
-            user_id=session.user_id,
-            model="suggest-cv-improvements",
-            trace_id=trace_id,
-            session_id=session.id,
+        run_res = await agent.run(prompt, deps=deps)
+
+        updated = await self.repo.save_suggestions(
+            session.id, run_res.output, auto_transition=True
         )
-        t0 = time.perf_counter()
-        steps_log: list[dict[str, Any]] = [
-            {"event": "cv_improvement.analyze.start", "session_id": session.id, "ts": time.time()}
-        ]
-        log_step("cv_improvement.analyze.start", session_id=session.id, trace_id=trace_id)
-
-        try:
-            run_res = await agent.run(prompt, deps=deps)
-            latency_ms = int((time.perf_counter() - t0) * 1000)
-            try:
-                usage = (
-                    run_res.usage()
-                    if hasattr(run_res, "usage") and callable(run_res.usage)
-                    else getattr(run_res, "usage", None)
-                )
-            except Exception:
-                usage = getattr(run_res, "usage", None)
-            tokens_in = (
-                getattr(usage, "request_tokens", 0) or getattr(usage, "input_tokens", 0) or 0
-            )
-            tokens_out = (
-                getattr(usage, "response_tokens", 0) or getattr(usage, "output_tokens", 0) or 0
-            )
-            steps_log.append(
-                {
-                    "event": "cv_improvement.analyze.success",
-                    "session_id": session.id,
-                    "ts": time.time(),
-                }
-            )
-            log_step("cv_improvement.analyze.success", session_id=session.id, latency_ms=latency_ms)
-            await run_repo.finish_success(
-                run_id=agent_run.id,
-                tokens_in=tokens_in,
-                tokens_out=tokens_out,
-                latency_ms=latency_ms,
-                steps=steps_log,
-            )
-        except Exception as exc:
-            latency_ms = int((time.perf_counter() - t0) * 1000)
-            steps_log.append(
-                {"event": "cv_improvement.analyze.error", "error": str(exc), "ts": time.time()}
-            )
-            log_step("cv_improvement.analyze.error", session_id=session.id, error=str(exc))
-            await run_repo.finish_failed(
-                run_id=agent_run.id,
-                error_message=str(exc),
-                latency_ms=latency_ms,
-                steps=steps_log,
-            )
-            await self.repo.transition_step(session.id, CvImprovementStep.INIT)
-            raise
-
-        updated = await self.repo.save_suggestions(session.id, run_res.output, auto_transition=True)
         return updated or session
 
     async def decide(
@@ -201,18 +143,11 @@ class CvImprovementWorkflow:
         session = await self.get_session(session_id, user_id=user_id)
 
         if session.status != CvImprovementStep.WAITING_USER_REVIEW:
-            if (
-                session.status == CvImprovementStep.APPLYING_CHANGES
-                and not session.revised_resume_data
-            ):
-                await self.repo.transition_step(session.id, CvImprovementStep.WAITING_USER_REVIEW)
-                session = await self.get_session(session_id, user_id=user_id)
-            else:
-                raise AppError(
-                    status_code=400,
-                    message=f"Cannot record decisions: session is currently in '{session.status}' state. Expected 'WAITING_USER_REVIEW'.",
-                    error_code="INVALID_SESSION_STATE",
-                )
+            raise AppError(
+                status_code=400,
+                message=f"Cannot record decisions: session is currently in '{session.status}' state. Expected 'WAITING_USER_REVIEW'.",
+                error_code="INVALID_SESSION_STATE",
+            )
 
         valid_decisions = {d.value for d in CvDecisionType}
         now_iso = datetime.now(UTC).isoformat()
@@ -242,7 +177,6 @@ class CvImprovementWorkflow:
                 }
 
         if decisions_map:
-            log_step("cv_improvement.batch_decide", session_id=session.id, count=len(decisions_map))
             updated = await self.repo.update_all_decisions(session.id, decisions_map)
             return updated or session
         return session
@@ -256,17 +190,11 @@ class CvImprovementWorkflow:
         session = await self.get_session(session_id, user_id=user_id)
 
         if session.status != CvImprovementStep.WAITING_USER_REVIEW:
-            if (
-                session.status == CvImprovementStep.APPLYING_CHANGES
-                and not session.revised_resume_data
-            ):
-                pass
-            else:
-                raise AppError(
-                    status_code=400,
-                    message=f"Cannot resume session from status '{session.status}'. Expected 'WAITING_USER_REVIEW'.",
-                    error_code="INVALID_SESSION_STATE",
-                )
+            raise AppError(
+                status_code=400,
+                message=f"Cannot resume session from status '{session.status}'. Expected 'WAITING_USER_REVIEW'.",
+                error_code="INVALID_SESSION_STATE",
+            )
 
         # Transition to APPLYING_CHANGES
         await self.repo.transition_step(session.id, CvImprovementStep.APPLYING_CHANGES)
@@ -281,75 +209,16 @@ class CvImprovementWorkflow:
         )
 
         agent = self._apply_agent or create_skill_agent("apply-cv-revisions")
-        trace_id = (getattr(deps, "trace_id", None) if deps else None) or str(uuid.uuid4())
-        run_repo = RunRepository(self.db)
-        agent_run = await run_repo.create_run(
-            use_case="cv_improvement",
-            user_id=session.user_id,
-            model="apply-cv-revisions",
-            trace_id=trace_id,
-            session_id=session.id,
-        )
-        t0 = time.perf_counter()
-        steps_log: list[dict[str, Any]] = [
-            {"event": "cv_improvement.resume.start", "session_id": session.id, "ts": time.time()}
-        ]
-        log_step("cv_improvement.resume.start", session_id=session.id, trace_id=trace_id)
-
-        try:
-            run_res = await agent.run(prompt, deps=deps)
-            latency_ms = int((time.perf_counter() - t0) * 1000)
-            try:
-                usage = (
-                    run_res.usage()
-                    if hasattr(run_res, "usage") and callable(run_res.usage)
-                    else getattr(run_res, "usage", None)
-                )
-            except Exception:
-                usage = getattr(run_res, "usage", None)
-            tokens_in = (
-                getattr(usage, "request_tokens", 0) or getattr(usage, "input_tokens", 0) or 0
-            )
-            tokens_out = (
-                getattr(usage, "response_tokens", 0) or getattr(usage, "output_tokens", 0) or 0
-            )
-            steps_log.append(
-                {
-                    "event": "cv_improvement.resume.success",
-                    "session_id": session.id,
-                    "ts": time.time(),
-                }
-            )
-            log_step("cv_improvement.resume.success", session_id=session.id, latency_ms=latency_ms)
-            await run_repo.finish_success(
-                run_id=agent_run.id,
-                tokens_in=tokens_in,
-                tokens_out=tokens_out,
-                latency_ms=latency_ms,
-                steps=steps_log,
-            )
-        except Exception as exc:
-            latency_ms = int((time.perf_counter() - t0) * 1000)
-            steps_log.append(
-                {"event": "cv_improvement.resume.error", "error": str(exc), "ts": time.time()}
-            )
-            log_step("cv_improvement.resume.error", session_id=session.id, error=str(exc))
-            await run_repo.finish_failed(
-                run_id=agent_run.id,
-                error_message=str(exc),
-                latency_ms=latency_ms,
-                steps=steps_log,
-            )
-            await self.repo.transition_step(session.id, CvImprovementStep.WAITING_USER_REVIEW)
-            raise
+        run_res = await agent.run(prompt, deps=deps)
 
         updated = await self.repo.save_revised_resume(session.id, run_res.output)
         return updated or session
 
-    async def recovery(self, session_id: str, user_id: str | None = None) -> CvImprovementSession:
+    async def recovery(
+        self, session_id: str, user_id: str | None = None
+    ) -> CvImprovementSession:
         """Rollbacks session state, resetting all user decisions and clearing revised data."""
         session = await self.get_session(session_id, user_id=user_id)
-        log_step("cv_improvement.recovery", session_id=session.id, user_id=user_id)
 
         # Reverts decisions, revised resume data and resets status back to WAITING_USER_REVIEW
         recovered = await self.repo.reset_decisions(
@@ -357,3 +226,4 @@ class CvImprovementWorkflow:
             reset_step_to=CvImprovementStep.WAITING_USER_REVIEW,
         )
         return recovered or session
+

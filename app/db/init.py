@@ -3,7 +3,7 @@ from datetime import UTC, datetime
 from sqlalchemy import text, update
 
 from app.core.logging import log_step
-from app.db.models import AgentRun, Base, ChatSession
+from app.db.models import AgentRun, Base, ChatSession, CvImprovementSession
 from app.db.session import get_engine, get_sessionmaker
 
 
