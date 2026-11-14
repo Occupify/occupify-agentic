@@ -2,7 +2,7 @@
 
 - **Tổng số ca kiểm thử:** 8
 - **Số ca đạt chuẩn (PASS):** 8/8 (100.0%)
-- **Thời gian thực thi:** 0.21s
+- **Thời gian thực thi:** 0.23s
 - **No-Hallucination Rate trung bình:** 100.0% (Kỳ vọng: 100%)
 - **Action-Oriented Score (STAR/XYZ) trung bình:** 100.0% (Kỳ vọng: > 70%)
 - **Placeholder Integrity Score trung bình:** 100.0% (Kỳ vọng: 100%)
@@ -12,13 +12,13 @@
 | ID | Tên Ca Kiểm Thử | Trạng Thái | No-Hallucination | Action/STAR | Placeholder | State/PDF | Thời Gian |
 |:---|:---|:---:|:---:|:---:|:---:|:---:|:---:|
 | `case_1` | Junior CRUD to STAR / Docker & Redis | ✅ PASS | 100% | 100.0% | 100% | OK | 34ms |
-| `case_2` | Sparse CV & Missing Placeholders | ✅ PASS | 100% | 100.0% | 100% | OK | 20ms |
+| `case_2` | Sparse CV & Missing Placeholders | ✅ PASS | 100% | 100.0% | 100% | OK | 22ms |
 | `case_3` | Career Transition (Data Analyst to AI Engineer) | ✅ PASS | 100% | 100.0% | 100% | OK | 21ms |
 | `case_4` | Rejection & Recovery Rollback | ✅ PASS | 100% | 100.0% | 100% | OK | 23ms |
-| `case_5` | Cold-Start from Job Description | ✅ PASS | 100% | 100.0% | 100% | OK | 20ms |
-| `case_6` | Selective Decisions & Custom User Edit | ✅ PASS | 100% | 100.0% | 100% | OK | 21ms |
-| `case_7` | General HR Review Standards | ✅ PASS | 100% | 100.0% | 100% | OK | 22ms |
-| `case_8` | Bilingual Vietnamese to English Alignment | ✅ PASS | 100% | 100.0% | 100% | OK | 19ms |
+| `case_5` | Cold-Start from Job Description | ✅ PASS | 100% | 100.0% | 100% | OK | 21ms |
+| `case_6` | Selective Decisions & Custom User Edit | ✅ PASS | 100% | 100.0% | 100% | OK | 20ms |
+| `case_7` | General HR Review Standards | ✅ PASS | 100% | 100.0% | 100% | OK | 30ms |
+| `case_8` | Bilingual Vietnamese to English Alignment | ✅ PASS | 100% | 100.0% | 100% | OK | 28ms |
 
 ## Đánh Giá Mục Tiêu & Tiêu Chuẩn Rubric
 
