@@ -69,7 +69,21 @@ class CvImprovementRepository:
         if user_id is not None:
             stmt = stmt.where(CvImprovementSession.user_id == user_id)
         res = await self.session.execute(stmt)
-        return res.scalar_one_or_none()
+        sess = res.scalar_one_or_none()
+        if sess:
+            return sess
+
+        # Fallback: check if session_id was passed as chat_session_id
+        chat_stmt = (
+            select(CvImprovementSession)
+            .where(CvImprovementSession.chat_session_id == session_id)
+            .order_by(desc(CvImprovementSession.updated_at))
+            .limit(1)
+        )
+        if user_id is not None:
+            chat_stmt = chat_stmt.where(CvImprovementSession.user_id == user_id)
+        res_chat = await self.session.execute(chat_stmt)
+        return res_chat.scalar_one_or_none()
 
     async def list_sessions(
         self,

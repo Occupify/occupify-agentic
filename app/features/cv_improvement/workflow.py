@@ -103,7 +103,11 @@ class CvImprovementWorkflow:
         )
 
         agent = self._suggest_agent or create_skill_agent("suggest-cv-improvements")
-        run_res = await agent.run(prompt, deps=deps)
+        try:
+            run_res = await agent.run(prompt, deps=deps)
+        except Exception:
+            await self.repo.transition_step(session.id, CvImprovementStep.INIT)
+            raise
 
         updated = await self.repo.save_suggestions(session.id, run_res.output, auto_transition=True)
         return updated or session
@@ -137,11 +141,18 @@ class CvImprovementWorkflow:
         session = await self.get_session(session_id, user_id=user_id)
 
         if session.status != CvImprovementStep.WAITING_USER_REVIEW:
-            raise AppError(
-                status_code=400,
-                message=f"Cannot record decisions: session is currently in '{session.status}' state. Expected 'WAITING_USER_REVIEW'.",
-                error_code="INVALID_SESSION_STATE",
-            )
+            if (
+                session.status == CvImprovementStep.APPLYING_CHANGES
+                and not session.revised_resume_data
+            ):
+                await self.repo.transition_step(session.id, CvImprovementStep.WAITING_USER_REVIEW)
+                session = await self.get_session(session_id, user_id=user_id)
+            else:
+                raise AppError(
+                    status_code=400,
+                    message=f"Cannot record decisions: session is currently in '{session.status}' state. Expected 'WAITING_USER_REVIEW'.",
+                    error_code="INVALID_SESSION_STATE",
+                )
 
         valid_decisions = {d.value for d in CvDecisionType}
         now_iso = datetime.now(UTC).isoformat()
@@ -184,11 +195,17 @@ class CvImprovementWorkflow:
         session = await self.get_session(session_id, user_id=user_id)
 
         if session.status != CvImprovementStep.WAITING_USER_REVIEW:
-            raise AppError(
-                status_code=400,
-                message=f"Cannot resume session from status '{session.status}'. Expected 'WAITING_USER_REVIEW'.",
-                error_code="INVALID_SESSION_STATE",
-            )
+            if (
+                session.status == CvImprovementStep.APPLYING_CHANGES
+                and not session.revised_resume_data
+            ):
+                pass
+            else:
+                raise AppError(
+                    status_code=400,
+                    message=f"Cannot resume session from status '{session.status}'. Expected 'WAITING_USER_REVIEW'.",
+                    error_code="INVALID_SESSION_STATE",
+                )
 
         # Transition to APPLYING_CHANGES
         await self.repo.transition_step(session.id, CvImprovementStep.APPLYING_CHANGES)
@@ -203,7 +220,11 @@ class CvImprovementWorkflow:
         )
 
         agent = self._apply_agent or create_skill_agent("apply-cv-revisions")
-        run_res = await agent.run(prompt, deps=deps)
+        try:
+            run_res = await agent.run(prompt, deps=deps)
+        except Exception:
+            await self.repo.transition_step(session.id, CvImprovementStep.WAITING_USER_REVIEW)
+            raise
 
         updated = await self.repo.save_revised_resume(session.id, run_res.output)
         return updated or session

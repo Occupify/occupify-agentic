@@ -10,7 +10,7 @@ from app.agents.deps import AgentDeps
 from app.agents.skill_registry import SkillRegistry
 from app.core.logging import get_current_context, log_step
 from app.core.pricing import calculate_token_cost
-from app.llm.glm import get_model
+from app.llm.glm import get_model, get_model_settings
 
 _skill_model_overrides: ContextVar[dict[str, Any]] = ContextVar(
     "_skill_model_overrides", default={}
@@ -52,6 +52,9 @@ def create_skill_agent(
             model = overrides[name]
         else:
             model = get_model()
+
+    if model_settings is None:
+        model_settings = get_model_settings()
 
     registry = get_skill_registry()
     meta = registry.get(name)

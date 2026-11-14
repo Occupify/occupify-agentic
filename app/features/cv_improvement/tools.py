@@ -273,24 +273,66 @@ def _get_cv_generator_service(deps: AgentDeps | None = None) -> CvGeneratorServi
 
 async def _resolve_latest_session_id(
     ctx: RunContext[AgentDeps],
+    candidate_id: str | None = None,
 ) -> str | None:
-    """Finds the most recent active CvImprovementSession for this chat turn."""
-    if not ctx.deps.db or not ctx.deps.user:
+    """Finds the active CvImprovementSession ID for this chat turn or candidate ID.
+
+    Handles candidate_id being either a CvImprovementSession.id or a chat_session_id,
+    with fallback to current turn's chat_session_id or latest user CV session.
+    """
+    if not ctx.deps.db or not ctx.deps.user or not ctx.deps.user.user_id:
         return None
 
-    stmt = (
-        select(CvImprovementSession.id)
-        .where(CvImprovementSession.user_id == ctx.deps.user.user_id)
-        .order_by(desc(CvImprovementSession.updated_at))
-        .limit(1)
-    )
+    user_id = ctx.deps.user.user_id
+
+    # 1. If candidate_id is provided, check if it directly matches a CvImprovementSession.id
+    if candidate_id and candidate_id.strip():
+        cid = candidate_id.strip()
+        stmt_direct = select(CvImprovementSession.id).where(
+            CvImprovementSession.id == cid,
+            CvImprovementSession.user_id == user_id,
+        )
+        res = await ctx.deps.db.execute(stmt_direct)
+        if found := res.scalar_one_or_none():
+            return str(found)
+
+        # Candidate might be a chat_session_id
+        stmt_chat = (
+            select(CvImprovementSession.id)
+            .where(
+                CvImprovementSession.chat_session_id == cid,
+                CvImprovementSession.user_id == user_id,
+            )
+            .order_by(desc(CvImprovementSession.updated_at))
+            .limit(1)
+        )
+        res = await ctx.deps.db.execute(stmt_chat)
+        if found := res.scalar_one_or_none():
+            return str(found)
+
+    # 2. Check current turn's chat_session_id
     if ctx.deps.session_id:
-        chat_stmt = stmt.where(CvImprovementSession.chat_session_id == ctx.deps.session_id)
+        chat_stmt = (
+            select(CvImprovementSession.id)
+            .where(
+                CvImprovementSession.chat_session_id == ctx.deps.session_id,
+                CvImprovementSession.user_id == user_id,
+            )
+            .order_by(desc(CvImprovementSession.updated_at))
+            .limit(1)
+        )
         res = await ctx.deps.db.execute(chat_stmt)
         found_id = res.scalar_one_or_none()
         if found_id:
             return str(found_id)
 
+    # 3. Fall back to user's most recent CV session
+    stmt = (
+        select(CvImprovementSession.id)
+        .where(CvImprovementSession.user_id == user_id)
+        .order_by(desc(CvImprovementSession.updated_at))
+        .limit(1)
+    )
     res = await ctx.deps.db.execute(stmt)
     found_id = res.scalar_one_or_none()
     return str(found_id) if found_id else None
@@ -331,7 +373,15 @@ async def execute_cv_finalization(
                     "Không thể xuất CV: Chưa có gợi ý nào được người dùng chấp thuận.",
                     {},
                 )
-        session = await workflow.resume(session_id, user_id=user_id, deps=deps)
+        try:
+            session = await workflow.resume(session_id, user_id=user_id, deps=deps)
+        except Exception as exc:
+            log_step("cv_improvement.resume_error", error=str(exc))
+            return (
+                False,
+                f"Quá trình áp dụng thay đổi vào CV thất bại: {exc}. Bạn có thể thử lại.",
+                {"error": str(exc)},
+            )
 
     if not session.revised_resume_data:
         return (
@@ -446,7 +496,7 @@ async def finalize_and_generate_cv(
     if not ctx.deps.db:
         return "Lỗi: Kết nối cơ sở dữ liệu không khả dụng."
 
-    target_session_id = session_id or await _resolve_latest_session_id(ctx)
+    target_session_id = await _resolve_latest_session_id(ctx, session_id)
     if not target_session_id:
         return "Lỗi: Không tìm thấy phiên làm việc CV nào đang mở để xuất file."
 
