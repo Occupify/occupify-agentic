@@ -47,9 +47,7 @@ def current_user():
 
 
 def test_local_storage_client(tmp_path):
-    storage = LocalStorageClient(
-        base_dir=tmp_path / "resumes", base_url="/download/cv"
-    )
+    storage = LocalStorageClient(base_dir=tmp_path / "resumes", base_url="/download/cv")
 
     # Test path sanitization
     assert storage._sanitize_filename("../../etc/passwd") == "passwd"
@@ -76,9 +74,7 @@ async def test_local_storage_upload_and_get(tmp_path):
 @pytest.mark.asyncio
 async def test_core_rpc_storage_client_success(tmp_path):
     mock_rpc = MagicMock()
-    mock_rpc.call = AsyncMock(
-        return_value={"ok": True, "url": "https://cdn.example.com/cv.pdf"}
-    )
+    mock_rpc.call = AsyncMock(return_value={"ok": True, "url": "https://cdn.example.com/cv.pdf"})
 
     client = CoreRpcStorageClient(rpc_client=mock_rpc)
     url = await client.upload_file(b"content", "doc.pdf")
@@ -353,9 +349,7 @@ async def test_execute_cv_finalization_success(test_db: AsyncSession, current_us
 
 
 @pytest.mark.asyncio
-async def test_execute_cv_finalization_no_decisions(
-    test_db: AsyncSession, current_user
-):
+async def test_execute_cv_finalization_no_decisions(test_db: AsyncSession, current_user):
     repo = CvImprovementRepository(test_db)
     session = await repo.create_session(
         user_id=current_user.user_id,
@@ -374,9 +368,7 @@ async def test_execute_cv_finalization_no_decisions(
 
 
 @pytest.mark.asyncio
-async def test_finalize_and_generate_cv_agent_tool(
-    test_db: AsyncSession, current_user
-):
+async def test_finalize_and_generate_cv_agent_tool(test_db: AsyncSession, current_user):
     repo = CvImprovementRepository(test_db)
     session = await repo.create_session(
         user_id=current_user.user_id,

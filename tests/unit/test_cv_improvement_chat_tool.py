@@ -108,9 +108,7 @@ async def test_review_and_improve_cv_need_cv(test_db: AsyncSession, current_user
 
 
 @pytest.mark.asyncio
-async def test_review_and_improve_cv_need_jd(
-    test_db: AsyncSession, current_user, monkeypatch
-):
+async def test_review_and_improve_cv_need_jd(test_db: AsyncSession, current_user, monkeypatch):
     deps = AgentDeps(user=current_user, session_id="sess-1", db=test_db)
     ctx = MagicMock(spec=RunContext)
     ctx.deps = deps
@@ -126,9 +124,7 @@ async def test_review_and_improve_cv_need_jd(
 
 
 @pytest.mark.asyncio
-async def test_review_and_improve_cv_success(
-    test_db: AsyncSession, current_user, monkeypatch
-):
+async def test_review_and_improve_cv_success(test_db: AsyncSession, current_user, monkeypatch):
     deps = AgentDeps(user=current_user, session_id="chat-sess-100", db=test_db)
     ctx = MagicMock(spec=RunContext)
     ctx.deps = deps
@@ -291,9 +287,7 @@ async def test_review_and_improve_cv_with_raw_text(
 
 
 @pytest.mark.asyncio
-async def test_review_and_improve_cv_from_memory(
-    test_db: AsyncSession, current_user, monkeypatch
-):
+async def test_review_and_improve_cv_from_memory(test_db: AsyncSession, current_user, monkeypatch):
     from app.memory.schemas import MemoryItemCreate
     from app.memory.service import MemoryService
 
@@ -415,9 +409,7 @@ async def test_record_cv_decisions_approve_all(test_db: AsyncSession, current_us
 
 
 @pytest.mark.asyncio
-async def test_finalize_and_generate_cv_fallback_lookup(
-    test_db: AsyncSession, current_user
-):
+async def test_finalize_and_generate_cv_fallback_lookup(test_db: AsyncSession, current_user):
     repo = CvImprovementRepository(test_db)
     session = await repo.create_session(
         user_id=current_user.user_id,
@@ -499,4 +491,3 @@ def test_chat_agent_has_cv_improvement_tools():
     assert "review_and_improve_cv" in tool_keys
     assert "record_cv_decisions" in tool_keys
     assert "finalize_and_generate_cv" in tool_keys
-

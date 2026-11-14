@@ -309,9 +309,7 @@ class CvImprovementSession(Base):
         DateTime(timezone=True), default=utc_now, onupdate=utc_now
     )
 
-    __table_args__ = (
-        Index("ix_cv_improvement_sessions_user_updated", "user_id", "updated_at"),
-    )
+    __table_args__ = (Index("ix_cv_improvement_sessions_user_updated", "user_id", "updated_at"),)
 
     @property
     def step(self) -> str:
@@ -320,4 +318,3 @@ class CvImprovementSession(Base):
     @step.setter
     def step(self, value: str) -> None:
         self.status = value
-

@@ -187,9 +187,7 @@ async def test_workflow_decisions_and_validation(test_db, sample_proposal):
 
 
 @pytest.mark.asyncio
-async def test_workflow_resume_and_recovery(
-    test_db, sample_proposal, sample_revised_resume
-):
+async def test_workflow_resume_and_recovery(test_db, sample_proposal, sample_revised_resume):
     mock_apply = MockAgent(output=sample_revised_resume)
     workflow = CvImprovementWorkflow(test_db, apply_agent=mock_apply)
     repo = CvImprovementRepository(test_db)
@@ -246,9 +244,7 @@ async def test_format_decisions_for_prompt(sample_proposal):
             "final_text": "Xây dựng hệ thống giỏ hàng đồng thời.",
         },
     }
-    result_text = format_decisions_for_prompt(
-        sample_proposal.model_dump(), user_decisions
-    )
+    result_text = format_decisions_for_prompt(sample_proposal.model_dump(), user_decisions)
     assert '- Gợi ý s1: APPROVED\n  Nội dung mới: "' in result_text
     assert "- Gợi ý s2: REJECTED (Giữ nguyên văn bản gốc)" in result_text
     assert (
@@ -288,9 +284,7 @@ async def test_cv_improvement_api_endpoints(client, test_db, sample_proposal):
         json={"suggestion_id": "s1", "decision": "APPROVED"},
     )
     assert resp_decide.status_code == 200
-    assert (
-        resp_decide.json()["data"]["user_decisions"]["s1"]["decision"] == "APPROVED"
-    )
+    assert resp_decide.json()["data"]["user_decisions"]["s1"]["decision"] == "APPROVED"
 
     # 4. POST /ai/cv-improvement/{session_id}/batch-decide
     resp_batch = await client.post(
@@ -324,4 +318,3 @@ async def test_cv_improvement_api_endpoints(client, test_db, sample_proposal):
         headers={"X-User-Id": "other-user-456"},
     )
     assert resp_forbidden.status_code == 403
-

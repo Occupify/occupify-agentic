@@ -11,9 +11,7 @@ class CreateCvSessionRequest(BaseModel):
         ..., description="Raw text of candidate's original CV", min_length=1
     )
     target_jd_text: str = Field(..., description="Job Description text", min_length=1)
-    chat_session_id: str | None = Field(
-        default=None, description="Optional linked chat session ID"
-    )
+    chat_session_id: str | None = Field(default=None, description="Optional linked chat session ID")
 
 
 class CvDecisionRequest(BaseModel):
@@ -46,4 +44,3 @@ class CvSessionResponse(BaseModel):
     pdf_url: str | None = None
     created_at: datetime | None = None
     updated_at: datetime | None = None
-

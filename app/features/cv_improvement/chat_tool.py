@@ -38,7 +38,9 @@ async def _resolve_jd_text(
                 desc_text = proj.get("description") or proj.get("title") or ""
                 skills = proj.get("requiredSkills") or []
                 skills_str = ", ".join(skills) if skills else ""
-                return f"Tiêu đề: {proj.get('title', '')}\nMô tả: {desc_text}\nKỹ năng: {skills_str}"
+                return (
+                    f"Tiêu đề: {proj.get('title', '')}\nMô tả: {desc_text}\nKỹ năng: {skills_str}"
+                )
         except Exception as exc:
             logger.warning("Failed to fetch project detail via RPC for job_id %s: %s", job_id, exc)
 
@@ -86,11 +88,15 @@ async def _build_cv_from_memory(ctx: RunContext[AgentDeps]) -> str | None:
         if facts["skills"]:
             lines.append(f"**Kỹ năng chuyên môn:** {', '.join(facts['skills'])}")
         if facts["experience"]:
-            lines.append("**Kinh nghiệm làm việc:**\n" + "\n".join(f"- {e}" for e in facts["experience"]))
+            lines.append(
+                "**Kinh nghiệm làm việc:**\n" + "\n".join(f"- {e}" for e in facts["experience"])
+            )
         if facts["projects"]:
             lines.append("**Dự án tiêu biểu:**\n" + "\n".join(f"- {p}" for p in facts["projects"]))
         if facts["education"]:
-            lines.append("**Học vấn & Bằng cấp:**\n" + "\n".join(f"- {ed}" for ed in facts["education"]))
+            lines.append(
+                "**Học vấn & Bằng cấp:**\n" + "\n".join(f"- {ed}" for ed in facts["education"])
+            )
 
         return "\n\n".join(lines)
     except Exception as exc:
@@ -129,7 +135,11 @@ async def review_and_improve_cv(
     cv_text = raw_cv_text.strip() if raw_cv_text and raw_cv_text.strip() else ""
     if not cv_text:
         cv_obj = await _find_candidate_cv(ctx)
-        cv_text = cv_obj.text.strip() if cv_obj and cv_obj.text.strip() else ((await _build_cv_from_memory(ctx)) or "")
+        cv_text = (
+            cv_obj.text.strip()
+            if cv_obj and cv_obj.text.strip()
+            else ((await _build_cv_from_memory(ctx)) or "")
+        )
 
     if not cv_text:
         return (
@@ -143,7 +153,8 @@ async def review_and_improve_cv(
 
     # 2. Locate Target JD or apply General HR Review standards
     is_general = general_review or (
-        bool(target_jd) and target_jd.lower().strip() in ("general", "chung", "tổng quát", "mặc định", "hr")
+        bool(target_jd)
+        and target_jd.lower().strip() in ("general", "chung", "tổng quát", "mặc định", "hr")
     )
     if is_general:
         jd_text = (
@@ -210,13 +221,24 @@ async def review_and_improve_cv(
                 mem_items = [
                     ("target_role", "role", target_role, True),
                     ("skills", "strengths", ", ".join(strengths[:3]) if strengths else None, True),
-                    ("skills", "gaps", ", ".join(missing_skills[:3]) if missing_skills else None, False),
+                    (
+                        "skills",
+                        "gaps",
+                        ", ".join(missing_skills[:3]) if missing_skills else None,
+                        False,
+                    ),
                 ]
                 for cat, key, val, conf in mem_items:
                     if val:
                         await mem_svc.record_fact(
                             ctx.deps.user.user_id,
-                            MemoryItemCreate(category=cat, key=key, value=val, is_confirmed=conf, source="cv_improvement"),
+                            MemoryItemCreate(
+                                category=cat,
+                                key=key,
+                                value=val,
+                                is_confirmed=conf,
+                                source="cv_improvement",
+                            ),
                         )
         except Exception as exc:
             logger.warning("Failed to update task checkpoint or memory: %s", exc)
@@ -248,8 +270,8 @@ async def review_and_improve_cv(
         reason = sug.get("reason", "")
 
         lines.append(f"#### Gợi ý #{s_id} [{section}]")
-        lines.append(f"- **Văn bản gốc:** *\"{orig}\"*")
-        lines.append(f"- **Đề xuất mới:** **\"{revised}\"**")
+        lines.append(f'- **Văn bản gốc:** *"{orig}"*')
+        lines.append(f'- **Đề xuất mới:** **"{revised}"**')
         lines.append(f"- **Lý do cải thiện:** {reason}")
         lines.append("")
 
@@ -293,15 +315,15 @@ async def record_cv_decisions(
 
     async with ctx.deps.db_lock:
         workflow = CvImprovementWorkflow(ctx.deps.db)
-        session = await workflow.get_session(
-            target_session_id, user_id=ctx.deps.user.user_id
-        )
+        session = await workflow.get_session(target_session_id, user_id=ctx.deps.user.user_id)
 
         decisions_list: list[dict[str, Any]] = []
         suggestions = (session.proposals or {}).get("suggestions", [])
 
         if action in ("approve_all", "reject_all"):
-            dec_type = CvDecisionType.APPROVED if action == "approve_all" else CvDecisionType.REJECTED
+            dec_type = (
+                CvDecisionType.APPROVED if action == "approve_all" else CvDecisionType.REJECTED
+            )
             decisions_list = [
                 {"suggestion_id": s.get("id"), "decision": dec_type}
                 for s in suggestions

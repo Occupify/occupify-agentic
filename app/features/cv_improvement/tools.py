@@ -97,14 +97,11 @@ def resume_data_to_cv_content(
         skill_groups = [
             SkillGroup(
                 label=skill_label,
-                items=[str(s) for s in raw_skills if str(s).strip()][:30]
-                or [skill_label],
+                items=[str(s) for s in raw_skills if str(s).strip()][:30] or [skill_label],
             )
         ]
     else:
-        skill_groups = [
-            SkillGroup(label=skill_label, items=[skill_label])
-        ]
+        skill_groups = [SkillGroup(label=skill_label, items=[skill_label])]
 
     # Experience mapping
     raw_exp = data.get("experiences") or []
@@ -155,7 +152,8 @@ def resume_data_to_cv_content(
             Project(
                 name=name,
                 roles=[role],
-                technologies=[t for t in tech if t.strip()][:30] or (["Technologies"] if is_en else ["Công nghệ"]),
+                technologies=[t for t in tech if t.strip()][:30]
+                or (["Technologies"] if is_en else ["Công nghệ"]),
                 start_date="2024",
                 end_date=None,
                 is_current=False,
@@ -201,7 +199,9 @@ def resume_data_to_cv_content(
                     Certification(
                         name=str(name),
                         issuer=cert.get("issuer"),
-                        issued_date=cert.get("issued_date") or cert.get("issue_date") or cert.get("date"),
+                        issued_date=cert.get("issued_date")
+                        or cert.get("issue_date")
+                        or cert.get("date"),
                         expiry_date=cert.get("expiry_date"),
                         result=cert.get("result"),
                     )
@@ -265,9 +265,7 @@ def _get_cv_generator_service(deps: AgentDeps | None = None) -> CvGeneratorServi
 
     compiler = ResilientCvCompiler(settings.CV_COMPILER_URL)
 
-    service = CvGeneratorService(
-        compiler, storage, timeout_s=settings.CV_GENERATOR_TIMEOUT_S
-    )
+    service = CvGeneratorService(compiler, storage, timeout_s=settings.CV_GENERATOR_TIMEOUT_S)
     if deps:
         deps.cv_generator_service = service
     return service
@@ -287,9 +285,7 @@ async def _resolve_latest_session_id(
         .limit(1)
     )
     if ctx.deps.session_id:
-        chat_stmt = stmt.where(
-            CvImprovementSession.chat_session_id == ctx.deps.session_id
-        )
+        chat_stmt = stmt.where(CvImprovementSession.chat_session_id == ctx.deps.session_id)
         res = await ctx.deps.db.execute(chat_stmt)
         found_id = res.scalar_one_or_none()
         if found_id:
@@ -350,9 +346,7 @@ async def execute_cv_finalization(
     # Step 3: Run CV generator service
     generator_service = service or _get_cv_generator_service(deps)
     payload = GenerateCvInput(template_id=template_id, language=language, cv=cv_content)
-    result: GenerateCvResult = await generator_service.generate(
-        payload, owner_id=user_id
-    )
+    result: GenerateCvResult = await generator_service.generate(payload, owner_id=user_id)
 
     if result.status != "succeeded":
         error_code = result.error.code if result.error else "UNKNOWN_ERROR"
@@ -410,9 +404,7 @@ async def execute_cv_finalization(
     if pdf_url:
         lines.append(f"- **Tải CV (PDF):** [{pdf_file.filename}]({pdf_url})")
     if tex_file and tex_file.download_url:
-        lines.append(
-            f"- **Mã nguồn LaTeX (.tex):** [{tex_file.filename}]({tex_file.download_url})"
-        )
+        lines.append(f"- **Mã nguồn LaTeX (.tex):** [{tex_file.filename}]({tex_file.download_url})")
 
     lines.append(
         "\nBạn có thể tải file PDF về để nộp hồ sơ hoặc mở file .tex để tiếp tục tùy biến theo nhu cầu."
@@ -468,4 +460,3 @@ async def finalize_and_generate_cv(
             language=language,
         )
         return message
-

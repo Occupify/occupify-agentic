@@ -15,9 +15,7 @@ from app.db.repositories.cv_improvement import (
 )
 
 
-def format_decisions_for_prompt(
-    proposals: dict[str, Any], user_decisions: dict[str, Any]
-) -> str:
+def format_decisions_for_prompt(proposals: dict[str, Any], user_decisions: dict[str, Any]) -> str:
     """Formats proposals and user review decisions for the apply-cv-revisions skill prompt."""
     suggestions = proposals.get("suggestions", [])
     if not suggestions:
@@ -33,9 +31,7 @@ def format_decisions_for_prompt(
             revised_text = s.get("suggested_revised_text", "")
             lines.append(f'- Gợi ý {s_id}: APPROVED\n  Nội dung mới: "{revised_text}"')
         elif decision_type == CvDecisionType.EDITED:
-            final_text = decision_info.get("final_text") or s.get(
-                "suggested_revised_text", ""
-            )
+            final_text = decision_info.get("final_text") or s.get("suggested_revised_text", "")
             lines.append(
                 f'- Gợi ý {s_id}: EDITED (Người dùng tự sửa)\n  Nội dung mới: "{final_text}"'
             )
@@ -109,9 +105,7 @@ class CvImprovementWorkflow:
         agent = self._suggest_agent or create_skill_agent("suggest-cv-improvements")
         run_res = await agent.run(prompt, deps=deps)
 
-        updated = await self.repo.save_suggestions(
-            session.id, run_res.output, auto_transition=True
-        )
+        updated = await self.repo.save_suggestions(session.id, run_res.output, auto_transition=True)
         return updated or session
 
     async def decide(
@@ -214,9 +208,7 @@ class CvImprovementWorkflow:
         updated = await self.repo.save_revised_resume(session.id, run_res.output)
         return updated or session
 
-    async def recovery(
-        self, session_id: str, user_id: str | None = None
-    ) -> CvImprovementSession:
+    async def recovery(self, session_id: str, user_id: str | None = None) -> CvImprovementSession:
         """Rollbacks session state, resetting all user decisions and clearing revised data."""
         session = await self.get_session(session_id, user_id=user_id)
 
@@ -226,4 +218,3 @@ class CvImprovementWorkflow:
             reset_step_to=CvImprovementStep.WAITING_USER_REVIEW,
         )
         return recovered or session
-
