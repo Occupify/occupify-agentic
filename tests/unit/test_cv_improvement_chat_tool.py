@@ -481,6 +481,45 @@ async def test_finalize_and_generate_cv_fallback_lookup(test_db: AsyncSession, c
     assert refreshed.pdf_url == "/download/art-fallback.pdf"
 
 
+@pytest.mark.asyncio
+async def test_session_id_mismatch_auto_resolution(test_db: AsyncSession, current_user):
+    """Verifies that passing chat_session_id instead of cv_session_id resolves cleanly."""
+    repo = CvImprovementRepository(test_db)
+    chat_sess_id = "0672cb72-chat-uuid"
+
+    cv_session = await repo.create_session(
+        user_id=current_user.user_id,
+        original_cv_text="CV Gốc",
+        target_jd_text="JD Mục Tiêu",
+        chat_session_id=chat_sess_id,
+    )
+    await repo.save_suggestions(
+        cv_session.id,
+        {
+            "target_role": "Backend",
+            "suggestions": [
+                {"id": "s1", "target_original_text": "Old", "suggested_revised_text": "New"}
+            ],
+        },
+    )
+
+    # 1. Repository get_session finds by chat_session_id directly
+    found_by_chat_id = await repo.get_session(chat_sess_id, user_id=current_user.user_id)
+    assert found_by_chat_id is not None
+    assert found_by_chat_id.id == cv_session.id
+
+    # 2. record_cv_decisions auto-resolves when model passes chat_session_id as session_id
+    deps = AgentDeps(user=current_user, session_id=chat_sess_id, db=test_db)
+    ctx = MagicMock(spec=RunContext)
+    ctx.deps = deps
+
+    res = await record_cv_decisions(ctx, session_id=chat_sess_id, action="approve_all")
+    assert "Đã ghi nhận quyết định" in res
+
+    updated = await repo.get_session(cv_session.id)
+    assert updated.user_decisions["s1"]["decision"] == "APPROVED"
+
+
 # ---------------------------------------------------------------------------
 # Chat Agent registration check
 # ---------------------------------------------------------------------------

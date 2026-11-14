@@ -309,7 +309,7 @@ async def record_cv_decisions(
     if not ctx.deps.db:
         return "Lỗi: Kết nối cơ sở dữ liệu không khả dụng."
 
-    target_session_id = session_id or await _resolve_latest_session_id(ctx)
+    target_session_id = await _resolve_latest_session_id(ctx, session_id)
     if not target_session_id:
         return "Không tìm thấy phiên làm việc CV nào đang mở để ghi nhận quyết định."
 

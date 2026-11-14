@@ -1,4 +1,5 @@
 import asyncio
+import sys
 import threading
 import time
 from pathlib import Path
@@ -26,6 +27,7 @@ def test_accepts_readable_a4_pdf(pages):
         (make_pdf(size="letter"), "PDF_INVALID"),
         (b"%PDF" + b"x" * 5_242_880, "PDF_INVALID"),
     ],
+    ids=["not_pdf", "too_long", "letter_size", "oversize_5mb"],
 )
 def test_rejects_invalid_pdf_before_upload(body, code):
     with pytest.raises(CvGenerationError) as exc:
@@ -34,6 +36,10 @@ def test_rejects_invalid_pdf_before_upload(body, code):
 
 
 def fake_latexmk(tmp_path, monkeypatch, body):
+    if sys.platform == "win32":
+        pytest.skip(
+            "LocalCvCompiler fake_latexmk tests require POSIX executable and resource limits"
+        )
     script = tmp_path / "latexmk"
     script.write_text("#!/usr/bin/env python3\n" + body)
     script.chmod(0o700)

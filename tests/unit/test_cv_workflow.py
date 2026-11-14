@@ -318,3 +318,65 @@ async def test_cv_improvement_api_endpoints(client, test_db, sample_proposal):
         headers={"X-User-Id": "other-user-456"},
     )
     assert resp_forbidden.status_code == 403
+
+
+class FailingMockAgent:
+    async def run(self, prompt, deps=None):
+        raise RuntimeError("LLM request timed out")
+
+
+@pytest.mark.asyncio
+async def test_workflow_resume_rollback_on_failure(test_db, sample_proposal):
+    workflow = CvImprovementWorkflow(test_db, apply_agent=FailingMockAgent())
+    repo = CvImprovementRepository(test_db)
+
+    session = await repo.create_session(
+        user_id="user-fail-1",
+        original_cv_text="Viết API CRUD",
+        target_jd_text="FastAPI Backend Engineer",
+    )
+    await repo.save_suggestions(session.id, sample_proposal)
+    await workflow.decide(session.id, "s1", CvDecisionType.APPROVED, user_id="user-fail-1")
+
+    # Resume fails -> status must rollback to WAITING_USER_REVIEW
+    with pytest.raises(RuntimeError, match="LLM request timed out"):
+        await workflow.resume(session.id, user_id="user-fail-1")
+
+    current = await workflow.get_session(session.id, user_id="user-fail-1")
+    assert current.status == CvImprovementStep.WAITING_USER_REVIEW
+    assert current.revised_resume_data is None
+
+
+@pytest.mark.asyncio
+async def test_workflow_auto_recovery_from_stuck_applying_changes(
+    test_db, sample_proposal, sample_revised_resume
+):
+    repo = CvImprovementRepository(test_db)
+    session = await repo.create_session(
+        user_id="user-stuck-1",
+        original_cv_text="Viết API CRUD",
+        target_jd_text="FastAPI Backend Engineer",
+    )
+    await repo.save_suggestions(session.id, sample_proposal)
+    # Simulate a session manually left in APPLYING_CHANGES without revised data
+    await repo.transition_step(session.id, CvImprovementStep.APPLYING_CHANGES)
+
+    # 1. batch_decide auto-recovers to WAITING_USER_REVIEW instead of crashing
+    workflow = CvImprovementWorkflow(test_db)
+    updated = await workflow.batch_decide(
+        session.id,
+        [{"suggestion_id": "s1", "decision": CvDecisionType.APPROVED}],
+        user_id="user-stuck-1",
+    )
+    assert updated.status == CvImprovementStep.WAITING_USER_REVIEW
+    assert updated.user_decisions["s1"]["decision"] == "APPROVED"
+
+    # Put back into APPLYING_CHANGES
+    await repo.transition_step(session.id, CvImprovementStep.APPLYING_CHANGES)
+
+    # 2. resume allows retry when revised_resume_data is None
+    mock_apply = MockAgent(output=sample_revised_resume)
+    workflow_retry = CvImprovementWorkflow(test_db, apply_agent=mock_apply)
+    resumed = await workflow_retry.resume(session.id, user_id="user-stuck-1")
+    assert resumed.status == CvImprovementStep.APPLYING_CHANGES
+    assert resumed.revised_resume_data is not None
