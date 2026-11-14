@@ -57,6 +57,14 @@ class LocalStorageClient(BaseStorageClient):
         path = self.base_dir / safe_name
         if path.is_file():
             return path
+        # Fallback check relative to project root or current working directory
+        project_root = Path(__file__).resolve().parent.parent.parent
+        root_path = project_root / "data" / "resumes" / safe_name
+        if root_path.is_file():
+            return root_path
+        cwd_path = Path.cwd() / "data" / "resumes" / safe_name
+        if cwd_path.is_file():
+            return cwd_path
         return None
 
 

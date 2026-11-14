@@ -530,3 +530,63 @@ def test_chat_agent_has_cv_improvement_tools():
     assert "review_and_improve_cv" in tool_keys
     assert "record_cv_decisions" in tool_keys
     assert "finalize_and_generate_cv" in tool_keys
+
+
+@pytest.mark.asyncio
+async def test_review_and_improve_cv_cold_start_from_jd(
+    test_db: AsyncSession, current_user, monkeypatch
+):
+    deps = AgentDeps(user=current_user, session_id="chat-sess-cold", db=test_db)
+    ctx = MagicMock(spec=RunContext)
+    ctx.deps = deps
+
+    # Mock finding candidate CV returns None (no CV)
+    monkeypatch.setattr(
+        "app.features.cv_improvement.chat_tool._find_candidate_cv",
+        AsyncMock(return_value=None),
+    )
+
+    # Mock CvImprovementWorkflow analyze output
+    async def mock_analyze(self, session_id, user_id=None, deps=None):
+        repo = CvImprovementRepository(self.db)
+        await repo.save_suggestions(
+            session_id=session_id,
+            proposals={
+                "target_role": "Fullstack Engineer",
+                "summary": "Tạo CV mẫu từ JD thành công.",
+                "strengths": ["Cơ sở dữ liệu tốt"],
+                "missing_skills": ["Docker"],
+                "suggestions": [
+                    {
+                        "id": "sug-1",
+                        "section": "Dự án tiêu biểu",
+                        "target_original_text": "Your Highlighted Project",
+                        "suggested_revised_text": "E-Commerce System with React and FastAPI",
+                        "reason": "Phù hợp JD Fullstack",
+                    }
+                ],
+            },
+        )
+        return await repo.get_session(session_id)
+
+    monkeypatch.setattr(
+        "app.features.cv_improvement.chat_tool.CvImprovementWorkflow.analyze",
+        mock_analyze,
+    )
+
+    res = await review_and_improve_cv(
+        ctx,
+        target_jd="Tuyển dụng Fullstack Engineer yêu cầu React, FastAPI, PostgreSQL",
+        create_starter=True,
+    )
+
+    assert "Khởi tạo CV mẫu từ JD" in res
+    assert "Fullstack Engineer" in res
+    assert "sug-1" in res
+
+    # Verify session was created with synthesized CV text
+    repo = CvImprovementRepository(test_db)
+    session = await repo.get_session("chat-sess-cold", user_id=current_user.user_id)
+    assert session is not None
+    assert "HỒ SƠ ỨNG VIÊN (KHỞI TẠO TỰ ĐỘNG TỪ JD)" in session.original_cv_text
+    assert "youremail@gmail.com" in session.original_cv_text

@@ -1,0 +1,87 @@
+version: "1.0"
+use_case: "cv_improvement"
+description: "Golden evaluation test cases for UC2: CV-Job Description Matching and CV Improvement Agent."
+
+test_cases:
+  - id: "case_1"
+    name: "Junior CRUD to STAR / Docker & Redis"
+    description: "Evaluates upgrading passive CRUD bullets to quantifiable STAR bullets aligned with high-performance backend JD."
+    cv_file: "personas/case_1_junior_crud.md"
+    jd_file: "personas/case_1_jd.md"
+    expected_action_ratio: 0.8
+    expected_no_hallucination: 1.0
+    expected_placeholder_integrity: 1.0
+    user_decision_policy: "approve_all"
+
+  - id: "case_2"
+    name: "Sparse CV & Missing Placeholders"
+    description: "Evaluates leader feedback: CV lacks email, phone, github, and projects. Verifies standard placeholders and starter project injection."
+    cv_file: "personas/case_2_sparse_cv.md"
+    jd_file: "personas/case_2_jd.md"
+    expected_action_ratio: 0.7
+    expected_no_hallucination: 1.0
+    expected_placeholder_integrity: 1.0
+    user_decision_policy: "approve_all"
+
+  - id: "case_3"
+    name: "Career Transition (Data Analyst to AI Engineer)"
+    description: "Evaluates skill gap detection, learning path suggestions, and re-framing analytics experience toward RAG/LLM."
+    cv_file: "personas/case_3_career_transition.md"
+    jd_file: "personas/case_3_jd.md"
+    expected_action_ratio: 0.75
+    expected_no_hallucination: 1.0
+    expected_placeholder_integrity: 1.0
+    user_decision_policy: "approve_all"
+
+  - id: "case_4"
+    name: "Rejection & Recovery Rollback"
+    description: "Evaluates user rejecting suggestions and triggering recovery rollback. Original CV text must remain 100% byte-consistent."
+    cv_file: "personas/case_4_rejection_recovery.md"
+    jd_file: "personas/case_4_jd.md"
+    expected_action_ratio: 0.5
+    expected_no_hallucination: 1.0
+    expected_placeholder_integrity: 1.0
+    user_decision_policy: "reject_all_and_recover"
+
+  - id: "case_5"
+    name: "Cold-Start from Job Description"
+    description: "Evaluates user having no CV at all. Agent synthesizes starter CV from JD with standard placeholders and generates suggestions."
+    cv_file: null
+    jd_file: "personas/case_5_jd.md"
+    expected_action_ratio: 0.7
+    expected_no_hallucination: 1.0
+    expected_placeholder_integrity: 1.0
+    user_decision_policy: "approve_all"
+
+  - id: "case_6"
+    name: "Selective Decisions & Custom User Edit"
+    description: "Evaluates mixed human decisions: approves suggestion 1, user edits suggestion 2 with custom text, and rejects suggestion 3."
+    cv_file: "personas/case_6_selective_edits.md"
+    jd_file: "personas/case_6_jd.md"
+    expected_action_ratio: 0.75
+    expected_no_hallucination: 1.0
+    expected_placeholder_integrity: 1.0
+    user_decision_policy: "selective_edits"
+
+  - id: "case_7"
+    name: "General HR Review Standards"
+    description: "Evaluates CV review without a specific target JD, testing general structural and action-oriented HR standards."
+    cv_file: "personas/case_7_general_hr.md"
+    jd_file: null
+    general_review: true
+    expected_action_ratio: 0.7
+    expected_no_hallucination: 1.0
+    expected_placeholder_integrity: 1.0
+    user_decision_policy: "approve_all"
+
+  - id: "case_8"
+    name: "Bilingual Vietnamese to English Alignment"
+    description: "Evaluates Vietnamese CV submitted for international English JD, verifying terminology alignment and LaTeX rendering."
+    cv_file: "personas/case_8_bilingual.md"
+    jd_file: "personas/case_8_jd.md"
+    language: "en"
+    expected_action_ratio: 0.8
+    expected_no_hallucination: 1.0
+    expected_placeholder_integrity: 1.0
+    user_decision_policy: "approve_all"
+
