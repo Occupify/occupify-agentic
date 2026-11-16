@@ -182,6 +182,16 @@ class MemoryService:
             log_step("memory.deleted", user_id=user_id, category=category, key=key)
         return deleted
 
+    async def clear_user_memory(self, user_id: str) -> int:
+        """Deletes all memory facts for a user (Data Minimization / GDPR / Reset)."""
+        stmt = delete(UserMemory).where(UserMemory.user_id == user_id)
+        res = await self.db.execute(stmt)
+        await self.db.commit()
+        count = res.rowcount
+        if count > 0:
+            log_step("memory.cleared", user_id=user_id, count=count)
+        return count
+
     async def purge_expired(self, user_id: str | None = None) -> int:
         """Purges expired rows past their retention TTL."""
         now = datetime.now(UTC)

@@ -136,3 +136,41 @@ async def get_session_state(
             "active_user_memory": active_memory_items,
         }
     )
+
+
+@router.delete("/state/{session_id}")
+async def delete_session_state(
+    session_id: str,
+    x_user_id: str | None = Header(None, alias="x-user-id"),
+    db: AsyncSession = Depends(get_db_session),
+):
+    settings = get_settings()
+    if settings.APP_ENV not in ("local", "test"):
+        raise AppError(404, "Endpoint not found.", "NOT_FOUND")
+
+    state_mgr = TaskProgressManager(db)
+    mem_svc = MemoryService(db)
+
+    user_id = x_user_id
+    if session_id and session_id not in ("new", "current"):
+        stmt = select(ChatSession).where(ChatSession.id == session_id)
+        res = await db.execute(stmt)
+        chat_sess = res.scalar_one_or_none()
+        if chat_sess and not user_id:
+            user_id = chat_sess.user_id
+
+    mem_count = 0
+    cp_count = 0
+    if user_id:
+        mem_count = await mem_svc.clear_user_memory(user_id)
+        cp_count = await state_mgr.clear_user_checkpoints(user_id)
+
+    return success_response(
+        data={
+            "deleted": True,
+            "session_id": session_id,
+            "user_id": user_id,
+            "memory_cleared_count": mem_count,
+            "checkpoints_cleared_count": cp_count,
+        }
+    )

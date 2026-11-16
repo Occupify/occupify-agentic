@@ -11,6 +11,8 @@ from app.features.chat.schemas import (
     ChatSessionItem,
 )
 from app.features.chat.service import ChatService
+from app.memory.service import MemoryService
+from app.state.task_progress import TaskProgressManager
 
 router = APIRouter(prefix="/ai/chat", tags=["chat"])
 
@@ -121,3 +123,42 @@ async def delete_chat_session(
     if not deleted:
         raise SessionNotFoundError()
     return success_response({"deleted": True})
+
+
+@router.delete("/memory")
+async def clear_user_memory(
+    include_checkpoints: bool = Query(
+        True, description="Also clear task checkpoints for this user"
+    ),
+    category: str | None = Query(None, description="Optional category to delete specific fact"),
+    key: str | None = Query(None, description="Optional key to delete specific fact"),
+    user: CurrentUser = Depends(get_current_user),
+    db: AsyncSession = Depends(get_db_session),
+):
+    mem_svc = MemoryService(db)
+    state_mgr = TaskProgressManager(db)
+
+    if category and key:
+        deleted = await mem_svc.delete_fact(user.user_id, category, key)
+        return success_response(
+            {
+                "deleted": deleted,
+                "user_id": user.user_id,
+                "category": category,
+                "key": key,
+            }
+        )
+
+    mem_count = await mem_svc.clear_user_memory(user.user_id)
+    cp_count = 0
+    if include_checkpoints:
+        cp_count = await state_mgr.clear_user_checkpoints(user.user_id)
+
+    return success_response(
+        {
+            "deleted": True,
+            "user_id": user.user_id,
+            "memory_cleared_count": mem_count,
+            "checkpoints_cleared_count": cp_count,
+        }
+    )

@@ -84,3 +84,45 @@ async def test_task_progress_manager_lifecycle(test_db):
     )
     assert "Goal: Transition to Cloud DevOps Engineer" in prompt_str
     assert "Focus on Kubernetes first" in prompt_str
+
+
+@pytest.mark.asyncio
+async def test_task_progress_manager_clear_user_checkpoints(test_db):
+    session1 = ChatSession(user_id="user-cp-1", title="Session 1")
+    session2 = ChatSession(user_id="user-cp-2", title="Session 2")
+    test_db.add_all([session1, session2])
+    await test_db.commit()
+    await test_db.refresh(session1)
+    await test_db.refresh(session2)
+
+    manager = TaskProgressManager(test_db)
+    await manager.update_and_checkpoint(
+        session_id=session1.id,
+        user_id="user-cp-1",
+        task_type="career_consulting",
+        update=TaskStateUpdate(stage=ConsultingStage.DISCOVERY, goal="Goal 1"),
+    )
+    await manager.update_and_checkpoint(
+        session_id=session1.id,
+        user_id="user-cp-1",
+        task_type="career_consulting",
+        update=TaskStateUpdate(stage=ConsultingStage.ASSESSMENT, goal="Goal 1 Updated"),
+    )
+    await manager.update_and_checkpoint(
+        session_id=session2.id,
+        user_id="user-cp-2",
+        task_type="career_consulting",
+        update=TaskStateUpdate(stage=ConsultingStage.DISCOVERY, goal="Goal 2"),
+    )
+
+    cleared = await manager.clear_user_checkpoints("user-cp-1")
+    assert cleared == 2
+
+    # Verify user 1 has no checkpoints
+    cp1 = await manager.get_latest_checkpoint(session1.id)
+    assert cp1 is None
+
+    # Verify user 2 checkpoints remain
+    cp2 = await manager.get_latest_checkpoint(session2.id)
+    assert cp2 is not None
+    assert cp2.goal == "Goal 2"

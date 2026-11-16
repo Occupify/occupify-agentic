@@ -147,3 +147,37 @@ async def test_memory_service_ttl_expiration(test_db):
 
     purged = await service.purge_expired(user_id)
     assert purged == 1
+
+
+@pytest.mark.asyncio
+async def test_memory_service_clear_user_memory(test_db):
+    service = MemoryService(test_db)
+    user_1 = "user-clear-1"
+    user_2 = "user-clear-2"
+
+    # Add 2 items for user 1
+    await service.record_fact(
+        user_1,
+        MemoryItemCreate(category="career", key="role", value="Backend Dev", is_confirmed=True),
+    )
+    await service.record_fact(
+        user_1,
+        MemoryItemCreate(category="skills", key="lang", value="Python", is_confirmed=True),
+    )
+    # Add 1 item for user 2
+    await service.record_fact(
+        user_2,
+        MemoryItemCreate(category="career", key="role", value="Frontend Dev", is_confirmed=True),
+    )
+
+    cleared = await service.clear_user_memory(user_1)
+    assert cleared == 2
+
+    # User 1 active memory is now empty
+    sum_1 = await service.get_active_memory(user_1)
+    assert len(sum_1.items) == 0
+
+    # User 2 memory remains intact
+    sum_2 = await service.get_active_memory(user_2)
+    assert len(sum_2.items) == 1
+    assert sum_2.items[0].value == "Frontend Dev"

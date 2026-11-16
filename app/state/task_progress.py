@@ -1,4 +1,4 @@
-from sqlalchemy import select
+from sqlalchemy import delete, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.logging import log_step
@@ -220,3 +220,17 @@ class TaskProgressManager:
             checkpoint_seq=new_cp.checkpoint_seq,
             created_at=new_cp.created_at,
         )
+
+    async def clear_user_checkpoints(self, user_id: str, session_id: str | None = None) -> int:
+        """Deletes task checkpoints for a user (or for a specific session)."""
+        stmt = delete(TaskCheckpoint).where(TaskCheckpoint.user_id == user_id)
+        if session_id:
+            stmt = stmt.where(TaskCheckpoint.session_id == session_id)
+        res = await self.db.execute(stmt)
+        await self.db.commit()
+        count = res.rowcount
+        if count > 0:
+            log_step(
+                "state.checkpoints_cleared", user_id=user_id, count=count, session_id=session_id
+            )
+        return count

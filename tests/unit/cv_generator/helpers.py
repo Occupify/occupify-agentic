@@ -35,7 +35,12 @@ def sample_payload():
 
 def handoff_examples():
     path = Path("docs/CV_GENERATOR_TOOL_INPUT.md")
-    return [json.loads(b) for b in re.findall(r"```json\n(.*?)\n```", path.read_text(), re.S)]
+    if not path.exists():
+        path = Path("CV_GENERATOR_TOOL_INPUT.md")
+    return [
+        json.loads(b)
+        for b in re.findall(r"```json\n(.*?)\n```", path.read_text(encoding="utf-8"), re.S)
+    ]
 
 
 def make_pdf(pages=1, size="A4"):

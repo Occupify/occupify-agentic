@@ -65,6 +65,7 @@
   const stateBlockersEl = document.getElementById("state-blockers");
   const stateMemoryCountEl = document.getElementById("state-memory-count");
   const stateMemoryItemsEl = document.getElementById("state-memory-items");
+  const clearMemoryBtn = document.getElementById("clear-memory-btn");
 
   async function refreshStateAndMemory(sessionId) {
     const targetSession = sessionId || "new";
@@ -96,10 +97,35 @@
         } else {
           stateMemoryItemsEl.innerHTML = "";
           mem.forEach(it => {
-            const pill = document.createElement("span");
+            const pill = document.createElement("div");
             pill.className = `memory-pill ${it.is_confirmed ? "confirmed" : "inferred"}`;
             pill.title = `Source: ${it.source} | Confidence: ${it.confidence}`;
-            pill.textContent = `[${it.category}] ${it.key}: ${typeof it.value === "object" ? JSON.stringify(it.value) : it.value} (${it.is_confirmed ? "✓" : "?"})`;
+
+            const textSpan = document.createElement("span");
+            textSpan.className = "memory-pill-text";
+            textSpan.textContent = `[${it.category}] ${it.key}: ${typeof it.value === "object" ? JSON.stringify(it.value) : it.value} (${it.is_confirmed ? "✓" : "?"})`;
+
+            const removeBtn = document.createElement("button");
+            removeBtn.type = "button";
+            removeBtn.className = "memory-pill-remove";
+            removeBtn.innerHTML = "&times;";
+            removeBtn.title = `Xóa fact [${it.category}] ${it.key}`;
+            removeBtn.addEventListener("click", async (e) => {
+              e.stopPropagation();
+              if (!confirm(`Xóa ghi nhớ [${it.category}] ${it.key}?`)) return;
+              try {
+                const delRes = await fetch(`/ai/chat/memory?category=${encodeURIComponent(it.category)}&key=${encodeURIComponent(it.key)}`, {
+                  method: "DELETE",
+                  headers: getHeaders(),
+                });
+                if (delRes.ok) {
+                  await refreshStateAndMemory(sessionId);
+                }
+              } catch (_) {}
+            });
+
+            pill.appendChild(textSpan);
+            pill.appendChild(removeBtn);
             stateMemoryItemsEl.appendChild(pill);
           });
         }
@@ -1115,6 +1141,29 @@
       resetTokenStats();
       renderAllLogsAndTraces();
     });
+
+    // Clear active user memory & checkpoints
+    if (clearMemoryBtn) {
+      clearMemoryBtn.addEventListener("click", async function () {
+        if (!confirm("Bạn có chắc chắn muốn xóa toàn bộ memory facts và checkpoints của user này không?")) {
+          return;
+        }
+        try {
+          const res = await fetch("/ai/chat/memory", {
+            method: "DELETE",
+            headers: getHeaders(),
+          });
+          if (res.ok) {
+            await refreshStateAndMemory(currentSessionId);
+          } else {
+            alert("Không thể xóa user memory. Vui lòng thử lại.");
+          }
+        } catch (err) {
+          console.error("Failed to clear memory:", err);
+          alert("Lỗi kết nối khi xóa user memory.");
+        }
+      });
+    }
   }
 
   async function fetchRecentLogs() {

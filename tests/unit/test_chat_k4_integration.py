@@ -374,3 +374,94 @@ async def test_dev_state_inspection_endpoint(client, test_db, mock_user):
     assert active_mem[0]["key"] == "years_experience"
     assert active_mem[0]["value"] == 5
     assert active_mem[0]["is_confirmed"] is True
+
+
+@pytest.mark.asyncio
+async def test_clear_user_memory_api_endpoints(client, test_db, mock_user):
+    headers = {"x-user-id": mock_user.user_id, "x-user-role": "ROLE_USER"}
+
+    chat_repo = ChatRepository(test_db)
+    chat_sess = await chat_repo.create_session(mock_user.user_id, "Memory Deletion Test")
+
+    mem_svc = MemoryService(test_db)
+    await mem_svc.record_fact(
+        mock_user.user_id,
+        MemoryItemCreate(category="skills", key="skill_1", value="Python", is_confirmed=True),
+    )
+    await mem_svc.record_fact(
+        mock_user.user_id,
+        MemoryItemCreate(category="skills", key="skill_2", value="Docker", is_confirmed=True),
+    )
+
+    state_mgr = TaskProgressManager(test_db)
+    await state_mgr.update_and_checkpoint(
+        session_id=chat_sess.id,
+        user_id=mock_user.user_id,
+        task_type="career_consulting",
+        update=TaskStateUpdate(stage="DISCOVERY", goal="Initial Goal"),
+    )
+
+    # 1. Test deleting single fact
+    res_del_one = await client.delete(
+        "/ai/chat/memory?category=skills&key=skill_1",
+        headers=headers,
+    )
+    assert res_del_one.status_code == 200
+    assert res_del_one.json()["data"]["deleted"] is True
+
+    mem_after_one = await mem_svc.get_active_memory(mock_user.user_id)
+    assert len(mem_after_one.items) == 1
+    assert mem_after_one.items[0].key == "skill_2"
+
+    # 2. Test deleting all memory and checkpoints
+    res_del_all = await client.delete(
+        "/ai/chat/memory",
+        headers=headers,
+    )
+    assert res_del_all.status_code == 200
+    data_all = res_del_all.json()["data"]
+    assert data_all["deleted"] is True
+    assert data_all["memory_cleared_count"] == 1
+    assert data_all["checkpoints_cleared_count"] == 1
+
+    mem_empty = await mem_svc.get_active_memory(mock_user.user_id)
+    assert len(mem_empty.items) == 0
+
+    cp_empty = await state_mgr.get_latest_checkpoint(chat_sess.id)
+    assert cp_empty is None
+
+
+@pytest.mark.asyncio
+async def test_dev_delete_session_state_endpoint(client, test_db, mock_user):
+    headers = {"x-user-id": mock_user.user_id}
+
+    chat_repo = ChatRepository(test_db)
+    chat_sess = await chat_repo.create_session(mock_user.user_id, "Dev State Deletion Test")
+
+    mem_svc = MemoryService(test_db)
+    await mem_svc.record_fact(
+        mock_user.user_id,
+        MemoryItemCreate(category="career", key="role", value="DevOps", is_confirmed=True),
+    )
+
+    state_mgr = TaskProgressManager(test_db)
+    await state_mgr.update_and_checkpoint(
+        session_id=chat_sess.id,
+        user_id=mock_user.user_id,
+        task_type="career_consulting",
+        update=TaskStateUpdate(stage="DISCOVERY", goal="Dev Goal"),
+    )
+
+    res = await client.delete(f"/ai/dev/state/{chat_sess.id}", headers=headers)
+    assert res.status_code == 200
+    data = res.json()["data"]
+    assert data["deleted"] is True
+    assert data["memory_cleared_count"] >= 1
+    assert data["checkpoints_cleared_count"] >= 1
+
+    # Verify state endpoint now returns clean empty state
+    res_inspect = await client.get(f"/ai/dev/state/{chat_sess.id}", headers=headers)
+    assert res_inspect.status_code == 200
+    inspect_data = res_inspect.json()["data"]
+    assert inspect_data["latest_checkpoint"] is None
+    assert inspect_data["active_user_memory"] == []

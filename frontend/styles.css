@@ -945,7 +945,10 @@ body {
 }
 
 .memory-pill {
-  display: block;
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 0.4rem;
   background: var(--bg-secondary);
   border: 1px solid var(--border-color);
   padding: 0.3rem 0.5rem;
@@ -955,6 +958,25 @@ body {
   line-height: 1.35;
   white-space: normal;
   word-break: break-word;
+}
+
+.memory-pill-text {
+  flex: 1;
+}
+
+.memory-pill-remove {
+  background: none;
+  border: none;
+  color: var(--text-dim);
+  cursor: pointer;
+  padding: 0 0.15rem;
+  font-size: 0.8rem;
+  line-height: 1;
+  transition: color 0.15s ease;
+}
+
+.memory-pill-remove:hover {
+  color: #ef4444;
 }
 
 .empty-hint {
