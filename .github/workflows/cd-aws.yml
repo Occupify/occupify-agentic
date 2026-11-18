@@ -86,11 +86,8 @@ jobs:
           AWS_REGION: ${{ secrets.AWS_REGION || 'ap-southeast-1' }}
           AWS_SECRET_AGENTIC_ID: ${{ secrets.AWS_SECRET_AGENTIC || 'occupify/prod/agentic' }}
         run: |
-          mkdir -p ~/.config/systemd/user/git-ops/services
+          mkdir -p ~/.config/systemd/user/git-ops/services/agentic
           mkdir -p ~/.config/systemd/user/git-ops/env
-          mkdir -p ~/.config/systemd/user/git-ops/nginx/logs
-          mkdir -p ~/.config/systemd/user/git-ops/nginx/run
-          mkdir -p ~/.config/systemd/user/git-ops/nginx/body
 
           echo "Inject agentic.env from AWS Secrets Manager..."
           aws secretsmanager get-secret-value \
@@ -99,10 +96,9 @@ jobs:
             --query SecretString \
             --output text > ~/.config/systemd/user/git-ops/env/agentic.env
 
-          echo "Sync services manifests, systemd units, and nginx config..."
-          cp -rf services ~/.config/systemd/user/git-ops/
-          cp service/occupify-*.service ~/.config/systemd/user/
-          cp nginx/default.conf ~/.config/systemd/user/git-ops/nginx/default.conf
+          echo "Sync agentic manifests and systemd units..."
+          cp -rf services/agentic ~/.config/systemd/user/git-ops/services/
+          cp service/occupify-*-agentic.service ~/.config/systemd/user/
 
       - name: Deploy Agentic Service
         working-directory: gitops-manifests
